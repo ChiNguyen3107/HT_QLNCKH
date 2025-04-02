@@ -1,5 +1,5 @@
-
 <?php
+// filepath: d:\xampp\htdocs\NLNganh\view\admin\manage_departments\manage_departments.php
 include '../../../include/session.php';
 checkAdminRole();
 ?>
@@ -11,30 +11,14 @@ checkAdminRole();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý các khoa</title>
+
+    <!-- CSS Libraries -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css" rel="stylesheet">
-    <style>
-        .modal-dialog {
-            max-width: 80%;
-        }
-
-        .modal-body {
-            max-height: 70vh;
-            overflow-y: auto;
-        }
-
-        .modal-backdrop {
-            z-index: 1040 !important;
-        }
-
-        .modal {
-            z-index: 1050 !important;
-        }
-
-        .modal-dialog {
-            margin: 2rem auto;
-        }
-    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="/NLNganh/assets/css/admin/manage_departments.css" rel="stylesheet">
 </head>
 
 <body>
@@ -42,11 +26,31 @@ checkAdminRole();
     <?php include '../../../include/connect.php'; ?>
 
     <div class="container-fluid content">
-        <div class="row">
-            <div class="col-md-12">
-                <h1 class="mt-4">Quản lý các khoa</h1>
-                <div class="table-container mt-4">
-                    <table id="departmentsTable" class="table table-bordered">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/NLNganh/view/admin/admin_dashboard.php"><i
+                            class="fas fa-home"></i> Trang chủ</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Quản lý khoa</li>
+            </ol>
+        </nav>
+
+        <!-- Header Section -->
+        <div class="header-section">
+            <h1 class="page-header"><i class="fas fa-university mr-2"></i>Quản lý các khoa</h1>
+            <button class="btn btn-success" data-toggle="modal" data-target="#addModal">
+                <i class="fas fa-plus mr-1"></i> Thêm khoa mới
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list mr-2"></i>Danh sách khoa</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="departmentsTable" class="table table-hover">
                         <thead>
                             <tr>
                                 <th>Mã khoa</th>
@@ -66,23 +70,67 @@ checkAdminRole();
                                                 <td>{$row['DV_MADV']}</td>
                                                 <td>{$row['DV_TENDV']}</td>
                                                 <td>
-                                                    <button class='btn btn-warning btn-sm editBtn' data-id='{$row['DV_MADV']}'>Sửa</button>
-                                                    <button class='btn btn-danger btn-sm deleteBtn' data-id='{$row['DV_MADV']}'>Xóa</button>
+                                                    <div class='action-buttons'>
+                                                        <button class='btn btn-warning btn-sm editBtn' data-id='{$row['DV_MADV']}'>
+                                                            <i class='fas fa-edit'></i> Sửa
+                                                        </button>
+                                                        <button class='btn btn-danger btn-sm deleteBtn' data-id='{$row['DV_MADV']}'>
+                                                            <i class='fas fa-trash-alt'></i> Xóa
+                                                        </button>
+                                                    </div>
                                                 </td>
                                                 <td>
-                                                    <button class='btn btn-info btn-sm viewClassesBtn' data-id='{$row['DV_MADV']}'>Xem lớp học</button>
+                                                    <button class='btn btn-info btn-sm viewClassesBtn' data-id='{$row['DV_MADV']}'>
+                                                        <i class='fas fa-users'></i> Xem lớp học
+                                                    </button>
                                                 </td>
                                               </tr>";
                                     }
                                 } else {
-                                    echo "<tr><td colspan='4'>Không có dữ liệu</td></tr>";
+                                    echo "<tr><td colspan='4' class='no-data'>Không có dữ liệu</td></tr>";
                                 }
                             } else {
-                                echo "<tr><td colspan='4'>Lỗi truy vấn: " . $conn->error . "</td></tr>";
+                                echo "<tr><td colspan='4' class='text-danger'>Lỗi truy vấn: " . $conn->error . "</td></tr>";
                             }
                             ?>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal thêm khoa mới -->
+    <div class="modal fade" id="addModal" tabindex="-1" role="dialog" aria-labelledby="addModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addModalLabel"><i class="fas fa-plus-circle mr-2"></i>Thêm khoa mới</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="addForm">
+                        <div class="form-group">
+                            <label for="addId">Mã khoa</label>
+                            <input type="text" class="form-control" id="addId" name="addId" required>
+                            <small class="form-text text-muted">Nhập mã khoa (ví dụ: CNTT, KHTN,...)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="addName">Tên khoa</label>
+                            <input type="text" class="form-control" id="addName" name="addName" required>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fas fa-times mr-1"></i> Hủy
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save mr-1"></i> Lưu
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -94,7 +142,8 @@ checkAdminRole();
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editModalLabel">Chỉnh sửa thông tin khoa</h5>
+                    <h5 class="modal-title" id="editModalLabel"><i class="fas fa-edit mr-2"></i>Chỉnh sửa thông tin khoa
+                    </h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -109,7 +158,14 @@ checkAdminRole();
                             <label for="editName">Tên khoa</label>
                             <input type="text" class="form-control" id="editName" name="editName" required>
                         </div>
-                        <button type="submit" class="btn btn-primary">Cập nhật</button>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fas fa-times mr-1"></i> Hủy
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save mr-1"></i> Cập nhật
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -121,15 +177,22 @@ checkAdminRole();
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Xác nhận xóa</h5>
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle mr-2 text-danger"></i>Xác nhận xóa
+                    </h5>
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
                 </div>
                 <div class="modal-body">
-                    Bạn có chắc chắn muốn xóa khoa này không?
+                    <p>Bạn có chắc chắn muốn xóa khoa này không?</p>
+                    <p class="mb-0 font-italic text-danger">Lưu ý: Hành động này không thể hoàn tác và sẽ xóa tất cả các
+                        lớp học và dữ liệu liên quan!</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
-                    <a href="#" id="confirmDelete" class="btn btn-danger">Xóa</a>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Hủy
+                    </button>
+                    <a href="#" id="confirmDelete" class="btn btn-danger">
+                        <i class="fas fa-trash-alt mr-1"></i> Xác nhận xóa
+                    </a>
                 </div>
             </div>
         </div>
@@ -141,20 +204,22 @@ checkAdminRole();
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="viewClassesModalLabel">Danh sách lớp học</h5>
+                    <h5 class="modal-title" id="viewClassesModalLabel">
+                        <i class="fas fa-users mr-2"></i>Danh sách lớp học
+                    </h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="selectCourse">Vui lòng chọn khóa học</label>
+                        <label for="selectCourse"><i class="fas fa-filter mr-1"></i>Chọn khóa học:</label>
                         <select class="form-control" id="selectCourse">
                             <!-- Các tùy chọn khóa học sẽ được tải động -->
                         </select>
                     </div>
-                    <div class="table-container mt-4">
-                        <table id="classesTable" class="table table-bordered">
+                    <div class="table-responsive mt-4">
+                        <table id="classesTable" class="table table-hover">
                             <thead>
                                 <tr>
                                     <th>Mã lớp</th>
@@ -169,6 +234,11 @@ checkAdminRole();
                         </table>
                     </div>
                 </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Đóng
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -179,14 +249,16 @@ checkAdminRole();
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="viewStudentsModalLabel">Danh sách sinh viên</h5>
+                    <h5 class="modal-title" id="viewStudentsModalLabel">
+                        <i class="fas fa-user-graduate mr-2"></i>Danh sách sinh viên
+                    </h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <div class="table-container mt-4">
-                        <table id="studentsTable" class="table table-bordered">
+                    <div class="table-responsive mt-4">
+                        <table id="studentsTable" class="table table-hover">
                             <thead>
                                 <tr>
                                     <th>Mã sinh viên</th>
@@ -200,251 +272,28 @@ checkAdminRole();
                             </tbody>
                         </table>
                         <div id="noStudentsMessage" class="alert alert-info" style="display: none;">
-                            Không có sinh viên nào trong lớp này.
+                            <i class="fas fa-info-circle mr-2"></i>Không có sinh viên nào trong lớp này.
                         </div>
                     </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Đóng
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript -->
+    <!-- JavaScript Libraries -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
-    <script>
-        $(document).ready(function () {
-            var table = $('#departmentsTable').DataTable({
-                "paging": true,
-                "ordering": true,
-                "info": false,
-                "searching": true,
-                "pageLength": 10,
-                "lengthMenu": [5, 10, 25, 50, 100],
-                "language": {
-                    "search": "Tìm kiếm:",
-                    "lengthMenu": "Hiển thị _MENU_ dòng",
-                    "paginate": {
-                        "first": "Đầu",
-                        "last": "Cuối",
-                        "next": "Tiếp",
-                        "previous": "Trước"
-                    }
-                }
-            });
-
-            function attachEventHandlers() {
-                $('.editBtn').off('click').on('click', function () {
-                    let id = $(this).data('id');
-                    $.ajax({
-                        url: 'get_department.php',
-                        type: 'GET',
-                        data: { id: id },
-                        dataType: 'json',
-                        success: function (department) {
-                            if (department.error) {
-                                alert(department.error);
-                            } else {
-                                $('#editId').val(department.DV_MADV);
-                                $('#editName').val(department.DV_TENDV);
-                                $('#editModal').modal('show');
-                            }
-                        },
-                        error: function (xhr, status, error) {
-                            console.error("Lỗi AJAX:", error);
-                            console.error("Phản hồi từ máy chủ:", xhr.responseText);
-                            alert("Đã xảy ra lỗi khi lấy thông tin khoa.");
-                        }
-                    });
-                });
-
-                $('.deleteBtn').off('click').on('click', function () {
-                    let id = $(this).data('id');
-                    $('#confirmDelete').attr('href', "delete_department.php?id=" + id);
-                    $('#deleteModal').modal('show');
-                });
-
-                $('.viewClassesBtn').off('click').on('click', function () {
-                    let id = $(this).data('id');
-                    $('#viewClassesModal').data('id', id).modal('show');
-                    loadCourses();
-                });
-            }
-
-            table.on('draw', function () {
-                attachEventHandlers();
-            });
-
-            attachEventHandlers();
-
-            $('#viewClassesModal').on('show.bs.modal', function () {
-                $('#selectCourse').val('');
-                $('#classesTable tbody').empty();
-                if ($.fn.DataTable.isDataTable('#classesTable')) {
-                    $('#classesTable').DataTable().destroy();
-                }
-            });
-
-            $('#selectCourse').change(function () {
-                loadClasses();
-            });
-
-            $('#editForm').submit(function (e) {
-                e.preventDefault();
-                $.ajax({
-                    url: 'update_department.php',
-                    type: 'POST',
-                    data: $(this).serialize(),
-                    dataType: 'json',
-                    success: function (result) {
-                        if (result.success) {
-                            alert(result.success);
-                            location.reload();
-                        } else {
-                            alert(result.error);
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("Lỗi AJAX:", error);
-                        console.error("Phản hồi từ máy chủ:", xhr.responseText);
-                        alert("Đã xảy ra lỗi khi cập nhật khoa.");
-                    }
-                });
-            });
-
-            function loadCourses() {
-                $.ajax({
-                    url: 'get_courses.php',
-                    type: 'GET',
-                    dataType: 'json',
-                    success: function (courses) {
-                        let options = '<option value="">Chọn khóa học</option>';
-                        $.each(courses, function (index, course) {
-                            options += `<option value="${course.KH_NAM}">${course.KH_NAM}</option>`;
-                        });
-                        $('#selectCourse').html(options);
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("Lỗi AJAX:", error);
-                        console.error("Phản hồi từ máy chủ:", xhr.responseText);
-                        alert("Đã xảy ra lỗi khi tải danh sách khóa học.");
-                    }
-                });
-            }
-
-            function loadClasses() {
-                let departmentId = $('#viewClassesModal').data('id');
-                let courseId = $('#selectCourse').val();
-                $.ajax({
-                    url: 'get_classes.php',
-                    type: 'GET',
-                    data: { departmentId: departmentId, courseId: courseId },
-                    dataType: 'json',
-                    success: function (classes) {
-                        let rows = '';
-                        $.each(classes, function (index, classInfo) {
-                            rows += `<tr>
-                                    <td>${classInfo.LOP_MA}</td>
-                                    <td>${classInfo.LOP_TEN}</td>
-                                    <td>${classInfo.KH_NAM}</td>
-                                    <td>
-                                        <button class='btn btn-info btn-sm viewStudentsBtn' data-id='${classInfo.LOP_MA}'>Xem danh sách sinh viên</button>
-                                    </td>
-                                </tr>`;
-                        });
-                        $('#classesTable tbody').html(rows);
-                        $('#classesTable').DataTable({
-                            "paging": true,
-                            "ordering": true,
-                            "info": false,
-                            "searching": true,
-                            "pageLength": 10,
-                            "lengthMenu": [5, 10, 25, 50, 100],
-                            "language": {
-                                "search": "Tìm kiếm:",
-                                "lengthMenu": "Hiển thị _MENU_ dòng",
-                                "paginate": {
-                                    "first": "Đầu",
-                                    "last": "Cuối",
-                                    "next": "Tiếp",
-                                    "previous": "Trước"
-                                }
-                            }
-                        });
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("Lỗi AJAX:", error);
-                        console.error("Phản hồi từ máy chủ:", xhr.responseText);
-                        alert("Đã xảy ra lỗi khi tải danh sách lớp học.");
-                    }
-                });
-            }
-
-            $(document).on('click', '.viewStudentsBtn', function () {
-                let classId = $(this).data('id');
-                $('#viewStudentsModal').data('id', classId).modal('show');
-                loadStudents(classId);
-            });
-
-            $('#viewStudentsModal').on('show.bs.modal', function () {
-                if ($.fn.DataTable.isDataTable('#studentsTable')) {
-                    $('#studentsTable').DataTable().destroy();
-                }
-            });
-
-            function loadStudents(classId) {
-                $.ajax({
-                    url: 'get_students.php',
-                    type: 'GET',
-                    data: { classId: classId },
-                    dataType: 'json',
-                    success: function (students) {
-                        let rows = '';
-                        if (students.length === 0) {
-                            $('#noStudentsMessage').show();
-                            $('#studentsTable').hide();
-                        } else {
-                            $('#noStudentsMessage').hide();
-                            $('#studentsTable').show();
-                            $.each(students, function (index, student) {
-                                rows += `<tr>
-                                        <td>${student.SV_MASV}</td>
-                                        <td>${student.SV_HOTEN}</td>
-                                        <td>${student.SV_EMAIL}</td>
-                                        <td>${student.SV_SDT}</td>
-                                    </tr>`;
-                            });
-                            $('#studentsTable tbody').html(rows);
-                            $('#studentsTable').DataTable({
-                                "paging": true,
-                                "ordering": true,
-                                "info": false,
-                                "searching": true,
-                                "pageLength": 10,
-                                "lengthMenu": [5, 10, 25, 50, 100],
-                                "language": {
-                                    "search": "Tìm kiếm:",
-                                    "lengthMenu": "Hiển thị _MENU_ dòng",
-                                    "paginate": {
-                                        "first": "Đầu",
-                                        "last": "Cuối",
-                                        "next": "Tiếp",
-                                        "previous": "Trước"
-                                    }
-                                }
-                            });
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("Lỗi AJAX:", error);
-                        console.error("Phản hồi từ máy chủ:", xhr.responseText);
-                        alert("Đã xảy ra lỗi khi tải danh sách sinh viên.");
-                    }
-                });
-            }
-        });
-    </script>
+    <!-- Custom JavaScript -->
+    <script src="/NLNganh/assets/js/admin/manage_departments.js"></script>
 </body>
 
 </html>

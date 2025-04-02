@@ -7,11 +7,11 @@ session_start();
 if(isset($_SESSION['user_id'])) {
     // Nếu đã đăng nhập, kiểm tra vai trò và chuyển hướng đến trang tương ứng
     if($_SESSION['role'] == 'admin') {
-        header("Location: view/admin/dashboard.php");
+        header("Location: view/admin/admin_dashboard.php"); // Sửa tên file nếu cần
     } elseif($_SESSION['role'] == 'student') {
-        header("Location: view/student/dashboard.php");
+        header("Location: view/student/student_dashboard.php"); // Sửa tên file nếu cần
     } elseif($_SESSION['role'] == 'teacher') {
-        header("Location: view/teacher/dashboard.php");
+        header("Location: view/teacher/teacher_dashboard.php"); // Sửa tên file nếu cần
     } else {
         header("Location: login.php?error=role");
     }

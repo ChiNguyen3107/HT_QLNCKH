@@ -1,4 +1,9 @@
 <?php
+if (empty($_POST['QD_SO'])) {
+    echo "<script>alert('Lỗi: Số quyết định không được để trống!'); window.history.back();</script>";
+    exit();
+}
+echo "<script>console.log('QD_SO: " . $_POST['QD_SO'] . "');</script>";
 include '../../../include/session.php';
 checkAdminRole();
 include '../../../include/connect.php';
@@ -12,12 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $LVNC_MA = $_POST['LVNC_MA'] ?? '';
     $QD_SO = $_POST['QD_SO'] ?? '';
     $LVUT_MA = $_POST['LVUT_MA'] ?? '';
-    $HD_MA = $_POST['HD_MA'] ?? '';
-    $DT_FILEBTM = $_POST['DT_FILEBTM'] ?? '';
     $DT_TRANGTHAI = $_POST['DT_TRANGTHAI'] ?? '';
 
     // Kiểm tra dữ liệu đầu vào
-    if (empty($DT_MADT) || empty($DT_TENDT) || empty($DT_MOTA) || empty($LDT_MA) || empty($GV_MAGV) || empty($LVNC_MA)) {
+    if (empty($DT_MADT) || empty($DT_TENDT) || empty($DT_MOTA) || empty($LDT_MA) || empty($GV_MAGV) || empty($LVNC_MA) || empty($QD_SO)) {
         echo "<script>alert('Lỗi: Một số trường quan trọng bị bỏ trống!'); window.history.back();</script>";
         exit();
     }
@@ -65,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // Cập nhật thông tin đề tài
     $sql_update = "UPDATE de_tai_nghien_cuu 
-                   SET DT_TENDT = ?, DT_MOTA = ?, LDT_MA = ?, GV_MAGV = ?, LVNC_MA = ?, QD_SO = ?, LVUT_MA = ?, HD_MA = ?, DT_FILEBTM = ?, DT_TRANGTHAI = ? 
+                   SET DT_TENDT = ?, DT_MOTA = ?, LDT_MA = ?, GV_MAGV = ?, LVNC_MA = ?, QD_SO = ?, LVUT_MA = ?, DT_TRANGTHAI = ? 
                    WHERE DT_MADT = ?";
     $stmt = $conn->prepare($sql_update);
 
@@ -74,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit();
     }
 
-    $stmt->bind_param("sssssssssss", $DT_TENDT, $DT_MOTA, $LDT_MA, $GV_MAGV, $LVNC_MA, $QD_SO, $LVUT_MA, $HD_MA, $DT_FILEBTM, $DT_TRANGTHAI, $DT_MADT);
+    $stmt->bind_param("sssssssss", $DT_TENDT, $DT_MOTA, $LDT_MA, $GV_MAGV, $LVNC_MA, $QD_SO, $LVUT_MA, $DT_TRANGTHAI, $DT_MADT);
 
     if ($stmt->execute()) {
         echo "<script>alert('✅ Cập nhật đề tài thành công!'); window.location.href='manage_projects.php';</script>";

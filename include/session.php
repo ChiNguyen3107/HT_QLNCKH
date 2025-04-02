@@ -9,13 +9,14 @@ function startSessionIfNotStarted() {
     }
 }
 
-// Hàm kiểm tra đăng nhập
+// Hàm kiểm tra đăng nhập - ĐÃ SỬA
 function checkLogin() {
     startSessionIfNotStarted();
-    if (!isset($_SESSION['user_id'])) {
+    if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
         header("Location: /NLNganh/login.php");
         exit;
     }
+    // Chỉ kiểm tra người dùng đã đăng nhập, không quan tâm vai trò
 }
 
 // Hàm kiểm tra vai trò admin
