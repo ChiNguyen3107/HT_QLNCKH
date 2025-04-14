@@ -1,0 +1,274 @@
+/* CSS cho trang quản lý đề tài sinh viên */
+
+/* Layout chính */
+.content-wrapper {
+    margin-left: 250px;
+    padding: 20px;
+    transition: all 0.3s;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    margin-bottom: 20px;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.breadcrumb-item a {
+    color: #2ecc71;
+    text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+    text-decoration: underline;
+}
+
+/* Tiêu đề trang */
+.page-header {
+    color: #343a40;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+    font-size: 1.75rem;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 0.5rem;
+}
+
+/* Card styles */
+.card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 0.15rem 1rem rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    padding: 1rem 1.25rem;
+}
+
+.card-header .card-title {
+    font-weight: 600;
+    color: #343a40;
+}
+
+.card-header i {
+    color: #2ecc71;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+/* Bảng styles */
+.table {
+    margin-bottom: 0;
+    color: #212529;
+}
+
+.table th {
+    border-top: none;
+    background-color: #f8f9fa;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.table-bordered {
+    border: 1px solid #dee2e6;
+}
+
+.table-bordered th,
+.table-bordered td {
+    border: 1px solid #dee2e6;
+}
+
+.table-responsive {
+    min-height: 200px;
+}
+
+/* Badge styles */
+.badge {
+    font-size: 85%;
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+    border-radius: 0.35rem;
+}
+
+.badge-primary {
+    background-color: #4e73df;
+    color: #fff;
+}
+
+.badge-success {
+    background-color: #1cc88a;
+    color: #fff;
+}
+
+.badge-warning {
+    background-color: #f6c23e;
+    color: #fff;
+}
+
+.badge-danger {
+    background-color: #e74a3b;
+    color: #fff;
+}
+
+.badge-info {
+    background-color: #36b9cc;
+    color: #fff;
+}
+
+.badge-secondary {
+    background-color: #858796;
+    color: #fff;
+}
+
+/* Button styles */
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    border-radius: 0.2rem;
+}
+
+.btn-info {
+    background-color: #36b9cc;
+    border-color: #36b9cc;
+}
+
+.btn-info:hover {
+    background-color: #2a9aaa;
+    border-color: #2a9aaa;
+}
+
+.btn-success {
+    background-color: #1cc88a;
+    border-color: #1cc88a;
+}
+
+.btn-success:hover {
+    background-color: #17a673;
+    border-color: #17a673;
+}
+
+.btn-primary {
+    background-color: #4e73df;
+    border-color: #4e73df;
+}
+
+.btn-primary:hover {
+    background-color: #2653d4;
+    border-color: #2653d4;
+}
+
+/* Input search */
+.form-control-sm {
+    height: calc(1.5em + 0.5rem + 2px);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    border-radius: 0.2rem;
+}
+
+.form-control:focus {
+    border-color: #2ecc71;
+    box-shadow: 0 0 0 0.2rem rgba(46, 204, 113, 0.25);
+}
+
+/* Loading spinner */
+.spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-width: 0.2em;
+}
+
+/* Project list table */
+.project-table th:nth-child(2),
+.project-table td:nth-child(2) {
+    max-width: 300px;
+}
+
+.project-table th:last-child,
+.project-table td:last-child {
+    min-width: 160px;
+    text-align: center;
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #858796;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #dddfeb;
+}
+
+/* Tooltip */
+.tooltip-inner {
+    background-color: #4e73df;
+}
+
+.bs-tooltip-auto[x-placement^=top] .arrow::before,
+.bs-tooltip-top .arrow::before {
+    border-top-color: #4e73df;
+}
+
+/* Error state */
+.error-message {
+    color: #e74a3b;
+    text-align: center;
+    padding: 1rem;
+}
+
+/* Responsive styles */
+@media (max-width: 992px) {
+    .content-wrapper {
+        margin-left: 70px;
+    }
+}
+
+@media (max-width: 576px) {
+    .content-wrapper {
+        margin-left: 0;
+        padding: 15px;
+    }
+    
+    .btn-group-sm {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .btn-group-sm .btn {
+        margin-bottom: 0.25rem;
+    }
+    
+    .card-header {
+        flex-direction: column;
+    }
+    
+    .card-header h5 {
+        margin-bottom: 0.5rem;
+    }
+    
+    .card-header div {
+        width: 100%;
+    }
+    
+    .card-header div input {
+        width: 100% !important;
+    }
+}
