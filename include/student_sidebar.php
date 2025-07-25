@@ -7,18 +7,18 @@ if (isset($_SESSION['user_id'])) {
     if (!isset($conn)) {
         require_once 'connect.php';
     }
-    
-    // Lấy thông tin chi tiết của sinh viên
+      // Lấy thông tin chi tiết của sinh viên
     $student_id = $_SESSION['user_id'];
     $student_query = "SELECT 
                         sv.SV_MASV, 
                         CONCAT(sv.SV_HOSV, ' ', sv.SV_TENSV) AS SV_HOTEN,
                         sv.SV_EMAIL,
                         l.LOP_TEN,
-                        dv.DV_TENDV
+                        dv.DV_TENDV,
+                        sv.SV_AVATAR
                      FROM sinh_vien sv
-                     JOIN lop l ON sv.LOP_MA = l.LOP_MA
-                     JOIN don_vi dv ON l.DV_MADV = dv.DV_MADV
+                     LEFT JOIN lop l ON sv.LOP_MA = l.LOP_MA
+                     LEFT JOIN don_vi dv ON l.DV_MADV = dv.DV_MADV
                      WHERE sv.SV_MASV = ?";
     
     $stmt = $conn->prepare($student_query);
@@ -33,25 +33,38 @@ if (isset($_SESSION['user_id'])) {
         $stmt->close();
     }
 }
+
+// Xác định trang hiện tại để đánh dấu menu
+$current_page = basename($_SERVER['PHP_SELF']);
 ?>
 
 <!-- Sidebar Sinh viên -->
 <div class="student-sidebar">
     <div class="sidebar-header">
-        <h2>THÔNG TIN SINH VIÊN</h2>
+        <h2>NGHIÊN CỨU KHOA HỌC</h2>
     </div>
-    
-    <div class="user-info">
+      <div class="user-info">
         <div class="user-avatar">
-            <i class="fas fa-user-graduate"></i>
-        </div>
-        <div class="user-details">
-            <?php if (isset($student_info)): ?>
-                <h3><?php echo htmlspecialchars($student_info['SV_HOTEN']); ?></h3>
-                <p><?php echo htmlspecialchars($student_info['SV_MASV']); ?></p>
-                <small class="text-light"><?php echo htmlspecialchars($student_info['LOP_TEN']); ?></small>
+            <?php if (isset($student_info['SV_AVATAR']) && !empty($student_info['SV_AVATAR'])): ?>
+                <img src="/NLNganh/<?php echo htmlspecialchars($student_info['SV_AVATAR']); ?>" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
             <?php else: ?>
-                <h3><?php echo isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Sinh viên'; ?></h3>
+                <i class="fas fa-user-graduate"></i>
+            <?php endif; ?>
+        </div>        <div class="user-details">
+            <?php if (isset($student_info)): ?>
+                <h3><?php 
+                    if (isset($student_info['SV_HOTEN'])) {
+                        echo htmlspecialchars($student_info['SV_HOTEN']);
+                    } elseif (isset($student_info['SV_HOSV']) && isset($student_info['SV_TENSV'])) {
+                        echo htmlspecialchars($student_info['SV_HOSV'] . ' ' . $student_info['SV_TENSV']);
+                    } else {
+                        echo isset($_SESSION['user_name']) ? htmlspecialchars($_SESSION['user_name']) : 'Sinh viên';
+                    }
+                ?></h3>
+                <p><?php echo htmlspecialchars($student_info['SV_MASV']); ?></p>
+                <small class="text-light"><?php echo htmlspecialchars($student_info['LOP_TEN'] ?? 'Không có dữ liệu'); ?></small>
+            <?php else: ?>
+                <h3><?php echo isset($_SESSION['user_name']) ? htmlspecialchars($_SESSION['user_name']) : 'Sinh viên'; ?></h3>
                 <p>Sinh viên</p>
             <?php endif; ?>
         </div>
@@ -62,31 +75,37 @@ if (isset($_SESSION['user_id'])) {
     <nav>
         <ul>
             <li>
-                <a href="/NLNganh/view/student/student_dashboard.php" class="<?php echo (strpos($_SERVER['REQUEST_URI'], 'student_dashboard.php') !== false) ? 'active' : ''; ?>">
+                <a href="/NLNganh/view/student/student_dashboard.php" class="<?php echo ($current_page === 'student_dashboard.php') ? 'active' : ''; ?>">
                     <i class="fas fa-tachometer-alt"></i>
                     <span>Bảng điều khiển</span>
                 </a>
             </li>
             <li>
-                <a href="/NLNganh/view/student/manage_profile.php" class="<?php echo (strpos($_SERVER['REQUEST_URI'], 'manage_profile.php') !== false) ? 'active' : ''; ?>">
+                <a href="/NLNganh/view/student/manage_profile.php" class="<?php echo ($current_page === 'manage_profile.php') ? 'active' : ''; ?>">
                     <i class="fas fa-user-edit"></i>
                     <span>Quản lý hồ sơ</span>
                 </a>
             </li>
             <li>
-                <a href="/NLNganh/view/student/student_manage_projects.php" class="<?php echo (strpos($_SERVER['REQUEST_URI'], 'student_manage_projects.php') !== false || strpos($_SERVER['REQUEST_URI'], 'view_project.php') !== false) ? 'active' : ''; ?>">
+                <a href="/NLNganh/view/student/browse_projects.php" class="<?php echo ($current_page === 'browse_projects.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-search"></i>
+                    <span>Tìm kiếm đề tài</span>
+                </a>
+            </li>
+            <li>
+                <a href="/NLNganh/view/student/register_project_form.php" class="<?php echo ($current_page === 'register_project_form.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Đăng ký đề tài</span>
+                </a>
+            </li>
+            <li>
+                <a href="/NLNganh/view/student/student_manage_projects.php" class="<?php echo (in_array($current_page, ['student_manage_projects.php', 'view_project.php'])) ? 'active' : ''; ?>">
                     <i class="fas fa-book-reader"></i>
                     <span>Quản lý đề tài</span>
                 </a>
             </li>
             <li>
-                <a href="/NLNganh/view/student/browse_projects.php" class="<?php echo (strpos($_SERVER['REQUEST_URI'], 'browse_projects.php') !== false) ? 'active' : ''; ?>">
-                    <i class="fas fa-search"></i>
-                    <span>Tìm đề tài</span>
-                </a>
-            </li>
-            <li>
-                <a href="/NLNganh/view/student/student_reports.php" class="<?php echo (strpos($_SERVER['REQUEST_URI'], 'reports.php') !== false) ? 'active' : ''; ?>">
+                <a href="/NLNganh/view/student/student_reports.php" class="<?php echo (in_array($current_page, ['student_reports.php', 'view_report.php', 'submit_report.php'])) ? 'active' : ''; ?>">
                     <i class="fas fa-file-alt"></i>
                     <span>Báo cáo</span>
                 </a>
@@ -105,22 +124,19 @@ if (isset($_SESSION['user_id'])) {
     <div class="user-info-extended">
         <div class="info-item">
             <i class="fas fa-envelope"></i>
-            <span class="info-text"><?php echo htmlspecialchars($student_info['SV_EMAIL']); ?></span>
+            <span class="info-text" title="<?php echo htmlspecialchars($student_info['SV_EMAIL'] ?? ''); ?>"><?php echo htmlspecialchars($student_info['SV_EMAIL'] ?? 'Chưa cập nhật'); ?></span>
         </div>
         <div class="info-item">
             <i class="fas fa-university"></i>
-            <span class="info-text"><?php echo htmlspecialchars($student_info['DV_TENDV']); ?></span>
+            <span class="info-text" title="<?php echo htmlspecialchars($student_info['DV_TENDV'] ?? ''); ?>"><?php echo htmlspecialchars($student_info['DV_TENDV'] ?? 'Chưa cập nhật'); ?></span>
         </div>
     </div>
     <?php endif; ?>
     
     <div class="sidebar-footer">
-        <p>&copy; <?php echo date('Y'); ?> - NCKH System</p>
+        <p>&copy; <?php echo date('Y'); ?> - Hệ thống NCKH</p>
     </div>
 </div>
-
-<!-- Thêm Font Awesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
 <style>
     body, html {
@@ -130,11 +146,11 @@ if (isset($_SESSION['user_id'])) {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
-    /* Sidebar styles - đổi tên class để tránh xung đột */
+    /* Sidebar styles */
     .student-sidebar {
         width: 250px;
         height: 100vh;
-        background: #1f5ca9;
+        background: linear-gradient(135deg, #1f5ca9 0%, #0c3b76 100%);
         color: #fff;
         position: fixed;
         top: 0;
@@ -143,6 +159,8 @@ if (isset($_SESSION['user_id'])) {
         z-index: 1000;
         box-shadow: 3px 0 10px rgba(0, 0, 0, 0.1);
         transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
     }
 
     /* Thanh cuộn tùy chỉnh cho sidebar */
@@ -169,7 +187,7 @@ if (isset($_SESSION['user_id'])) {
 
     .student-sidebar .sidebar-header h2 {
         font-size: 16px;
-        margin: 10px 0 0;
+        margin: 0;
         color: #fff;
         font-weight: 600;
         letter-spacing: 1px;
@@ -231,6 +249,10 @@ if (isset($_SESSION['user_id'])) {
     }
 
     /* Navigation */
+    .student-sidebar nav {
+        flex: 1;
+    }
+    
     .student-sidebar nav ul {
         list-style-type: none;
         padding: 0;
@@ -275,6 +297,32 @@ if (isset($_SESSION['user_id'])) {
         font-size: 14px;
     }
 
+    /* Thông tin mở rộng */
+    .student-sidebar .user-info-extended {
+        padding: 15px;
+        background-color: rgba(0, 0, 0, 0.05);
+        font-size: 12px;
+    }
+    
+    .student-sidebar .user-info-extended .info-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .student-sidebar .user-info-extended .info-item i {
+        margin-right: 8px;
+        width: 15px;
+    }
+    
+    .student-sidebar .user-info-extended .info-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 200px;
+    }
+
     /* Sidebar Footer */
     .student-sidebar .sidebar-footer {
         text-align: center;
@@ -282,82 +330,17 @@ if (isset($_SESSION['user_id'])) {
         font-size: 12px;
         color: rgba(255, 255, 255, 0.6);
         background-color: rgba(0, 0, 0, 0.1);
-        position: sticky;
-        bottom: 0;
         width: 100%;
     }
 
-    /* Content styles - sử dụng class rõ ràng thay vì selector chung */
-    .student-content {
+    /* Content margin adjustment */
+    .content,
+    .container-fluid:not(.sidebar-content) {
         margin-left: 250px;
-        padding: 20px;
+        width: calc(100% - 250px);
         transition: all 0.3s ease;
     }
-
-    /* Card styles */
-    .card {
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        transition: all 0.25s ease;
-        margin-bottom: 20px;
-        border: none;
-    }
-
-    .card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 5px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .card-header {
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #eaedf0;
-        padding: 15px 20px;
-        font-weight: 600;
-    }
-
-    .card-body {
-        padding: 20px;
-    }
-
-    /* Content structure classes */
-    .content-wrapper {
-        padding: 20px 0;
-    }
-
-    .page-header {
-        margin-bottom: 25px;
-        padding-bottom: 15px;
-        border-bottom: 1px solid #e9ecef;
-        display: flex;
-        align-items: center;
-    }
-
-    .page-header i {
-        margin-right: 10px;
-        color: #2ecc71;
-    }
-
-    /* Breadcrumb styling */
-    .breadcrumb {
-        background-color: transparent;
-        padding: 0.75rem 0;
-        margin-bottom: 1rem;
-    }
-
-    .breadcrumb-item a {
-        color: #2ecc71;
-        text-decoration: none;
-    }
-
-    .breadcrumb-item a:hover {
-        text-decoration: underline;
-    }
-
-    .breadcrumb-item.active {
-        color: #6c757d;
-    }
-
+    
     /* Responsive adjustments */
     @media (max-width: 992px) {
         .student-sidebar {
@@ -366,7 +349,8 @@ if (isset($_SESSION['user_id'])) {
         
         .student-sidebar .sidebar-header h2,
         .student-sidebar .user-details,
-        .student-sidebar nav ul li a span {
+        .student-sidebar nav ul li a span,
+        .student-sidebar .user-info-extended {
             display: none;
         }
         
@@ -376,16 +360,15 @@ if (isset($_SESSION['user_id'])) {
         
         .student-sidebar:hover .sidebar-header h2,
         .student-sidebar:hover .user-details,
-        .student-sidebar:hover nav ul li a span {
+        .student-sidebar:hover nav ul li a span,
+        .student-sidebar:hover .user-info-extended {
             display: block;
         }
         
-        .student-content,
         .content,
-        .container-fluid {
-            margin-left: 70px !important;
-            width: calc(100% - 70px) !important;
-            max-width: 100% !important;
+        .container-fluid:not(.sidebar-content) {
+            margin-left: 70px;
+            width: calc(100% - 70px);
         }
     }
     
@@ -400,11 +383,10 @@ if (isset($_SESSION['user_id'])) {
             opacity: 1;
         }
         
-        .student-content,
         .content,
-        .container-fluid {
-            margin-left: 0 !important;
-            width: 100% !important;
+        .container-fluid:not(.sidebar-content) {
+            margin-left: 0;
+            width: 100%;
         }
         
         .mobile-toggle-btn {
@@ -412,7 +394,7 @@ if (isset($_SESSION['user_id'])) {
             position: fixed;
             top: 10px;
             left: 10px;
-            background-color: #2ecc71;
+            background-color: #1f5ca9;
             color: white;
             border: none;
             width: 40px;
@@ -421,45 +403,6 @@ if (isset($_SESSION['user_id'])) {
             z-index: 1010;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
-    }
-
-    /* Fix specific container issues */
-    .content,
-    .container-fluid:not(.sidebar-content) {
-        margin-left: 250px;
-        width: calc(100% - 250px);
-        transition: all 0.3s ease;
-    }
-    
-    /* Ensure content doesn't overflow */
-    .main-content {
-        overflow-x: hidden;
-    }
-
-    /* Thêm style cho phần thông tin mở rộng */
-    .user-info-extended {
-        padding: 15px;
-        background-color: rgba(0, 0, 0, 0.05);
-        margin-top: auto;
-        font-size: 12px;
-    }
-    
-    .user-info-extended .info-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-        color: rgba(255, 255, 255, 0.8);
-    }
-    
-    .user-info-extended .info-item i {
-        margin-right: 8px;
-        width: 15px;
-    }
-    
-    .user-info-extended .info-text {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 </style>
 
@@ -478,14 +421,6 @@ document.addEventListener('DOMContentLoaded', function() {
             sidebar.classList.toggle('show');
         });
     }
-    
-    // Thêm class cho nội dung chính
-    const mainContainers = document.querySelectorAll('.container-fluid, .container:not(.sidebar-content)');
-    mainContainers.forEach(container => {
-        if (!container.closest('.student-sidebar')) {
-            container.classList.add('student-content');
-        }
-    });
     
     // Bắt sự kiện resize
     window.addEventListener('resize', function() {

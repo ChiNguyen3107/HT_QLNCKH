@@ -1,0 +1,106 @@
+/**
+ * Modern Research Sidebar Layout Adjustments
+ * File: assets/css/research/modern-sidebar-layout.css
+ */
+
+/* Đảm bảo body và content wrapper có margin phù hợp */
+body {
+    margin-left: 260px !important;  /* Giảm xuống 260px để đồng nhất */
+    transition: margin-left 0.3s ease;
+    background-color: #f8f9fc;
+    overflow-x: hidden;
+}
+
+/* Content wrapper adjustments */
+#wrapper {
+    min-height: 100vh;
+}
+
+#content-wrapper {
+    margin-left: 260px !important;  /* Giảm xuống 260px để đồng nhất */
+    width: calc(100% - 260px) !important;
+    min-height: 100vh;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+/* When sidebar is collapsed */
+body.sidebar-toggled #content-wrapper {
+    margin-left: 60px;
+    width: calc(100% - 60px);
+}
+
+/* Main content padding */
+#content {
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Topbar adjustments */
+.topbar {
+    position: relative;
+    z-index: 1;
+}
+
+/* Collapse toggle button position */
+.sidebar-collapse-toggle {
+    position: fixed;
+    left: 260px;
+    top: 20px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    border: none;
+    color: #3a66db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1040;
+    transition: all 0.3s ease;
+}
+
+body.sidebar-toggled .sidebar-collapse-toggle {
+    left: 60px;
+    transform: rotate(180deg);
+}
+
+.sidebar-collapse-toggle:focus {
+    outline: none;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 991px) {
+    #content-wrapper {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    .sidebar-collapse-toggle {
+        display: none;
+    }
+    
+    /* Adjust spacing for mobile */
+    .container-fluid {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+}
+
+/* Footer positioning */
+.sticky-footer {
+    position: relative;
+    z-index: 1;
+}
+
+/* Content transition */
+#content-wrapper, .container-fluid {
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* Fix the scroll-to-top button positioning */
+.scroll-to-top {
+    z-index: 1030;
+}

@@ -43,10 +43,14 @@ $stmt->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý đề tài nghiên cứu | Sinh viên</title>
+    <!-- Favicon -->
+    <link rel="icon" href="/NLNganh/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/NLNganh/favicon.ico" type="image/x-icon">
     
     <!-- CSS Libraries -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.10.23/css/dataTables.bootstrap4.min.css" rel="stylesheet">
     
     <!-- Custom CSS -->
     <link href="/NLNganh/assets/css/student/manage_projects.css" rel="stylesheet">
@@ -97,7 +101,7 @@ $stmt->close();
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover table-bordered project-table">
+                        <table class="table table-hover table-bordered project-table" id="myProjectsTable">
                             <thead class="thead-light">
                                 <tr>
                                     <th>Mã đề tài</th>
@@ -105,7 +109,6 @@ $stmt->close();
                                     <th>Giảng viên hướng dẫn</th>
                                     <th>Vai trò</th>
                                     <th>Trạng thái</th>
-                                    <th>Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -134,31 +137,17 @@ $stmt->close();
                                                 $status_class = 'badge-secondary';
                                         }
                                         ?>
-                                        <tr>
+                                        <tr class="clickable-row" data-href="view_project.php?id=<?php echo $project['DT_MADT']; ?>">
                                             <td><?php echo $project['DT_MADT']; ?></td>
                                             <td><?php echo $project['DT_TENDT']; ?></td>
                                             <td><?php echo $project['GV_HOTEN'] ?: 'Chưa có GVHD'; ?></td>
                                             <td><?php echo $project['CTTG_VAITRO']; ?></td>
                                             <td><span class="badge <?php echo $status_class; ?>"><?php echo $project['DT_TRANGTHAI']; ?></span></td>
-                                            <td>
-                                                <div class="btn-group-sm">
-                                                    <a href="view_project.php?id=<?php echo $project['DT_MADT']; ?>" class="btn btn-sm btn-info mb-1" 
-                                                       data-toggle="tooltip" title="Xem chi tiết đề tài">
-                                                        <i class="fas fa-eye"></i> Xem
-                                                    </a>
-                                                    <?php if ($project['DT_TRANGTHAI'] === 'Đang thực hiện'): ?>
-                                                    <a href="submit_report.php?id=<?php echo $project['DT_MADT']; ?>" class="btn btn-sm btn-primary mb-1"
-                                                       data-toggle="tooltip" title="Nộp báo cáo tiến độ">
-                                                        <i class="fas fa-file-upload"></i> Nộp báo cáo
-                                                    </a>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="6" class="text-center">
+                                        <td colspan="5" class="text-center">
                                             <div class="empty-state">
                                                 <i class="fas fa-clipboard"></i>
                                                 <p>Bạn chưa đăng ký đề tài nghiên cứu nào</p>
@@ -186,7 +175,7 @@ $stmt->close();
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover table-bordered project-table">
+                        <table class="table table-hover table-bordered project-table" id="suggestedProjectsTable">
                             <thead class="thead-light">
                                 <tr>
                                     <th>Mã đề tài</th>
@@ -249,6 +238,8 @@ $stmt->close();
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.23/js/dataTables.bootstrap4.min.js"></script>
     
     <!-- Custom JavaScript -->
     <script src="/NLNganh/assets/js/student/student_manage_projects.js"></script>

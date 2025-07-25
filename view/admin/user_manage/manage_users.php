@@ -11,14 +11,32 @@ checkAdminRole();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý người dùng</title>
+    <!-- Favicon -->
+    <link rel="icon" href="/NLNganh/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/NLNganh/favicon.ico" type="image/x-icon">
 
     <!-- CSS Libraries -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet>
 
     <!-- Custom CSS -->
     <link href="/NLNganh/assets/css/admin/manage_users.css" rel="stylesheet">
+
+    <style>
+        /* CSS để đảm bảo hiển thị phần dành cho giảng viên */
+        .teacher-only {
+            display: none; /* Mặc định ẩn */
+        }
+
+        .teacher-mode .teacher-only {
+            display: block !important;
+        }
+
+        .student-mode .student-only {
+            display: block !important;
+        }
+    </style>
 </head>
 
 <body>

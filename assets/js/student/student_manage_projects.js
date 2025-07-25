@@ -64,6 +64,79 @@ $(document).ready(function() {
         // Tooltip cho các nút hành động
         $('[data-toggle="tooltip"]').tooltip();
     }
+
+    /**
+     * Khởi tạo DataTables cho bảng đề tài của tôi
+     */
+    function initMyProjectsTable() {
+        // Hủy DataTable nếu đã được khởi tạo
+        if ($.fn.DataTable.isDataTable('#myProjectsTable')) {
+            $('#myProjectsTable').DataTable().destroy();
+        }
+        
+        // Khởi tạo DataTable mới
+        $('#myProjectsTable').DataTable({
+            language: {
+                url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Vietnamese.json",
+                search: "Tìm kiếm:",
+                lengthMenu: "Hiển thị _MENU_ mục",
+                info: "Hiển thị _START_ đến _END_ của _TOTAL_ mục",
+                infoEmpty: "Hiển thị 0 đến 0 của 0 mục",
+                infoFiltered: "(lọc từ _MAX_ mục)",
+                paginate: {
+                    first: "Đầu tiên",
+                    last: "Cuối cùng",
+                    next: "Tiếp",
+                    previous: "Trước"
+                }
+            },
+            responsive: true,
+            autoWidth: false,
+            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "Tất cả"]],
+            pageLength: 5,
+            order: [[0, 'asc']]
+        });
+    }
+
+    /**
+     * Khởi tạo DataTables cho bảng đề tài gợi ý
+     */
+    function initSuggestedProjectsTable() {
+        // Hủy DataTable nếu đã được khởi tạo
+        if ($.fn.DataTable.isDataTable('#suggestedProjectsTable')) {
+            $('#suggestedProjectsTable').DataTable().destroy();
+        }
+        
+        // Khởi tạo DataTable mới với tính năng ajax để giữ nguyên dữ liệu sau khi phân trang/sắp xếp
+        $('#suggestedProjectsTable').DataTable({
+            language: {
+                url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Vietnamese.json",
+                search: "Tìm kiếm:",
+                lengthMenu: "Hiển thị _MENU_ mục",
+                info: "Hiển thị _START_ đến _END_ của _TOTAL_ mục",
+                infoEmpty: "Hiển thị 0 đến 0 của 0 mục",
+                infoFiltered: "(lọc từ _MAX_ mục)",
+                paginate: {
+                    first: "Đầu tiên",
+                    last: "Cuối cùng",
+                    next: "Tiếp",
+                    previous: "Trước"
+                }
+            },
+            responsive: true,
+            autoWidth: false,
+            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "Tất cả"]],
+            pageLength: 5,
+            columnDefs: [
+                { orderable: false, targets: 5 } // Cột "Thao tác" không cho sắp xếp
+            ],
+            // Sau khi vẽ lại bảng, thiết lập lại các hiệu ứng
+            drawCallback: function() {
+                setupTableRowEffects();
+                setupRegisterButtons();
+            }
+        });
+    }
     
     /**
      * Tải danh sách đề tài gợi ý
@@ -83,7 +156,7 @@ $(document).ready(function() {
                         var statusClass = getStatusBadgeClass(project.DT_TRANGTHAI);
                         
                         html += `
-                            <tr>
+                            <tr class="clickable-row" data-href="view_project.php?id=${project.DT_MADT}">
                                 <td>${project.DT_MADT}</td>
                                 <td>${project.DT_TENDT}</td>
                                 <td>${project.GV_HOTEN || 'Chưa có GVHD'}</td>
@@ -123,6 +196,9 @@ $(document).ready(function() {
                 // Thiết lập hiệu ứng sau khi tải và đăng ký sự kiện
                 setupTableRowEffects();
                 setupRegisterButtons();
+                
+                // Khởi tạo DataTables cho bảng đề tài gợi ý sau khi dữ liệu được tải
+                initSuggestedProjectsTable();
             },
             error: function(xhr, status, error) {
                 console.error('Error loading projects:', error);
@@ -207,30 +283,24 @@ $(document).ready(function() {
         });
     }
     
+    // Khởi tạo các bảng DataTables
+    initMyProjectsTable();
+    
     // Tải dữ liệu ban đầu
     loadSuggestedProjects();
     loadRecommendedProjects();
     
-    // Xử lý tìm kiếm với debounce
-    var searchTimeout;
+    // Xử lý tìm kiếm với DataTables
     $('#searchProject').on('input', function() {
-        clearTimeout(searchTimeout);
         var searchValue = $(this).val();
         
-        // Hiển thị icon loading trong ô tìm kiếm
-        if (searchValue.length > 0) {
-            if (!$(this).next('.search-icon').length) {
-                $(this).after('<span class="search-icon"><i class="fas fa-spinner fa-spin"></i></span>');
-            }
+        // Sử dụng tính năng tìm kiếm của DataTables nếu đã được khởi tạo
+        if ($.fn.DataTable.isDataTable('#suggestedProjectsTable')) {
+            $('#suggestedProjectsTable').DataTable().search(searchValue).draw();
         } else {
-            $('.search-icon').remove();
-        }
-        
-        searchTimeout = setTimeout(function() {
+            // Nếu DataTable chưa khởi tạo, sử dụng cách tìm kiếm cũ
             loadSuggestedProjects(searchValue);
-            // Xóa icon loading
-            $('.search-icon').remove();
-        }, 500);
+        }
     });
     
     // Xử lý form đăng ký khi submit
@@ -324,6 +394,9 @@ $(document).ready(function() {
                 
                 // Thiết lập lại các hiệu ứng
                 setupTableRowEffects();
+                
+                // Khởi tạo lại DataTables sau khi dữ liệu được tải
+                initMyProjectsTable();
             },
             error: function() {
                 console.error('Không thể tải danh sách đề tài của tôi');
@@ -354,4 +427,9 @@ $(document).ready(function() {
     
     // Khởi tạo sự kiện cho các nút đăng ký có sẵn
     setupRegisterButtons();
+    
+    // Xử lý click vào dòng đề tài
+    $(document).on('click', '.clickable-row', function() {
+        window.location = $(this).data('href');
+    });
 });

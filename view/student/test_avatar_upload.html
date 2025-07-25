@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Avatar Upload</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 50px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        .avatar-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 20px;
+        }
+        .avatar {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: #adb5bd;
+            background-color: #f8f9fa;
+            border: 4px solid white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .avatar-upload {
+            position: absolute;
+            right: 5px;
+            bottom: 5px;
+            background: #2ecc71;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .avatar-upload:hover {
+            background: #27ae60;
+        }
+        .test-section {
+            margin-top: 30px;
+            border-top: 1px solid #dee2e6;
+            padding-top: 20px;
+        }
+        .log-area {
+            height: 200px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Test Avatar Upload Functionality</h1>
+        <p class="text-center text-muted">This page is for testing the avatar upload functionality.</p>
+
+        <div class="avatar-container">
+            <div class="avatar" id="profileAvatar">
+                A
+            </div>
+            <div class="avatar-upload" id="uploadAvatarBtn" title="Cập nhật ảnh đại diện">
+                <i class="fas fa-camera"></i>
+            </div>
+            <input type="file" id="avatarUpload" style="display:none" accept="image/*">
+        </div>
+
+        <div class="test-section">
+            <h3>Test Steps:</h3>
+            <ol>
+                <li>Click on the camera icon to select an image</li>
+                <li>Verify the image preview shows in the modal</li>
+                <li>Click "Confirm" to simulate upload</li>
+                <li>Check the console logs for AJAX request information</li>
+            </ol>
+        </div>
+
+        <div class="log-area" id="logArea">
+            <div class="text-muted">Test logs will appear here...</div>
+        </div>
+    </div>
+
+    <!-- Modal xác nhận cập nhật ảnh đại diện -->
+    <div class="modal fade" id="avatarConfirmModal" tabindex="-1" role="dialog" aria-labelledby="avatarConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="avatarConfirmModalLabel">
+                        <i class="fas fa-image mr-2"></i>Avatar Preview
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="avatarPreview" src="" alt="Avatar Preview" class="img-fluid mb-3" style="max-height: 300px; border-radius: 10px;">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-2"></i>Would you like to use this image as your avatar?
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" id="saveAvatarBtn">
+                        <i class="fas fa-check mr-1"></i> Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        function logMessage(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const cssClass = type === 'error' ? 'text-danger' : (type === 'success' ? 'text-success' : 'text-info');
+            $('#logArea').append(`<div class="${cssClass}">[${timestamp}] ${message}</div>`);
+            // Scroll to bottom
+            $('#logArea').scrollTop($('#logArea')[0].scrollHeight);
+        }
+
+        $(document).ready(function() {
+            logMessage('Test page loaded. Ready for testing avatar upload.');
+
+            $('#uploadAvatarBtn').on('click', function() {
+                $('#avatarUpload').click();
+                logMessage('Avatar upload button clicked');
+            });
+            
+            $('#avatarUpload').on('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    logMessage(`File selected: ${file.name} (${Math.round(file.size / 1024)} KB)`);
+                    
+                    // Check file size (max 2MB)
+                    if (file.size > 2 * 1024 * 1024) {
+                        logMessage('File is too large (maximum: 2MB)', 'error');
+                        return;
+                    }
+                    
+                    // Check file type
+                    const fileType = file.type;
+                    if (!fileType.match('image.*')) {
+                        logMessage('Invalid file type. Please select an image file.', 'error');
+                        return;
+                    }
+                    
+                    // Show preview
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#avatarPreview').attr('src', e.target.result);
+                        $('#avatarConfirmModal').modal('show');
+                        logMessage('Preview modal opened');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            $('#saveAvatarBtn').on('click', function() {
+                $(this).html('<i class="fas fa-spinner fa-spin mr-1"></i> Processing...');
+                $(this).prop('disabled', true);
+                
+                logMessage('Simulating AJAX upload...', 'info');
+                
+                // Simulate AJAX call with a delay
+                setTimeout(function() {
+                    const file = $('#avatarUpload')[0].files[0];
+                    if (file) {
+                        const imageUrl = $('#avatarPreview').attr('src');
+                        $('#profileAvatar').html(`<img src="${imageUrl}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`);
+                        $('#avatarConfirmModal').modal('hide');
+                        
+                        logMessage('Avatar successfully updated (simulated)', 'success');
+                        logMessage(`In a real implementation, the file "${file.name}" would be uploaded to the server via AJAX.`);
+                        
+                        // Reset button
+                        $('#saveAvatarBtn').html('<i class="fas fa-check mr-1"></i> Confirm');
+                        $('#saveAvatarBtn').prop('disabled', false);
+                    } else {
+                        logMessage('Error: No file selected', 'error');
+                    }
+                }, 1500);
+            });
+        });
+    </script>
+</body>
+</html>

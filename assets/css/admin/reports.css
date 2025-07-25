@@ -50,3 +50,28 @@
 .table-responsive {
     overflow-x: auto;
 }
+
+/* Định dạng cho liên kết lớp */
+.class-link {
+    color: #4e73df;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.class-link:hover {
+    text-decoration: underline;
+    color: #2e59d9;
+}
+
+/* Định dạng cho bảng sinh viên */
+#studentTable {
+    font-size: 0.9rem;
+}
+
+#studentTable th {
+    vertical-align: middle;
+}
+
+#studentListModal .modal-xl {
+    max-width: 90%;
+}

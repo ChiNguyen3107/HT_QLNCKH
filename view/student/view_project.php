@@ -9,6 +9,18 @@ if ($conn->connect_error) {
     die("Kết nối thất bại: " . $conn->connect_error);
 }
 
+// Helper function to format dates consistently throughout the application
+function formatDate($date, $default = 'Chưa xác định') {
+    if (isset($date) && !empty($date) && $date !== '0000-00-00') {
+        try {
+            return date('d/m/Y', strtotime($date));
+        } catch (Exception $e) {
+            return $default;
+        }
+    }
+    return $default;
+}
+
 // Lấy ID đề tài từ URL
 $project_id = isset($_GET['id']) ? trim($_GET['id']) : '';
 
@@ -24,12 +36,17 @@ $sql = "SELECT dt.*,
                gv.GV_EMAIL,
                ldt.LDT_TENLOAI,
                lvnc.LVNC_TEN,
-               lvut.LVUT_TEN
+               lvut.LVUT_TEN,
+               hd.HD_NGAYTAO,
+               hd.HD_NGAYBD,
+               hd.HD_NGAYKT,
+               hd.HD_TONGKINHPHI
         FROM de_tai_nghien_cuu dt
         LEFT JOIN giang_vien gv ON dt.GV_MAGV = gv.GV_MAGV
         LEFT JOIN loai_de_tai ldt ON dt.LDT_MA = ldt.LDT_MA
         LEFT JOIN linh_vuc_nghien_cuu lvnc ON dt.LVNC_MA = lvnc.LVNC_MA
         LEFT JOIN linh_vuc_uu_tien lvut ON dt.LVUT_MA = lvut.LVUT_MA
+        LEFT JOIN hop_dong hd ON dt.HD_MA = hd.HD_MA
         WHERE dt.DT_MADT = ?";
 
 $stmt = $conn->prepare($sql);
@@ -149,6 +166,9 @@ if ($decision) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($project['DT_TENDT']); ?> | Chi tiết đề tài</title>
+    <!-- Favicon -->
+    <link rel="icon" href="/NLNganh/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/NLNganh/favicon.ico" type="image/x-icon">
 
     <!-- CSS Libraries -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
@@ -180,9 +200,7 @@ if ($decision) {
             padding-left: 20px;
             padding-right: 20px;
             transition: all 0.3s ease;
-        }
-
-        .project-header {
+        }        .project-header {
             background: linear-gradient(120deg, var(--primary), #5a8aef);
             padding: 30px;
             border-radius: 10px;
@@ -191,6 +209,19 @@ if ($decision) {
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             position: relative;
             overflow: hidden;
+        }
+        
+        .project-header p {
+            transition: all 0.3s ease;
+        }
+        
+        .project-header p:hover {
+            transform: translateX(5px);
+        }
+        
+        .project-header .badge {
+            font-size: 0.9rem;
+            padding: 5px 10px;
         }
 
         .project-header::before {
@@ -617,6 +648,60 @@ if ($decision) {
             .timeline {
                 padding-left: 25px;
             }
+        }        /* Trạng thái đề tài */
+        .project-status-container {
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            animation: pulse 2s infinite;
+        }
+        
+        .animate-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255,255,255, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(255,255,255, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255,255,255, 0);
+            }
+        }
+        
+        .bg-primary-soft {
+            background-color: rgba(44, 104, 201, 0.2);
+        }
+        
+        .bg-success-soft {
+            background-color: rgba(40, 167, 69, 0.2);
+        }
+        
+        .bg-warning-soft {
+            background-color: rgba(255, 193, 7, 0.2);
+        }
+        
+        .bg-info-soft {
+            background-color: rgba(23, 162, 184, 0.2);
+        }
+        
+        .bg-danger-soft {
+            background-color: rgba(220, 53, 69, 0.2);
+        }
+        
+        .bg-secondary-soft {
+            background-color: rgba(108, 117, 125, 0.2);
         }
 
         /* Print styles */
@@ -649,11 +734,10 @@ if ($decision) {
 
 <body>
     <?php include '../../include/student_sidebar.php'; ?>
-
-    <div class="container-fluid content">
+    <div class="container-fluid content" style="margin-left:250px; transition:all 0.3s;">
         <!-- Breadcrumb -->
         <nav aria-label="breadcrumb" class="mb-4 animate-fade-in">
-            <ol class="breadcrumb bg-white p-3 shadow-sm">
+            <ol class="breadcrumb bg-white p-3 shadow-sm rounded">
                 <li class="breadcrumb-item"><a href="student_dashboard.php"><i class="fas fa-tachometer-alt mr-1"></i>Bảng điều khiển</a></li>
                 <li class="breadcrumb-item"><a href="student_manage_projects.php"><i class="fas fa-clipboard-list mr-1"></i>Quản lý đề tài</a></li>
                 <li class="breadcrumb-item active" aria-current="page"><i class="fas fa-project-diagram mr-1"></i>Chi tiết đề tài</li>
@@ -683,11 +767,27 @@ if ($decision) {
         <!-- Header đề tài -->
         <div class="project-header animate-fade-in">
             <div class="row align-items-center">
-                <div class="col-lg-8 col-md-7">
-                    <h1 class="project-title"><?php echo htmlspecialchars($project['DT_TENDT']); ?></h1>
+                <div class="col-lg-8 col-md-7">                    <h1 class="project-title"><?php echo htmlspecialchars($project['DT_TENDT']); ?></h1>
                     <p class="mb-2 d-flex align-items-center">
                         <i class="fas fa-barcode mr-2"></i>
                         Mã đề tài: <span class="badge badge-light ml-2 p-2"><?php echo htmlspecialchars($project['DT_MADT']); ?></span>
+                    </p>                    <p class="mb-2 d-flex align-items-center">
+                        <i class="far fa-calendar-alt mr-2"></i>
+                        Ngày tạo: <span class="ml-2"><?php echo formatDate($project['HD_NGAYTAO']); ?></span>
+                    </p>
+                    <p class="mb-2 d-flex align-items-center">
+                        <i class="fas fa-calendar-alt mr-2"></i>
+                        Thời gian thực hiện: <span class="ml-2">
+                            <?php echo formatDate($project['HD_NGAYBD']) . ' - ' . formatDate($project['HD_NGAYKT']); ?>
+                        </span>
+                    </p>
+                    <p class="mb-2 d-flex align-items-center">
+                        <i class="fas fa-tag mr-2"></i>
+                        Loại đề tài: <span class="ml-2"><?php echo htmlspecialchars($project['LDT_TENLOAI'] ?? 'Không xác định'); ?></span>
+                    </p>
+                    <p class="mb-2 d-flex align-items-center">
+                        <i class="fas fa-microscope mr-2"></i>
+                        Lĩnh vực nghiên cứu: <span class="ml-2"><?php echo htmlspecialchars($project['LVNC_TEN'] ?? 'Không xác định'); ?></span>
                     </p>
                     
                     <!-- Progress bar -->
@@ -704,40 +804,42 @@ if ($decision) {
                 </div>
                 
                 <div class="col-lg-4 col-md-5 text-md-right">
-                    <?php
-                    // Xác định class cho badge trạng thái
-                    $status_class = '';
-                    $status_icon = '';
-                    switch ($project['DT_TRANGTHAI']) {
-                        case 'Chờ duyệt':
-                            $status_class = 'badge-warning';
-                            $status_icon = 'fa-hourglass-half';
-                            break;
-                        case 'Đang thực hiện':
-                            $status_class = 'badge-primary';
-                            $status_icon = 'fa-play-circle';
-                            break;
-                        case 'Đã hoàn thành':
-                            $status_class = 'badge-success';
-                            $status_icon = 'fa-check-circle';
-                            break;
-                        case 'Tạm dừng':
-                            $status_class = 'badge-info';
-                            $status_icon = 'fa-pause-circle';
-                            break;
-                        case 'Đã hủy':
-                            $status_class = 'badge-danger';
-                            $status_icon = 'fa-times-circle';
-                            break;
-                        default:
-                            $status_class = 'badge-secondary';
-                            $status_icon = 'fa-question-circle';
-                    }
-                    ?>
-                    <span class="badge status-badge <?php echo $status_class; ?>">
-                        <i class="fas <?php echo $status_icon; ?> mr-1"></i>
-                        <?php echo htmlspecialchars($project['DT_TRANGTHAI']); ?>
-                    </span>
+                    <!-- Trạng thái đề tài -->                    <div class="project-status-container">
+                        <?php 
+                        // Xác định class cho badge trạng thái
+                        $status_class = '';
+                        $status_icon = '';
+                        switch ($project['DT_TRANGTHAI']) {
+                            case 'Chờ duyệt':
+                                $status_class = 'warning';
+                                $status_icon = 'clock';
+                                break;
+                            case 'Đang thực hiện':
+                                $status_class = 'primary';
+                                $status_icon = 'play-circle';
+                                break;
+                            case 'Đã hoàn thành':
+                                $status_class = 'success';
+                                $status_icon = 'check-circle';
+                                break;
+                            case 'Tạm dừng':
+                                $status_class = 'info';
+                                $status_icon = 'pause-circle';
+                                break;
+                            case 'Đã hủy':
+                                $status_class = 'danger';
+                                $status_icon = 'times-circle';
+                                break;
+                            default:
+                                $status_class = 'secondary';
+                                $status_icon = 'question-circle';
+                        }
+                        ?>
+                        <div class="status-badge bg-<?php echo $status_class; ?>-soft text-<?php echo $status_class; ?> animate-pulse">
+                            <i class="fas fa-<?php echo $status_icon; ?> mr-2"></i>
+                            <?php echo htmlspecialchars($project['DT_TRANGTHAI']); ?>
+                        </div>
+                    </div>
                     
                     <?php if ($has_access): ?>
                         <div class="action-buttons mt-3">
@@ -794,37 +896,26 @@ if ($decision) {
                                         <div class="text-muted small">Lĩnh vực ưu tiên</div>
                                         <div class="feature-text"><?php echo htmlspecialchars($project['LVUT_TEN'] ?? 'Không có'); ?></div>
                                     </div>
-                                </div>
-                                
-                                <div class="d-flex align-items-center mb-3">
+                                </div>                                <div class="d-flex align-items-center mb-3">
                                     <div class="feature-icon">
                                         <i class="fas fa-calendar-plus"></i>
                                     </div>
                                     <div>
                                         <div class="text-muted small">Ngày tạo</div>
                                         <div class="feature-text">
-                                            <?php echo $project['DT_NGAYTAO'] ? date('d/m/Y', strtotime($project['DT_NGAYTAO'])) : 'Chưa cập nhật'; ?>
+                                            <?php echo formatDate($project['DT_NGAYTAO']); ?>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="col-md-6">
-                                <div class="d-flex align-items-center mb-3">
+                            <div class="col-md-6">                                <div class="d-flex align-items-center mb-3">
                                     <div class="feature-icon">
                                         <i class="fas fa-calendar-alt"></i>
                                     </div>
-                                    <div>
-                                        <div class="text-muted small">Thời gian thực hiện</div>
+                                    <div>                                        <div class="text-muted small">Thời gian thực hiện</div>
                                         <div class="feature-text">
-                                            <?php 
-                                            if ($project['DT_THOIGIANBATDAU'] && $project['DT_THOIGIANKETTHUC']) {
-                                                echo date('d/m/Y', strtotime($project['DT_THOIGIANBATDAU'])) . ' - ' . 
-                                                     date('d/m/Y', strtotime($project['DT_THOIGIANKETTHUC']));
-                                            } else {
-                                                echo 'Chưa cập nhật';
-                                            }
-                                            ?>
+                                            <?php echo formatDate($project['HD_NGAYBD']) . ' - ' . formatDate($project['HD_NGAYKT']); ?>
                                         </div>
                                     </div>
                                 </div>
@@ -952,7 +1043,7 @@ if ($decision) {
                 </div>
 
                 <!-- Nộp báo cáo -->
-                <div class="card info-card animate-slide-up mb-4" style="animation-delay: 0.2s">
+                <!-- <div class="card info-card animate-slide-up mb-4" style="animation-delay: 0.2s">
                     <div class="card-header">
                         <h5 class="mb-0"><i class="fas fa-file-upload mr-2"></i>Nộp báo cáo</h5>
                     </div>
@@ -1012,7 +1103,7 @@ if ($decision) {
                             </button>
                         </form>
                     </div>
-                </div>
+                </div> -->
             </div>
 
             <!-- Sidebar bên phải -->
@@ -1028,23 +1119,27 @@ if ($decision) {
                                 <div class="member-card <?php echo ($member['SV_MASV'] === $_SESSION['user_id']) ? 'current-user' : ''; ?>">
                                     <div class="d-flex align-items-center">
                                         <div class="avatar rounded-circle d-flex align-items-center justify-content-center">
-                                            <?php echo strtoupper(mb_substr($member['SV_HOTEN'], 0, 1, 'UTF-8')); ?>
+                                            <?php echo strtoupper(mb_substr($member['SV_HOTEN'] ?? 'U', 0, 1, 'UTF-8')); ?>
                                         </div>
                                         <div class="ml-3">
-                                            <h6 class="mb-1"><?php echo htmlspecialchars($member['SV_HOTEN']); ?>
+                                            <h6 class="mb-1"><?php echo htmlspecialchars($member['SV_HOTEN'] ?? 'Không rõ'); ?>
                                                 <?php if ($member['SV_MASV'] === $_SESSION['user_id']): ?>
                                                     <span class="badge badge-info ml-1">Bạn</span>
                                                 <?php endif; ?>
                                             </h6>
                                             <p class="mb-0 text-muted small">
-                                                <span class="badge <?php echo ($member['CTTG_VAITRO'] == 'Chủ nhiệm') ? 'badge-primary' : 'badge-secondary'; ?>">
-                                                    <?php echo htmlspecialchars($member['CTTG_VAITRO']); ?>
+                                                <span class="badge <?php echo (isset($member['CTTG_VAITRO']) && $member['CTTG_VAITRO'] == 'Chủ nhiệm') ? 'badge-primary' : 'badge-secondary'; ?>">
+                                                    <?php echo htmlspecialchars($member['CTTG_VAITRO'] ?? 'Thành viên'); ?>
                                                 </span>
-                                                <span class="ml-2"><?php echo htmlspecialchars($member['LOP_TEN']); ?></span>
+                                                <span class="ml-2"><?php echo htmlspecialchars($member['LOP_TEN'] ?? 'Không rõ lớp'); ?></span>
                                             </p>
                                             <p class="mb-0 text-muted small mt-1">
                                                 <i class="far fa-calendar-alt mr-1"></i>
-                                                Tham gia: <?php echo date('d/m/Y', strtotime($member['CTTG_NGAYTHAMGIA'])); ?>
+                                                Tham gia: <?php echo isset($member['CTTG_NGAYTHAMGIA']) ? date('d/m/Y', strtotime($member['CTTG_NGAYTHAMGIA'])) : 'Chưa xác định'; ?>
+                                            </p>
+                                            <p class="mb-0 text-muted small mt-1">
+                                                <i class="fas fa-clock mr-1"></i>
+                                                Ngày tạo: <?php echo isset($member['CTTG_NGAYTAO']) ? date('d/m/Y', strtotime($member['CTTG_NGAYTAO'])) : date('d/m/Y'); ?>
                                             </p>
                                         </div>
                                     </div>
@@ -1093,17 +1188,21 @@ if ($decision) {
                                                     <span class="badge badge-light"><?php echo htmlspecialchars($contract['HD_MA']); ?></span>
                                                 </p>
                                                 <p class="mb-2"><strong>Ngày tạo:</strong>
-                                                    <?php echo date('d/m/Y', strtotime($contract['HD_NGAYTAO'])); ?>
+                                                    <?php echo isset($contract['HD_NGAYTAO']) ? date('d/m/Y', strtotime($contract['HD_NGAYTAO'])) : 'Chưa xác định'; ?>
                                                 </p>
                                                 <p class="mb-2"><strong>Thời gian thực hiện:</strong><br>
-                                                    <i class="far fa-calendar-alt mr-1"></i> <?php echo date('d/m/Y', strtotime($contract['HD_NGAYBD'])); ?> - 
-                                                    <i class="far fa-calendar-alt mr-1"></i> <?php echo date('d/m/Y', strtotime($contract['HD_NGAYKT'])); ?>
+                                                    <i class="far fa-calendar-alt mr-1"></i> 
+                                                    <?php echo isset($contract['HD_NGAYBD']) ? date('d/m/Y', strtotime($contract['HD_NGAYBD'])) : 'Chưa xác định'; ?> - 
+                                                    <i class="far fa-calendar-alt mr-1"></i> 
+                                                    <?php echo isset($contract['HD_NGAYKT']) ? date('d/m/Y', strtotime($contract['HD_NGAYKT'])) : 'Chưa xác định'; ?>
                                                 </p>
                                                 <p class="mb-2"><strong>Tổng kinh phí:</strong>
-                                                    <span class="text-success font-weight-bold"><?php echo number_format($contract['HD_TONGKINHPHI']); ?> VNĐ</span>
+                                                    <span class="text-success font-weight-bold">
+                                                        <?php echo isset($contract['HD_TONGKINHPHI']) ? number_format($contract['HD_TONGKINHPHI']) : '0'; ?> VNĐ
+                                                    </span>
                                                 </p>
 
-                                                <?php if ($contract['HD_FILEHD']): ?>
+                                                <?php if (isset($contract['HD_FILEHD']) && $contract['HD_FILEHD']): ?>
                                                     <hr>
                                                     <a href="/NLNganh/uploads/contract_files/<?php echo htmlspecialchars($contract['HD_FILEHD']); ?>"
                                                         class="btn btn-info btn-block" download>
@@ -1113,82 +1212,27 @@ if ($decision) {
                                             </div>
                                         </div>
                                     </div>
+                                <?php endif; ?>
 
-                                    <?php if ($user_role === 'Chủ nhiệm'): ?>
-                                        <hr>
-                                        <h6 class="mb-3"><i class="fas fa-upload mr-2"></i>Cập nhật file hợp đồng</h6>
-                                        <form action="upload_project_file.php" method="post" enctype="multipart/form-data"
-                                            class="file-upload-form">
-                                            <input type="hidden" name="project_id"
-                                                value="<?php echo htmlspecialchars($project['DT_MADT']); ?>">
-                                            <input type="hidden" name="file_type" value="contract">
-                                            <input type="hidden" name="contract_id"
-                                                value="<?php echo htmlspecialchars($contract['HD_MA']); ?>">
-                                            <div class="custom-file mb-3">
-                                                <input type="file" class="custom-file-input" id="contractFile"
-                                                    name="contract_file" required>
-                                                <label class="custom-file-label" for="contractFile">Chọn file...</label>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary btn-block">
-                                                <i class="fas fa-upload mr-1"></i> Cập nhật file
-                                            </button>
-                                        </form>
-                                    <?php endif; ?>
-
-                                <?php elseif ($user_role === 'Chủ nhiệm' && $project['DT_TRANGTHAI'] === 'Đang thực hiện'): ?>
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle mr-2"></i> Chưa có hợp đồng. Bạn có thể tạo mới hợp
-                                        đồng bằng cách điền form bên dưới.
-                                    </div>
-                                    <form action="create_contract.php" method="post" enctype="multipart/form-data"
+                                <?php if ($user_role === 'Chủ nhiệm'): ?>
+                                    <hr>
+                                    <h6 class="mb-3"><i class="fas fa-upload mr-2"></i>Cập nhật file hợp đồng</h6>
+                                    <form action="upload_project_file.php" method="post" enctype="multipart/form-data"
                                         class="file-upload-form">
                                         <input type="hidden" name="project_id"
                                             value="<?php echo htmlspecialchars($project['DT_MADT']); ?>">
-                                        <div class="form-group">
-                                            <label for="contract_start_date">
-                                                <i class="far fa-calendar-alt mr-1"></i> Ngày bắt đầu <span class="text-danger">*</span>
-                                            </label>
-                                            <input type="date" class="form-control" id="contract_start_date"
-                                                name="contract_start_date" required>
+                                        <input type="hidden" name="file_type" value="contract">
+                                        <input type="hidden" name="contract_id"
+                                            value="<?php echo htmlspecialchars($contract['HD_MA']); ?>">
+                                        <div class="custom-file mb-3">
+                                            <input type="file" class="custom-file-input" id="contractFile"
+                                                name="contract_file" required>
+                                            <label class="custom-file-label" for="contractFile">Chọn file...</label>
                                         </div>
-                                        <div class="form-group">
-                                            <label for="contract_end_date">
-                                                <i class="far fa-calendar-alt mr-1"></i> Ngày kết thúc <span class="text-danger">*</span>
-                                            </label>
-                                            <input type="date" class="form-control" id="contract_end_date"
-                                                name="contract_end_date" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="contract_budget">
-                                                <i class="fas fa-money-bill-wave mr-1"></i> Tổng kinh phí (VNĐ) <span class="text-danger">*</span>
-                                            </label>
-                                            <input type="number" class="form-control" id="contract_budget"
-                                                name="contract_budget" min="0" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="contract_notes">
-                                                <i class="fas fa-sticky-note mr-1"></i> Ghi chú
-                                            </label>
-                                            <textarea class="form-control" id="contract_notes" name="contract_notes" rows="3"></textarea>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="contract_file">
-                                                <i class="fas fa-file mr-1"></i> File hợp đồng <span class="text-danger">*</span>
-                                            </label>
-                                            <div class="custom-file">
-                                                <input type="file" class="custom-file-input" id="contract_file"
-                                                    name="contract_file" required>
-                                                <label class="custom-file-label" for="contract_file">Chọn file...</label>
-                                            </div>
-                                        </div>
-                                        <button type="submit" class="btn btn-success btn-block mt-3">
-                                            <i class="fas fa-plus-circle mr-1"></i> Tạo hợp đồng mới
+                                        <button type="submit" class="btn btn-primary btn-block">
+                                            <i class="fas fa-upload mr-1"></i> Cập nhật file
                                         </button>
                                     </form>
-                                <?php else: ?>
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle mr-2"></i> Chưa có thông tin hợp đồng.
-                                    </div>
                                 <?php endif; ?>
                             </div>
 
@@ -1203,18 +1247,24 @@ if ($decision) {
                                                     <span class="badge badge-light"><?php echo htmlspecialchars($decision['QD_SO']); ?></span>
                                                 </p>
                                                 <p class="mb-2"><strong>Ngày quyết định:</strong>
-                                                    <i class="far fa-calendar-alt mr-1"></i> <?php echo date('d/m/Y', strtotime($decision['QD_NGAY'])); ?>
+                                                    <i class="far fa-calendar-alt mr-1"></i> 
+                                                    <?php echo isset($decision['QD_NGAY']) ? date('d/m/Y', strtotime($decision['QD_NGAY'])) : 'Chưa xác định'; ?>
                                                 </p>
                                                 <p class="mb-2"><strong>Ngày nghiệm thu:</strong>
-                                                    <i class="far fa-calendar-alt mr-1"></i> <?php echo date('d/m/Y', strtotime($decision['BB_NGAYNGHIEMTHU'])); ?>
+                                                    <i class="far fa-calendar-alt mr-1"></i> 
+                                                    <?php echo isset($decision['BB_NGAYNGHIEMTHU']) ? date('d/m/Y', strtotime($decision['BB_NGAYNGHIEMTHU'])) : 'Chưa xác định'; ?>
                                                 </p>
                                                 <p class="mb-2"><strong>Xếp loại:</strong>
-                                                    <span class="badge <?php echo ($decision['BB_XEPLOAI'] == 'Xuất sắc' || $decision['BB_XEPLOAI'] == 'Tốt') ? 'badge-success' : (($decision['BB_XEPLOAI'] == 'Khá' || $decision['BB_XEPLOAI'] == 'Đạt') ? 'badge-primary' : 'badge-secondary'); ?>">
-                                                        <?php echo htmlspecialchars($decision['BB_XEPLOAI']); ?>
+                                                    <span class="badge <?php 
+                                                        $xeploai = isset($decision['BB_XEPLOAI']) ? $decision['BB_XEPLOAI'] : '';
+                                                        echo ($xeploai == 'Xuất sắc' || $xeploai == 'Tốt') ? 'badge-success' : 
+                                                            (($xeploai == 'Khá' || $xeploai == 'Đạt') ? 'badge-primary' : 'badge-secondary'); 
+                                                        ?>">
+                                                        <?php echo htmlspecialchars($xeploai ?: 'Chưa xác định'); ?>
                                                     </span>
                                                 </p>
 
-                                                <?php if ($decision['QD_FILE']): ?>
+                                                <?php if (isset($decision['QD_FILE']) && $decision['QD_FILE']): ?>
                                                     <hr>
                                                     <a href="/NLNganh/uploads/decision_files/<?php echo htmlspecialchars($decision['QD_FILE']); ?>"
                                                         class="btn btn-info btn-block" download>
@@ -1224,29 +1274,9 @@ if ($decision) {
                                             </div>
                                         </div>
                                     </div>
+                                <?php endif; ?>
 
-                                    <?php if ($user_role === 'Chủ nhiệm'): ?>
-                                        <hr>
-                                        <h6 class="mb-3"><i class="fas fa-upload mr-2"></i>Cập nhật file quyết định</h6>
-                                        <form action="upload_project_file.php" method="post" enctype="multipart/form-data"
-                                            class="file-upload-form">
-                                            <input type="hidden" name="project_id"
-                                                value="<?php echo htmlspecialchars($project['DT_MADT']); ?>">
-                                            <input type="hidden" name="file_type" value="decision">
-                                            <input type="hidden" name="decision_id"
-                                                value="<?php echo htmlspecialchars($decision['QD_SO']); ?>">
-                                            <div class="custom-file mb-3">
-                                                <input type="file" class="custom-file-input" id="decisionFile"
-                                                    name="decision_file" required>
-                                                <label class="custom-file-label" for="decisionFile">Chọn file...</label>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary btn-block">
-                                                <i class="fas fa-upload mr-1"></i> Cập nhật file
-                                            </button>
-                                        </form>
-                                    <?php endif; ?>
-
-                                <?php elseif ($user_role === 'Chủ nhiệm' && $project['DT_TRANGTHAI'] === 'Đã hoàn thành'): ?>
+                                <?php if ($user_role === 'Chủ nhiệm' && $project['DT_TRANGTHAI'] === 'Đã hoàn thành'): ?>
                                     <div class="alert alert-info">
                                         <i class="fas fa-info-circle mr-2"></i> Chưa có quyết định nghiệm thu. Bạn có thể
                                         tải lên thông tin bằng cách điền form bên dưới.
@@ -1318,18 +1348,20 @@ if ($decision) {
                                                 <div class="d-flex w-100 justify-content-between align-items-center">
                                                     <div>
                                                         <i class="far fa-file-pdf file-icon"></i>
-                                                        <span><?php echo htmlspecialchars($file['FDG_TEN']); ?></span>
+                                                        <span><?php echo htmlspecialchars($file['FDG_TEN'] ?? 'Không có tên'); ?></span>
                                                     </div>
                                                     <div>
+                                                        <?php if (isset($file['FDG_DUONGDAN']) && $file['FDG_DUONGDAN']): ?>
                                                         <a href="/NLNganh/uploads/evaluation_files/<?php echo htmlspecialchars($file['FDG_DUONGDAN']); ?>"
                                                             class="btn btn-sm btn-outline-primary" download>
                                                             <i class="fas fa-download"></i>
                                                         </a>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </div>
                                                 <small class="text-muted d-block mt-1">
                                                     <i class="far fa-calendar-alt mr-1"></i>
-                                                    Ngày tạo: <?php echo date('d/m/Y', strtotime($file['FDG_NGAYCAP'])); ?>
+                                                    Ngày tạo: <?php echo isset($file['FDG_NGAYCAP']) ? date('d/m/Y', strtotime($file['FDG_NGAYCAP'])) : 'Chưa xác định'; ?>
                                                 </small>
                                             </div>
                                         <?php endforeach; ?>

@@ -274,4 +274,36 @@ $(document).ready(function () {
     
     // Gọi hàm khởi tạo hiệu ứng
     initAnimations();
+
+    // Xử lý nút xóa đề tài
+    $('.btn-delete').click(function(e) {
+        e.preventDefault();
+        var projectId = $(this).data('id');
+        
+        // Cập nhật URL cho nút Xóa trong modal
+        $('#confirmDelete').attr('href', 'delete_project.php?id=' + projectId);
+        
+        // Hiển thị modal xác nhận
+        $('#deleteModal').modal('show');
+    });
+    
+    // Xử lý bộ lọc trạng thái
+    $('#filterStatus').change(function() {
+        var status = $(this).val();
+        window.location.href = 'manage_projects.php?status=' + status;
+    });
+    
+    // Xử lý nút đặt lại bộ lọc
+    $('#resetFilters').click(function() {
+        window.location.href = 'manage_projects.php';
+    });
+    
+    // Xử lý phân trang
+    $('.page-number, .page-nav').click(function(e) {
+        e.preventDefault();
+        var page = $(this).data('page');
+        var currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('page', page);
+        window.location.href = currentUrl.toString();
+    });
 });

@@ -7,33 +7,56 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Đăng nhập - Hệ thống Quản lý Nghiên cứu Khoa học</title>
+    <!-- Favicon -->
+    <link rel="icon" href="/NLNganh/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/NLNganh/favicon.ico" type="image/x-icon">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background: linear-gradient(135deg, #7579ff 0%, #b224ef 100%);
+            background-image: url('assets/images/rlc.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: relative;
+        }
+        
+        /* Overlay trên ảnh nền để tăng độ tương phản */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 0;
         }
         
         .login-container {
             max-width: 450px;
             width: 100%;
             padding: 15px;
+            position: relative;
+            z-index: 1;
         }
         
         .card {
             border-radius: 15px;
             overflow: hidden;
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
             animation: fadeIn 1s ease;
+            background-color: rgba(255, 255, 255, 0.95);
         }
         
         .card-header {
-            background: #6a11cb;
+            background: #2b5797;
             color: white;
             text-align: center;
             padding: 25px 0;
@@ -76,8 +99,8 @@
         }
         
         .form-control:focus {
-            border-color: #7579ff;
-            box-shadow: 0 0 0 0.2rem rgba(117, 121, 255, 0.25);
+            border-color: #2b5797;
+            box-shadow: 0 0 0 0.2rem rgba(43, 87, 151, 0.25);
         }
         
         .input-icon {
@@ -85,13 +108,14 @@
             top: 43px;
             right: 20px;
             color: #6c757d;
+            cursor: pointer;
         }
         
         .btn-login {
             height: 50px;
             border-radius: 25px;
             font-size: 16px;
-            background: linear-gradient(to right, #7579ff, #b224ef);
+            background: #2b5797;
             border: none;
             font-weight: 600;
             transition: all 0.3s;
@@ -101,6 +125,7 @@
         .btn-login:hover, .btn-login:focus {
             transform: translateY(-2px);
             box-shadow: 0 7px 20px rgba(0, 0, 0, 0.3);
+            background-color: #1e3f6f;
         }
         
         .forgot-password {
@@ -116,7 +141,7 @@
         }
         
         .forgot-password a:hover {
-            color: #7579ff;
+            color: #2b5797;
         }
         
         .alert {
@@ -129,18 +154,21 @@
             margin-top: 15px;
             text-align: center;
             color: white;
+            position: relative;
+            z-index: 1;
         }
         
         .system-name h2 {
             font-size: 24px;
             font-weight: 700;
             margin-bottom: 5px;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
         }
         
         .system-name p {
             font-size: 14px;
             opacity: 0.9;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
         }
         
         /* Animation */
@@ -203,7 +231,7 @@
                         <label for="password">Mật khẩu</label>
                         <input type="password" class="form-control" id="password" name="password" required
                                placeholder="Nhập mật khẩu">
-                        <span class="input-icon"><i class="fas fa-lock"></i></span>
+                        <span class="input-icon toggle-password"><i class="fas fa-lock"></i></span>
                     </div>
                     
                     <div class="form-group mb-0">
@@ -220,7 +248,7 @@
         </div>
         
         <div class="text-center mt-4">
-            <p style="color: white; font-size: 14px;">
+            <p style="color: white; font-size: 14px; position: relative; z-index: 1; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
                 &copy; <?php echo date('Y'); ?> - Hệ thống Quản lý Nghiên cứu Khoa học
             </p>
         </div>
@@ -261,14 +289,16 @@
             }, 5000);
             
             // Hiệu ứng hiện/ẩn mật khẩu
-            $(".fa-lock").click(function(){
+            $(".toggle-password").click(function(){
                 var input = $(this).parent().prev();
+                var icon = $(this).find("i");
+                
                 if(input.attr("type") === "password") {
                     input.attr("type", "text");
-                    $(this).removeClass("fa-lock").addClass("fa-eye");
+                    icon.removeClass("fa-lock").addClass("fa-eye");
                 } else {
                     input.attr("type", "password");
-                    $(this).removeClass("fa-eye").addClass("fa-lock");
+                    icon.removeClass("fa-eye").addClass("fa-lock");
                 }
             });
         });

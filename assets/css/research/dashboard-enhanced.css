@@ -1,0 +1,292 @@
+/**
+ * dashboard-enhanced.css
+ * CSS cải tiến cho trang dashboard của research manager
+ */
+
+/* Cải thiện các card thống kê */
+.card-counter {
+    position: relative;
+    overflow: hidden;
+    border-radius: 15px !important;
+    background: linear-gradient(135deg, var(--card-bg), var(--card-bg-light));
+    border: none;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-counter.primary {
+    --card-bg: #4e73df;
+    --card-bg-light: #6c7ae0;
+}
+
+.card-counter.info {
+    --card-bg: #36b9cc;
+    --card-bg-light: #5bc0de;
+}
+
+.card-counter.success {
+    --card-bg: #1cc88a;
+    --card-bg-light: #48d1a0;
+}
+
+.card-counter.warning {
+    --card-bg: #f6c23e;
+    --card-bg-light: #fdd55f;
+}
+
+.card-counter:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+}
+
+.card-counter::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.card-counter:hover::before {
+    opacity: 1;
+}
+
+/* Cải thiện animation cho counter */
+.count-numbers {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.count-name {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 13px;
+}
+
+/* Cải thiện cards chính */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #f8f9fc, #e9ecef);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+}
+
+/* Cải thiện quick access cards */
+.quick-access-card {
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+.quick-access-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #4e73df, #36b9cc, #1cc88a, #f6c23e);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+}
+
+.quick-access-card:hover::before {
+    transform: translateX(0);
+}
+
+/* Cải thiện activity timeline */
+.activity-timeline {
+    position: relative;
+    padding-left: 40px;
+}
+
+.activity-timeline::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(to bottom, #4e73df, #36b9cc);
+    border-radius: 2px;
+}
+
+.activity-item {
+    position: relative;
+    margin-bottom: 30px;
+    padding: 15px;
+    background: #f8f9fc;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+    background: #fff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transform: translateX(5px);
+}
+
+.activity-item::before {
+    content: '';
+    position: absolute;
+    left: -32px;
+    top: 20px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #4e73df;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 3px rgba(78, 115, 223, 0.2);
+    z-index: 2;
+    transition: all 0.3s ease;
+}
+
+.activity-item:hover::before {
+    background: #1cc88a;
+    box-shadow: 0 0 0 4px rgba(28, 200, 138, 0.3);
+    transform: scale(1.2);
+}
+
+/* Cải thiện DataTables */
+.dataTables_wrapper {
+    padding: 0;
+}
+
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_filter {
+    margin-bottom: 1rem;
+}
+
+.dataTables_wrapper .dataTables_filter input {
+    border-radius: 8px;
+    border: 1px solid #e3e6f0;
+    padding: 0.5rem 1rem;
+}
+
+.table {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.table thead th {
+    background: linear-gradient(135deg, #4e73df, #6c7ae0);
+    color: white;
+    font-weight: 600;
+    border: none;
+    padding: 1rem;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fc;
+    transform: scale(1.01);
+}
+
+/* Cải thiện charts */
+.chart-area, .chart-pie {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .card-counter {
+        margin-bottom: 1rem;
+    }
+    
+    .quick-access-card {
+        margin-bottom: 1rem;
+    }
+    
+    .activity-timeline {
+        padding-left: 30px;
+    }
+    
+    .activity-timeline::before {
+        left: 15px;
+    }
+    
+    .activity-item::before {
+        left: -22px;
+    }
+}
+
+/* Loading animations */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-on-scroll {
+    animation: slideInUp 0.6s ease-out;
+}
+
+/* Pulse animation cho counter */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.count-numbers.counting {
+    animation: pulse 0.5s ease-in-out;
+}
+
+/* Gradient text */
+.gradient-text {
+    background: linear-gradient(135deg, #4e73df, #36b9cc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Status badges improvements */
+.project-status {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+}
+
+.project-status:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}

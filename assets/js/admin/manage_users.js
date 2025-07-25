@@ -4,7 +4,12 @@
 
 $(document).ready(function () {
     // Khởi tạo DataTables cho bảng sinh viên và giảng viên
-    initDataTables();
+    $('#studentsTable, #teachersTable').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.21/i18n/Vietnamese.json"
+        },
+        "pageLength": 10
+    });
     
     // Gắn sự kiện cho các nút
     attachEventHandlers();
@@ -13,155 +18,157 @@ $(document).ready(function () {
     preserveActiveTab();
     
     /**
-     * Khởi tạo các bảng dữ liệu với DataTables
-     */
-    function initDataTables() {
-        const dataTablesConfig = {
-            "paging": true,
-            "ordering": true,
-            "info": true,
-            "searching": true,
-            "pageLength": 10,
-            "lengthMenu": [5, 10, 25, 50, 100],
-            "language": {
-                "search": "Tìm kiếm:",
-                "lengthMenu": "Hiển thị _MENU_ dòng",
-                "info": "Hiển thị _START_ đến _END_ của _TOTAL_ người dùng",
-                "infoEmpty": "Hiển thị 0 đến 0 của 0 người dùng",
-                "infoFiltered": "(được lọc từ _MAX_ người dùng)",
-                "paginate": {
-                    "first": "Đầu",
-                    "last": "Cuối",
-                    "next": "Tiếp",
-                    "previous": "Trước"
-                },
-                "emptyTable": "Không có dữ liệu",
-                "zeroRecords": "Không tìm thấy kết quả phù hợp"
-            },
-            "drawCallback": function() {
-                // Gắn lại các sự kiện sau khi DataTables cập nhật
-                attachEventHandlers();
-            }
-        };
-        
-        // Khởi tạo bảng sinh viên
-        $('#studentsTable').DataTable(dataTablesConfig);
-        
-        // Khởi tạo bảng giảng viên
-        $('#teachersTable').DataTable(dataTablesConfig);
-    }
-    
-    /**
-     * Gắn sự kiện cho các nút chỉnh sửa và xóa
+     * Gắn sự kiện cho các nút chỉnh sửa, xóa, thêm mới
      */
     function attachEventHandlers() {
         // Nút chỉnh sửa
-        $('.editBtn').off('click').on('click', function() {
-            const id = $(this).data('id');
-            const isStudent = $(this).closest('table').attr('id') === 'studentsTable';
+        $(document).on('click', '.editBtn', function() {
+            const userId = $(this).data('id');
+            let userType = 'student';
+            if ($('#teachers-tab').hasClass('active') || $(this).closest('#teachers').length > 0) {
+                userType = 'teacher';
+            }
             
-            // Hiệu ứng loading
-            $(this).html('<i class="fas fa-spinner fa-spin"></i>');
-            $(this).prop('disabled', true);
+            // Lưu userType cho việc sử dụng trong callback
+            const currentUserType = userType;
             
-            // Điều chỉnh modal dựa trên loại người dùng
-            if (isStudent) {
-                $('#editModalLabel').text('Chỉnh sửa thông tin sinh viên');
+            if (userType === 'student') {
                 $('.teacher-only').hide();
                 $('.student-only').show();
             } else {
-                $('#editModalLabel').text('Chỉnh sửa thông tin giảng viên');
                 $('.student-only').hide();
                 $('.teacher-only').show();
             }
             
-            // Lấy thông tin người dùng qua AJAX
+            // Khi mở modal sửa giảng viên
+            if (userType === 'teacher') {
+                $('#editModal').addClass('teacher-mode').removeClass('student-mode');
+            } else {
+                $('#editModal').addClass('student-mode').removeClass('teacher-mode');
+            }
+            
+            $('#editModalLabel').text(userType === 'student' ? 'Chỉnh sửa thông tin sinh viên' : 'Chỉnh sửa thông tin giảng viên');
+            $('#editModal').modal('show');
+            $('#editForm').html('<div class="text-center my-5"><i class="fas fa-spinner fa-spin fa-3x"></i><p class="mt-3">Đang tải dữ liệu...</p></div>');
+            
             $.ajax({
                 url: 'get_user.php',
                 type: 'GET',
-                data: { id: id, type: isStudent ? 'student' : 'teacher' },
+                data: {
+                    userId: userId,
+                    userType: userType
+                },
                 dataType: 'json',
                 success: function(response) {
-                    // Khôi phục nút
-                    $('.editBtn[data-id="' + id + '"]').html('Sửa').prop('disabled', false);
-                    
-                    if (response.error) {
-                        showAlert('error', response.error);
-                        return;
-                    }
-                    
-                    // Điền thông tin vào form
-                    fillEditForm(response, isStudent);
-                    
-                    // Hiển thị modal
-                    $('#editModal').modal('show');
-                    
-                    // Focus vào trường đầu tiên
-                    $('#editFirstName').focus();
+                    console.log("Dữ liệu trả về:", response);
+                    $('#editForm').load('edit_form_template.php', function() {
+                        // Đảm bảo gán giá trị userType sau khi form đã được tải
+                        $('#userType').val(currentUserType);
+                        
+                        if (userType === 'student') {
+                            $('#editId').val(response.SV_MASV);
+                            $('#editFirstName').val(response.SV_HOSV);
+                            $('#editLastName').val(response.SV_TENSV);
+                            $('#editEmail').val(response.SV_EMAIL);
+                            $('#editPhone').val(response.SV_SDT);
+                            $('#editGender').val(response.SV_GIOITINH === 1 ? 'Nam' : 'Nữ');
+                            $('#editBirthDate').val(response.SV_NGAYSINH);
+                            $('#editAddress').val(response.SV_DIACHI);
+                            $('#editClass').val(response.LOP_MA);
+                            $('.teacher-only').hide();
+                            $('.student-only').show();
+                        } else {
+                            $('#editId').val(response.GV_MAGV);
+                            $('#editFirstName').val(response.GV_HOGV);
+                            $('#editLastName').val(response.GV_TENGV);
+                            $('#editEmail').val(response.GV_EMAIL);
+                            if (response.GV_SDT) $('#editPhone').val(response.GV_SDT);
+                            if (response.GV_GIOITINH !== undefined) {
+                                $('#editGender').val(response.GV_GIOITINH === 1 ? 'Nam' : 'Nữ');
+                            }
+                            $('#editBirthDate').val(response.GV_NGAYSINH);
+                            $('#editAddress').val(response.GV_DIACHI);
+                            
+                            // Đảm bảo hiển thị và đặt giá trị cho dropdown khoa
+                            $('#editDepartment').val(response.DV_MADV);
+                            
+                            // Thêm debug để kiểm tra giá trị
+                            console.log("Mã khoa giảng viên:", response.DV_MADV);
+                            console.log("Các option có sẵn:", $('#editDepartment option').map(function() {
+                                return $(this).val();
+                            }).get());
+                            
+                            // Hiển thị phần dành cho giảng viên và ẩn phần dành cho sinh viên
+                            $('.student-only').hide();
+                            $('.teacher-only').show();
+                        }
+                    });
                 },
                 error: function(xhr, status, error) {
-                    // Khôi phục nút
-                    $('.editBtn[data-id="' + id + '"]').html('Sửa').prop('disabled', false);
-                    
                     console.error("AJAX error:", error);
-                    console.error("Response:", xhr.responseText);
-                    showAlert('error', 'Đã xảy ra lỗi khi tải thông tin người dùng.');
+                    console.log("Response:", xhr.responseText);
+                    $('#editForm').html(`
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle mr-2"></i> 
+                            Có lỗi xảy ra khi tải thông tin người dùng. Vui lòng thử lại.
+                        </div>
+                        <div class="text-center mt-3">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fas fa-times mr-1"></i> Đóng
+                            </button>
+                        </div>
+                    `);
                 }
             });
         });
         
         // Nút xóa
-        $('.deleteBtn').off('click').on('click', function() {
-            const id = $(this).data('id');
-            const isStudent = $(this).closest('table').attr('id') === 'studentsTable';
+        $(document).on('click', '.deleteBtn', function() {
+            const userId = $(this).data('id');
+            let userType = 'student';
+            if ($('#teachers-tab').hasClass('active') || $(this).closest('#teachers').length > 0) {
+                userType = 'teacher';
+            }
             
-            // Cập nhật URL xóa và thông báo dựa trên loại người dùng
-            $('#confirmDelete').attr('href', "delete_user.php?id=" + id + "&type=" + (isStudent ? 'student' : 'teacher'));
-            $('#deleteConfirmMessage').text(`Bạn có chắc chắn muốn xóa ${isStudent ? 'sinh viên' : 'giảng viên'} này không?`);
-            
-            // Hiển thị modal xác nhận
+            $('#deleteConfirmMessage').text(`Bạn có chắc chắn muốn xóa ${userType === 'student' ? 'sinh viên' : 'giảng viên'} này không?`);
+            $('#confirmDelete').data('id', userId).data('type', userType);
             $('#deleteModal').modal('show');
         });
         
-        // Xử lý submit form chỉnh sửa
-        $('#editForm').submit(function(e) {
-            e.preventDefault();
-            
-            // Hiệu ứng loading
-            const submitBtn = $(this).find('button[type="submit"]');
-            submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Đang cập nhật').prop('disabled', true);
-            
-            // Dữ liệu form bao gồm cả loại người dùng
-            const formData = $(this).serialize();
+        // Xử lý nút xác nhận xóa
+        $('#confirmDelete').click(function() {
+            const userId = $(this).data('id');
+            const userType = $(this).data('type');
+            const deleteBtn = $(this);
+            const originalBtnText = deleteBtn.html();
+            deleteBtn.html('<i class="fas fa-spinner fa-spin"></i> Đang xử lý...');
+            deleteBtn.prop('disabled', true);
             
             $.ajax({
-                url: 'update_user.php',
+                url: 'delete_user.php',
                 type: 'POST',
-                data: formData,
+                data: {
+                    userId: userId,
+                    userType: userType
+                },
                 dataType: 'json',
                 success: function(response) {
-                    // Khôi phục nút
-                    submitBtn.html('Cập nhật').prop('disabled', false);
-                    
                     if (response.success) {
-                        $('#editModal').modal('hide');
-                        showAlert('success', response.success);
-                        
-                        // Tải lại trang sau 1 giây
-                        setTimeout(function() {
-                            location.reload();
-                        }, 1000);
-                    } else if (response.error) {
-                        showAlert('error', response.error);
+                        alert(response.message);
+                        $('#deleteModal').modal('hide');
+                        location.reload();
+                    } else {
+                        alert(response.message);
+                        deleteBtn.html(originalBtnText);
+                        deleteBtn.prop('disabled', false);
                     }
                 },
                 error: function(xhr, status, error) {
-                    // Khôi phục nút
-                    submitBtn.html('Cập nhật').prop('disabled', false);
-                    
                     console.error("AJAX error:", error);
-                    console.error("Response:", xhr.responseText);
-                    showAlert('error', 'Đã xảy ra lỗi khi cập nhật thông tin người dùng.');
+                    console.log("Response:", xhr.responseText);
+                    alert('Có lỗi xảy ra khi xóa người dùng. Vui lòng thử lại.');
+                    deleteBtn.html(originalBtnText);
+                    deleteBtn.prop('disabled', false);
                 }
             });
         });
@@ -186,75 +193,81 @@ $(document).ready(function () {
         });
         
         // Xử lý submit form thêm mới
-        $('#addForm').submit(function(e) {
+        $('#addForm').on('submit', function(e) {
             e.preventDefault();
-            
-            // Hiệu ứng loading
+            $('.is-invalid').removeClass('is-invalid');
+            const formData = new FormData(this);
             const submitBtn = $(this).find('button[type="submit"]');
-            submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Đang thêm').prop('disabled', true);
+            const originalBtnText = submitBtn.html();
+            submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Đang xử lý...');
+            submitBtn.prop('disabled', true);
             
             $.ajax({
                 url: 'add_user.php',
                 type: 'POST',
-                data: $(this).serialize(),
+                data: formData,
+                processData: false,
+                contentType: false,
                 dataType: 'json',
                 success: function(response) {
-                    // Khôi phục nút
-                    submitBtn.html('Thêm mới').prop('disabled', false);
-                    
                     if (response.success) {
+                        alert(response.message);
                         $('#addModal').modal('hide');
-                        showAlert('success', response.success);
-                        
-                        // Tải lại trang sau 1 giây
-                        setTimeout(function() {
-                            location.reload();
-                        }, 1000);
-                    } else if (response.error) {
-                        showAlert('error', response.error);
+                        $('#addForm')[0].reset();
+                        location.reload();
+                    } else {
+                        alert(response.message);
                     }
                 },
                 error: function(xhr, status, error) {
-                    // Khôi phục nút
-                    submitBtn.html('Thêm mới').prop('disabled', false);
-                    
                     console.error("AJAX error:", error);
-                    console.error("Response:", xhr.responseText);
-                    showAlert('error', 'Đã xảy ra lỗi khi thêm người dùng mới.');
+                    console.log("Response:", xhr.responseText);
+                    alert('Có lỗi xảy ra khi thêm người dùng. Vui lòng thử lại.');
+                },
+                complete: function() {
+                    submitBtn.html(originalBtnText);
+                    submitBtn.prop('disabled', false);
                 }
             });
         });
-    }
-    
-    /**
-     * Điền thông tin vào form chỉnh sửa
-     */
-    function fillEditForm(user, isStudent) {
-        if (isStudent) {
-            // Trường hợp sinh viên
-            $('#editId').val(user.SV_MASV);
-            $('#editFirstName').val(user.SV_HOSV);
-            $('#editLastName').val(user.SV_TENSV);
-            $('#editEmail').val(user.SV_EMAIL);
-            $('#editPhone').val(user.SV_SDT || '');
-            $('#editAddress').val(user.SV_DIACHI || '');
-            $('#editBirthDate').val(formatDate(user.SV_NGAYSINH) || '');
-            $('#editGender').val(user.SV_GIOITINH === 0 ? 'Nam' : 'Nữ');
-            $('#editClass').val(user.LOP_MA || '');
-            $('#userType').val('student');
-        } else {
-            // Trường hợp giảng viên
-            $('#editId').val(user.GV_MAGV);
-            $('#editFirstName').val(user.GV_HOGV);
-            $('#editLastName').val(user.GV_TENGV);
-            $('#editEmail').val(user.GV_EMAIL);
-            $('#editPhone').val(user.GV_SDT || '');
-            $('#editAddress').val(user.GV_DIACHI || '');
-            $('#editBirthDate').val(formatDate(user.GV_NGAYSINH) || '');
-            $('#editGender').val(user.GV_GIOITINH === 0 ? 'Nam' : 'Nữ');
-            $('#editDepartment').val(user.DV_MADV || '');
-            $('#userType').val('teacher');
-        }
+        
+        // Xử lý submit form sửa
+        $(document).on('submit', '#editForm', function(e) {
+            e.preventDefault();
+            $('.is-invalid').removeClass('is-invalid');
+            const formData = new FormData(this);
+            const submitBtn = $(this).find('button[type="submit"]');
+            const originalBtnText = submitBtn.html();
+            submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Đang xử lý...');
+            submitBtn.prop('disabled', true);
+            
+            $.ajax({
+                url: 'update_user.php',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        $('#editModal').modal('hide');
+                        location.reload();
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX error:", error);
+                    console.log("Response:", xhr.responseText);
+                    alert('Có lỗi xảy ra khi cập nhật người dùng. Vui lòng thử lại.');
+                },
+                complete: function() {
+                    submitBtn.html(originalBtnText);
+                    submitBtn.prop('disabled', false);
+                }
+            });
+        });
     }
     
     /**
@@ -262,112 +275,20 @@ $(document).ready(function () {
      */
     function resetAddForm() {
         $('#addForm')[0].reset();
-        $('#addForm .is-invalid').removeClass('is-invalid');
-        $('#addForm .invalid-feedback').html('');
-    }
-    
-    /**
-     * Định dạng ngày tháng từ MySQL sang Y-m-d cho input date
-     */
-    function formatDate(dateString) {
-        if (!dateString) return '';
-        
-        // Nếu đã đúng định dạng Y-m-d
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-            return dateString;
-        }
-        
-        // Chuyển đổi từ định dạng MySQL
-        const date = new Date(dateString);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        
-        return `${year}-${month}-${day}`;
+        $('.is-invalid').removeClass('is-invalid');
     }
     
     /**
      * Lưu và khôi phục tab đang active
      */
     function preserveActiveTab() {
-        // Khôi phục tab đã chọn trước đó
         const activeTab = localStorage.getItem('userManagementActiveTab');
         if (activeTab) {
             $(`#userTabs a[href="${activeTab}"]`).tab('show');
         }
         
-        // Lưu tab khi chuyển tab
         $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
             localStorage.setItem('userManagementActiveTab', $(e.target).attr('href'));
         });
     }
-    
-    /**
-     * Hiển thị thông báo
-     */
-    function showAlert(type, message) {
-        if (type === 'success') {
-            alert(message); // Thay bằng thư viện thông báo đẹp hơn như toastr nếu có
-        } else {
-            alert(message);
-        }
-    }
-    
-    // Khởi tạo validation cho các form
-    function initFormValidation() {
-        // Thêm validation cho các trường bắt buộc
-        $('input[required], select[required]').on('input change', function() {
-            if ($(this).val().trim() === '') {
-                $(this).addClass('is-invalid');
-                $(this).next('.invalid-feedback').html('Trường này là bắt buộc');
-            } else {
-                $(this).removeClass('is-invalid');
-                $(this).next('.invalid-feedback').html('');
-            }
-        });
-        
-        // Validation email
-        $('input[type="email"]').on('input', function() {
-            const email = $(this).val().trim();
-            const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-            
-            if (email !== '' && !emailRegex.test(email)) {
-                $(this).addClass('is-invalid');
-                $(this).next('.invalid-feedback').html('Email không hợp lệ');
-            } else if (email === '') {
-                $(this).addClass('is-invalid');
-                $(this).next('.invalid-feedback').html('Email là bắt buộc');
-            } else {
-                $(this).removeClass('is-invalid');
-                $(this).next('.invalid-feedback').html('');
-            }
-        });
-        
-        // Validation số điện thoại
-        $('input#editPhone, input#addPhone').on('input', function() {
-            const phone = $(this).val().trim();
-            const phoneRegex = /^[0-9]{10,11}$/;
-            
-            if (phone !== '' && !phoneRegex.test(phone)) {
-                $(this).addClass('is-invalid');
-                $(this).next('.invalid-feedback').html('Số điện thoại phải có 10-11 chữ số');
-            } else {
-                $(this).removeClass('is-invalid');
-                $(this).next('.invalid-feedback').html('');
-            }
-        });
-    }
-    
-    // Khởi tạo validation
-    initFormValidation();
-    
-    // Hiển thị animation khi tải trang
-    function initAnimations() {
-        $('.tab-content').css('opacity', 0).animate({
-            opacity: 1
-        }, 500);
-    }
-    
-    // Khởi tạo animation
-    initAnimations();
 });

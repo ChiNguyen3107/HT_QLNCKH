@@ -1,0 +1,218 @@
+/* 
+ * Modern Research Sidebar - Custom Styles
+ * File này để override và tùy chỉnh sidebar
+ */
+
+/* ==============================================
+   CUSTOM COLORS & THEMES
+   ============================================== */
+
+/* Custom gradient - uncomment để sử dụng */
+/*
+.modern-research-sidebar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+*/
+
+/* Alternative color schemes */
+/*
+.modern-research-sidebar.blue-theme {
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+}
+
+.modern-research-sidebar.green-theme {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.modern-research-sidebar.red-theme {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+*/
+
+/* ==============================================
+   CUSTOM SIZING
+   ============================================== */
+
+/* ==============================================
+   CONTENT WRAPPER CUSTOMIZATION
+   ============================================== */
+
+/* Tùy chỉnh content-wrapper chính */
+#content-wrapper {
+    margin-left: 280px !important;
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+    padding-top: 0 !important;
+    width: calc(100% - 280px) !important;
+    min-height: 100vh;
+    background-color: #f8f9fc;
+    transition: all 0.3s ease;
+}
+
+/* Container bên trong content-wrapper */
+.container-fluid {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+    padding-top: 1.5rem !important;
+    max-width: none !important;
+}
+
+/* Điều chỉnh main content area */
+body, .main-content {
+    margin-left: 280px !important;
+    width: calc(100% - 280px) !important;
+}
+
+/* ==============================================
+   TÙY CHỌN CONTENT-WRAPPER KHÁC - Uncomment để thử
+   ============================================== */
+
+/* OPTION 1: Content-wrapper sát sidebar (không padding) */
+/*
+#content-wrapper {
+    margin-left: 280px !important;
+    padding-left: 0 !important;
+    padding-right: 10px !important;
+    width: calc(100% - 280px) !important;
+}
+
+.container-fluid {
+    padding-left: 0 !important;
+    padding-right: 20px !important;
+}
+*/
+
+/* OPTION 2: Content-wrapper rộng hơn (sidebar nhỏ hơn) */
+/*
+.modern-research-sidebar {
+    width: 260px !important;
+}
+
+#content-wrapper {
+    margin-left: 260px !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+    width: calc(100% - 260px) !important;
+}
+
+body, .main-content {
+    margin-left: 260px !important;
+    width: calc(100% - 260px) !important;
+}
+*/
+
+/* OPTION 3: Content-wrapper có shadow và border radius */
+/*
+#content-wrapper {
+    margin-left: 285px !important;
+    padding: 20px !important;
+    background: white !important;
+    border-radius: 15px 0 0 0 !important;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1) !important;
+    min-height: calc(100vh - 20px) !important;
+    margin-top: 10px !important;
+}
+*/
+
+/* OPTION 4: Full-width content (sidebar overlay) */
+/*
+#content-wrapper {
+    margin-left: 0 !important;
+    padding-left: 20px !important;
+    width: 100% !important;
+    z-index: 1 !important;
+}
+
+.modern-research-sidebar {
+    position: fixed !important;
+    z-index: 1000 !important;
+}
+*/
+
+/* ==============================================
+   CUSTOM SPACING & TYPOGRAPHY
+   ============================================== */
+
+/* Navigation spacing */
+/*
+.nav-link {
+    padding: 15px 18px;
+}
+
+.nav-text {
+    font-size: 15px;
+    font-weight: 600;
+}
+*/
+
+/* Profile card customization */
+/*
+.user-profile-card {
+    margin: 25px 20px;
+    padding: 25px;
+    border-radius: 20px;
+}
+*/
+
+/* ==============================================
+   CUSTOM ANIMATIONS
+   ============================================== */
+
+/* Enhanced hover effects */
+/*
+.nav-link:hover {
+    transform: translateX(8px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.nav-item.active .nav-link {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+*/
+
+/* ==============================================
+   MOBILE CUSTOMIZATION
+   ============================================== */
+
+/* Responsive padding adjustments */
+@media (max-width: 768px) {
+    body, #content-wrapper, .main-content {
+        margin-left: 0 !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        width: 100% !important;
+    }
+    
+    .container-fluid {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+}
+
+@media (min-width: 769px) {
+    /* Desktop: Giảm padding để nội dung không quá xa sidebar */
+    #content-wrapper {
+        padding-left: 20px !important;
+    }
+    
+    .container-fluid {
+        max-width: none !important;
+    }
+}
+
+/* ==============================================
+   BRAND CUSTOMIZATION
+   ============================================== */
+
+/* Logo/Brand area */
+/*
+.sidebar-brand {
+    padding: 30px 25px;
+}
+
+.brand-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 28px;
+}
+*/

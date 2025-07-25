@@ -60,6 +60,9 @@ $sql = "SELECT
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý đề tài | Admin</title>
+    <!-- Favicon -->
+    <link rel="icon" href="/NLNganh/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/NLNganh/favicon.ico" type="image/x-icon">
     <!-- CSS Libraries -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
@@ -83,7 +86,28 @@ $sql = "SELECT
 
             <h1 class="page-header mb-4">Quản lý đề tài nghiên cứu</h1>
 
-            <!-- Nút thêm đề tài mới và tìm kiếm -->
+            <!-- Hiển thị thông báo -->
+            <?php if (isset($_SESSION['success_message'])): ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle mr-2"></i> <?php echo $_SESSION['success_message']; ?>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <?php unset($_SESSION['success_message']); ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['error_message'])): ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle mr-2"></i> <?php echo $_SESSION['error_message']; ?>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <?php unset($_SESSION['error_message']); ?>
+            <?php endif; ?>
+
+            <!-- Nút thêm đề tài mới và tìm kiếm
             <div class="row mb-4">
                 <div class="col-md-6">
                     <a href="add_project.php" class="btn btn-primary">
@@ -102,7 +126,7 @@ $sql = "SELECT
                         </div>
                     </form>
                 </div>
-            </div>
+            </div> -->
 
             <!-- Bảng danh sách đề tài -->
             <div class="card mb-4">
@@ -223,18 +247,26 @@ $sql = "SELECT
                                                 <td>{$row['GV_HOTEN']}</td>
                                                 <td>{$row['LDT_TENLOAI']}</td>
                                                 <td><span class='badge {$status_class}'>{$row['DT_TRANGTHAI']}</span></td>
-                                                <td>
-                                                    <a href='view_project.php?id={$row['DT_MADT']}' class='btn btn-sm btn-info' title='Xem chi tiết'>
-                                                        <i class='fas fa-eye'></i>
-                                                    </a>
-                                                    <a href='edit_project.php?id={$row['DT_MADT']}' class='btn btn-sm btn-primary' title='Chỉnh sửa'>
-                                                        <i class='fas fa-edit'></i>
-                                                    </a>
-                                                    <a href='#' class='btn btn-sm btn-danger btn-delete' data-id='{$row['DT_MADT']}' title='Xóa'>
-                                                        <i class='fas fa-trash'></i>
-                                                    </a>
-                                                </td>
-                                              </tr>";
+                                                <td>";
+                                                
+                                        // Thêm nút duyệt nếu đề tài đang ở trạng thái "Chờ duyệt"
+                                        if ($row['DT_TRANGTHAI'] == 'Chờ duyệt') {
+                                            echo "<a href='#' class='btn btn-sm btn-success btn-approve' data-id='{$row['DT_MADT']}' title='Duyệt đề tài'>
+                                                    <i class='fas fa-check'></i>
+                                                  </a> ";
+                                        }
+                                        
+                                        echo "<a href='view_project.php?id={$row['DT_MADT']}' class='btn btn-sm btn-info' title='Xem chi tiết'>
+                                                    <i class='fas fa-eye'></i>
+                                                </a>
+                                                <a href='edit_project.php?id={$row['DT_MADT']}' class='btn btn-sm btn-primary' title='Chỉnh sửa'>
+                                                    <i class='fas fa-edit'></i>
+                                                </a>
+                                                <a href='#' class='btn btn-sm btn-danger btn-delete' data-id='{$row['DT_MADT']}' title='Xóa'>
+                                                    <i class='fas fa-trash'></i>
+                                                </a>
+                                            </td>
+                                          </tr>";
                                     }
                                 } else {
                                     echo "<tr><td colspan='6' class='text-center'>Không có đề tài nào!</td></tr>";
@@ -307,18 +339,63 @@ $sql = "SELECT
         aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteModalLabel">Xác nhận xóa</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteModalLabel">
+                        <i class="fas fa-exclamation-triangle mr-2"></i> Xác nhận xóa đề tài
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    Bạn có chắc chắn muốn xóa đề tài này không? Hành động này không thể hoàn tác.
+                    <div class="alert alert-warning">
+                        <p><strong>Cảnh báo:</strong> Tất cả dữ liệu liên quan đến đề tài này sẽ bị xóa vĩnh viễn, bao gồm:</p>
+                        <ul>
+                            <li>Thông tin thành viên tham gia</li>
+                            <li>Tài liệu nghiên cứu</li>
+                            <li>Thông tin hợp đồng và thanh toán</li>
+                            <li>Tiến độ đề tài</li>
+                        </ul>
+                        <p class="mb-0"><strong>Lưu ý:</strong> Hành động này không thể hoàn tác!</p>
+                    </div>
+                    <p class="text-center">Bạn có chắc chắn muốn xóa đề tài này không?</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
-                    <a href="#" id="confirmDelete" class="btn btn-danger">Xóa</a>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Hủy bỏ
+                    </button>
+                    <a href="#" id="confirmDelete" class="btn btn-danger">
+                        <i class="fas fa-trash mr-1"></i> Xác nhận xóa
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal xác nhận duyệt đề tài -->
+    <div class="modal fade" id="approveModal" tabindex="-1" role="dialog" aria-labelledby="approveModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="approveModalLabel">
+                        <i class="fas fa-check-circle mr-2"></i> Xác nhận duyệt đề tài
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Bạn có chắc chắn muốn duyệt đề tài này không?</p>
+                    <p>Sau khi duyệt, trạng thái đề tài sẽ được chuyển sang <strong>"Đang thực hiện"</strong> và sinh viên có thể bắt đầu tiến hành nghiên cứu.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Hủy bỏ
+                    </button>
+                    <a href="#" id="confirmApprove" class="btn btn-success">
+                        <i class="fas fa-check mr-1"></i> Xác nhận duyệt
+                    </a>
                 </div>
             </div>
         </div>
@@ -331,6 +408,19 @@ $sql = "SELECT
     
     <!-- Custom JavaScript -->
     <script src="/NLNganh/assets/js/admin/manage_projects.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Xử lý sự kiện cho nút duyệt đề tài
+            $(document).on('click', '.btn-approve', function(e) {
+                e.preventDefault();
+                var projectId = $(this).data('id');
+                $('#confirmApprove').attr('href', 'approve_project.php?id=' + projectId);
+                $('#approveModal').modal('show');
+            });
+            
+            // Mã JavaScript khác đã có sẵn...
+        });
+    </script>
 </body>
 
 </html>

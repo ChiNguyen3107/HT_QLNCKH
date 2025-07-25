@@ -1,0 +1,64 @@
+/**
+ * research-dashboard-sidebar-fix.css
+ * Additional CSS to adapt the modern sidebar to the research dashboard page
+ */
+
+/* Fix sidebar positioning for the research dashboard page */
+.modern-sidebar {
+    z-index: 1050; /* Ensure sidebar is above other content */
+}
+
+#wrapper {
+    display: flex;
+}
+
+/* Adjust page content container */
+#content-wrapper {
+    flex: 1;
+    width: calc(100% - 260px);
+    margin-left: 260px;
+    transition: all 0.3s ease;
+}
+
+body.sidebar-toggled #content-wrapper {
+    width: calc(100% - 60px);
+    margin-left: 60px;
+}
+
+/* Mobile responsive */
+@media (max-width: 991px) {
+    #content-wrapper {
+        width: 100% !important;
+        margin-left: 0 !important; 
+    }
+    
+    .modern-sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .modern-sidebar.show {
+        transform: translateX(0);
+    }
+    
+    body.sidebar-toggled {
+        overflow-x: hidden;
+    }
+}
+
+/* Fix for SB Admin 2 compatibility */
+#content {
+    flex: 1 0 auto;
+}
+
+/* Ensure scroll to top button is visible */
+.scroll-to-top {
+    z-index: 1060;
+}
+
+/* Ensure proper notification badge styling */
+.modern-sidebar .notification-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
