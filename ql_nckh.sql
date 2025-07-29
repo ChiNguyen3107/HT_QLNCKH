@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: 127.0.0.1
--- Thời gian đã tạo: Th6 08, 2025 lúc 05:41 PM
+-- Thời gian đã tạo: Th7 29, 2025 lúc 03:56 PM
 -- Phiên bản máy phục vụ: 10.4.32-MariaDB
 -- Phiên bản PHP: 8.0.30
 
@@ -51,8 +51,9 @@ CREATE TABLE `bien_ban` (
   `BB_SOBB` char(10) NOT NULL,
   `QD_SO` char(5) NOT NULL,
   `BB_NGAYNGHIEMTHU` date NOT NULL,
-  `BB_XEPLOAI` varchar(255) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `BB_XEPLOAI` varchar(255) NOT NULL,
+  `BB_TONGDIEM` decimal(4,2) DEFAULT NULL COMMENT 'Tổng điểm đánh giá biên bản (0-10)'
+) ;
 
 -- --------------------------------------------------------
 
@@ -109,14 +110,14 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
--- Cấu trúc bảng cho bảng `file_danh_gia`
+-- Cấu trúc bảng cho bảng `file_dinh_kem`
 --
 
-CREATE TABLE `file_danh_gia` (
+CREATE TABLE `file_dinh_kem` (
   `FDG_MA` char(10) NOT NULL,
   `BB_SOBB` char(10) NOT NULL,
-  `FDG_TEN` varchar(255) NOT NULL,
-  `FDG_NGAYCAP` date NOT NULL
+  `FDG_LOAI` varchar(50) NOT NULL COMMENT 'Loại file đánh giá',
+  `FDG_FILE` varchar(255) DEFAULT NULL COMMENT 'Đường dẫn file đánh giá'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -167,7 +168,8 @@ CREATE TABLE `hop_dong` (
   `HD_NGAYKT` date NOT NULL,
   `HD_GHICHU` text DEFAULT NULL,
   `HD_TONGKINHPHI` decimal(10,2) NOT NULL,
-  `HD_FILEHD` varchar(255) DEFAULT NULL
+  `HD_FILEHD` varchar(255) DEFAULT NULL,
+  `HD_NGUOIKY` varchar(100) DEFAULT NULL COMMENT 'Người ký hợp đồng'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -451,7 +453,8 @@ ALTER TABLE `bao_cao`
 --
 ALTER TABLE `bien_ban`
   ADD PRIMARY KEY (`BB_SOBB`),
-  ADD KEY `FK_BIEN_BAN_CO_BIEN_B_QUYET_DI` (`QD_SO`);
+  ADD KEY `FK_BIEN_BAN_CO_BIEN_B_QUYET_DI` (`QD_SO`),
+  ADD KEY `idx_bien_ban_tongdiem` (`BB_TONGDIEM`);
 
 --
 -- Chỉ mục cho bảng `chi_tiet_tham_gia`
@@ -473,11 +476,12 @@ ALTER TABLE `de_tai_nghien_cuu`
   ADD KEY `FK_DE_TAI_N_THUOC_LOAI_DE_` (`LDT_MA`);
 
 --
--- Chỉ mục cho bảng `file_danh_gia`
+-- Chỉ mục cho bảng `file_dinh_kem`
 --
-ALTER TABLE `file_danh_gia`
+ALTER TABLE `file_dinh_kem`
   ADD PRIMARY KEY (`FDG_MA`),
-  ADD KEY `FK_FILE_DAN_CUA_BIEN_BAN` (`BB_SOBB`);
+  ADD KEY `FK_FILE_DAN_CUA_BIEN_BAN` (`BB_SOBB`),
+  ADD KEY `idx_fdg_loai` (`FDG_LOAI`);
 
 --
 -- Chỉ mục cho bảng `giang_vien`
@@ -687,9 +691,9 @@ ALTER TABLE `de_tai_nghien_cuu`
   ADD CONSTRAINT `FK_DE_TAI_N_THUOC_LOAI_DE_` FOREIGN KEY (`LDT_MA`) REFERENCES `loai_de_tai` (`LDT_MA`);
 
 --
--- Các ràng buộc cho bảng `file_danh_gia`
+-- Các ràng buộc cho bảng `file_dinh_kem`
 --
-ALTER TABLE `file_danh_gia`
+ALTER TABLE `file_dinh_kem`
   ADD CONSTRAINT `FK_FILE_DAN_CUA_BIEN_BAN` FOREIGN KEY (`BB_SOBB`) REFERENCES `bien_ban` (`BB_SOBB`);
 
 --

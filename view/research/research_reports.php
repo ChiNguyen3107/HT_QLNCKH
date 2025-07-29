@@ -278,25 +278,6 @@ $page_title = "Báo cáo nghiên cứu | Quản lý nghiên cứu";
 
 // Additional CSS for charts and reports
 $additional_css = '<style>
-    /* Layout positioning - tương tự như dashboard và profile */
-    #content-wrapper {
-        margin-left: 260px !important;
-        width: calc(100% - 260px) !important;
-        padding-left: 15px !important;
-        padding-right: 15px !important;
-    }
-    
-    .container-fluid {
-        padding-left: 15px !important;
-        padding-right: 15px !important;
-        max-width: none !important;
-    }
-    
-    /* Đảm bảo body layout đúng */
-    body {
-        margin-left: 0 !important;
-    }
-<style>
     /* Chart container styles */
     .chart-container {
         position: relative;

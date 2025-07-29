@@ -124,9 +124,9 @@ $contract = $contract_result->num_rows > 0 ? $contract_result->fetch_assoc() : n
 
 // Lấy thông tin quyết định nghiệm thu và biên bản nếu có
 $decision_sql = "SELECT qd.*, bb.BB_SOBB, bb.BB_NGAYNGHIEMTHU, bb.BB_XEPLOAI, bb.BB_TONGDIEM 
-                FROM bien_ban bb
-                JOIN quyet_dinh_nghiem_thu qd ON bb.BB_SOBB = qd.BB_SOBB
-                WHERE bb.QD_SO IN (SELECT QD_SO FROM de_tai_nghien_cuu WHERE DT_MADT = ?)";
+                FROM quyet_dinh_nghiem_thu qd
+                LEFT JOIN bien_ban bb ON qd.QD_SO = bb.QD_SO
+                WHERE qd.QD_SO IN (SELECT QD_SO FROM de_tai_nghien_cuu WHERE DT_MADT = ?)";
 
 // Thêm kiểm tra lỗi sau khi prepare
 $stmt = $conn->prepare($decision_sql);
@@ -141,10 +141,32 @@ if ($stmt === false) {
     $decision = $decision_result->num_rows > 0 ? $decision_result->fetch_assoc() : null;
 }
 
+// Lấy thông tin hội đồng nghiệm thu nếu có quyết định
+$council_members = [];
+if ($decision && !empty($decision['QD_SO'])) {
+    $council_sql = "SELECT tv.*, gv.GV_MAGV, CONCAT(gv.GV_HOGV, ' ', gv.GV_TENGV) AS GV_HOTEN, 
+                           gv.GV_EMAIL, tc.TC_NDDANHGIA, tc.TC_DIEMTOIDA
+                    FROM thanh_vien_hoi_dong tv
+                    LEFT JOIN giang_vien gv ON tv.GV_MAGV = gv.GV_MAGV
+                    LEFT JOIN tieu_chi tc ON tv.TC_MATC = tc.TC_MATC
+                    WHERE tv.QD_SO = ?
+                    ORDER BY tv.TV_VAITRO DESC, gv.GV_HOGV, gv.GV_TENGV";
+    
+    $stmt = $conn->prepare($council_sql);
+    if ($stmt) {
+        $stmt->bind_param("s", $decision['QD_SO']);
+        $stmt->execute();
+        $council_result = $stmt->get_result();
+        while ($member = $council_result->fetch_assoc()) {
+            $council_members[] = $member;
+        }
+    }
+}
+
 // Lấy file đánh giá nếu có biên bản
 $evaluation_files = [];
-if ($decision) {
-    $eval_files_sql = "SELECT * FROM file_danh_gia WHERE BB_SOBB = ?";
+if ($decision && !empty($decision['BB_SOBB'])) {
+    $eval_files_sql = "SELECT * FROM file_dinh_kem WHERE BB_SOBB = ? ORDER BY FDG_LOAI, FDG_MA";
     $stmt = $conn->prepare($eval_files_sql);
     if ($stmt === false) {
         $eval_files_error = "Lỗi truy vấn file đánh giá: " . $conn->error;
@@ -2297,192 +2319,190 @@ if ($decision) {
 
                             <!-- Tab Đánh giá -->
                             <div class="tab-pane fade" id="evaluation" role="tabpanel" aria-labelledby="evaluation-tab">
-                                <!-- Thông tin kết quả đánh giá -->
-                                <?php if ($decision): ?>
-                                    <div class="evaluation-result-section mb-4">
-                                        <h6 class="text-success mb-3">
-                                            <i class="fas fa-award mr-2"></i>Kết quả đánh giá nghiệm thu
-                                        </h6>
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="card border-success">
-                                                    <div class="card-body">
-                                                        <h6 class="card-title text-success">
-                                                            <i class="fas fa-calendar-check mr-2"></i>Ngày nghiệm thu
-                                                        </h6>
-                                                        <p class="card-text h5">
-                                                            <?php echo isset($decision['BB_NGAYNGHIEMTHU']) ? formatDate($decision['BB_NGAYNGHIEMTHU']) : 'Chưa xác định'; ?>
-                                                        </p>
+                                <?php if ($decision && !empty($decision['BB_SOBB'])): ?>
+                                    <!-- Kết quả đánh giá -->
+                                    <?php if ($decision['BB_XEPLOAI'] && $decision['BB_TONGDIEM']): ?>
+                                        <div class="evaluation-result-section mb-4">
+                                            <h6 class="mb-3"><i class="fas fa-trophy text-warning mr-2"></i>Kết quả đánh giá</h6>
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <div class="text-center">
+                                                        <div class="h2 text-primary font-weight-bold"><?php echo htmlspecialchars($decision['BB_TONGDIEM']); ?></div>
+                                                        <div class="text-muted">Tổng điểm</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="text-center">
+                                                        <?php 
+                                                        $xep_loai = $decision['BB_XEPLOAI'];
+                                                        $badge_class = '';
+                                                        switch ($xep_loai) {
+                                                            case 'Xuất sắc':
+                                                                $badge_class = 'badge-success';
+                                                                break;
+                                                            case 'Tốt':
+                                                                $badge_class = 'badge-primary';
+                                                                break;
+                                                            case 'Khá':
+                                                                $badge_class = 'badge-info';
+                                                                break;
+                                                            case 'Trung bình':
+                                                                $badge_class = 'badge-warning';
+                                                                break;
+                                                            case 'Yếu':
+                                                                $badge_class = 'badge-danger';
+                                                                break;
+                                                            default:
+                                                                $badge_class = 'badge-secondary';
+                                                        }
+                                                        ?>
+                                                        <span class="badge <?php echo $badge_class; ?> font-size-sm"><?php echo htmlspecialchars($xep_loai); ?></span>
+                                                        <div class="text-muted mt-1">Xếp loại</div>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="col-md-6">
-                                                <div class="card border-primary">
-                                                    <div class="card-body">
-                                                        <h6 class="card-title text-primary">
-                                                            <i class="fas fa-star mr-2"></i>Xếp loại
-                                                        </h6>
-                                                        <p class="card-text h5">
-                                                            <?php 
-                                                            $xep_loai = $decision['BB_XEPLOAI'] ?? 'Chưa xác định';
-                                                            $badge_class = '';
-                                                            switch ($xep_loai) {
-                                                                case 'Xuất sắc':
-                                                                    $badge_class = 'badge-success';
-                                                                    break;
-                                                                case 'Tốt':
-                                                                    $badge_class = 'badge-primary';
-                                                                    break;
-                                                                case 'Khá':
-                                                                    $badge_class = 'badge-info';
-                                                                    break;
-                                                                case 'Trung bình':
-                                                                    $badge_class = 'badge-warning';
-                                                                    break;
-                                                                case 'Yếu':
-                                                                    $badge_class = 'badge-danger';
-                                                                    break;
-                                                                default:
-                                                                    $badge_class = 'badge-secondary';
-                                                            }
-                                                            ?>
-                                                            <span class="badge <?php echo $badge_class; ?> p-2 font-size-sm">
-                                                                <?php echo htmlspecialchars($xep_loai); ?>
-                                                            </span>
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Thông tin quyết định -->
-                                        <div class="card mt-3">
-                                            <div class="card-header bg-light">
-                                                <h6 class="mb-0 text-info">
-                                                    <i class="fas fa-file-contract mr-2"></i>Thông tin quyết định nghiệm thu
-                                                    <button type="button" class="btn btn-sm btn-outline-info float-right" 
-                                                        data-toggle="modal" data-target="#evaluationDetailModal">
-                                                        <i class="fas fa-info-circle mr-1"></i>Chi tiết đánh giá
-                                                    </button>
-                                                </h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <p><strong>Số quyết định:</strong> <?php echo htmlspecialchars($decision['QD_SO'] ?? 'Chưa có'); ?></p>
-                                                        <p><strong>Ngày ban hành:</strong> <?php echo isset($decision['QD_NGAYBANHANH']) ? formatDate($decision['QD_NGAYBANHANH']) : 'Chưa xác định'; ?></p>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <p><strong>Người ký:</strong> <?php echo htmlspecialchars($decision['QD_NGUOIKY'] ?? 'Chưa có'); ?></p>
-                                                        <p><strong>Chức vụ:</strong> <?php echo htmlspecialchars($decision['QD_CHUCVU'] ?? 'Chưa có'); ?></p>
-                                                    </div>
-                                                </div>
-                                                <?php if (isset($decision['QD_NOIDUNG']) && !empty($decision['QD_NOIDUNG'])): ?>
-                                                    <hr>
-                                                    <h6 class="text-primary">Nội dung quyết định:</h6>
-                                                    <div class="p-3 bg-light rounded">
-                                                        <?php echo nl2br(htmlspecialchars($decision['QD_NOIDUNG'])); ?>
-                                                    </div>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <hr>
-                                <?php endif; ?>
-
-                                <!-- File đánh giá -->
-                                <?php if (count($evaluation_files) > 0): ?>
-                                    <h6 class="text-primary mb-3"><i class="fas fa-file-alt mr-2"></i>Các file đánh giá</h6>
-                                    <div class="evaluation-files-grid">
-                                        <?php foreach ($evaluation_files as $index => $file): ?>
-                                            <div class="evaluation-file-card animate-slide-up" style="animation-delay: <?php echo 0.1 * $index; ?>s">
-                                                <div class="card">
-                                                    <div class="card-body">
-                                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                                            <h6 class="card-title mb-0">
-                                                                <i class="far fa-file-pdf text-danger mr-2"></i>
-                                                                <?php echo htmlspecialchars($file['FDG_TEN'] ?? 'Không có tên'); ?>
-                                                            </h6>
-                                                            <?php if (isset($file['FDG_DUONGDAN']) && $file['FDG_DUONGDAN']): ?>
-                                                                <div class="btn-group">
-                                                                    <a href="/NLNganh/uploads/evaluation_files/<?php echo htmlspecialchars($file['FDG_DUONGDAN']); ?>"
-                                                                        class="btn btn-sm btn-outline-primary" target="_blank" title="Xem file">
-                                                                        <i class="fas fa-eye"></i> Xem
-                                                                    </a>
-                                                                    <a href="/NLNganh/uploads/evaluation_files/<?php echo htmlspecialchars($file['FDG_DUONGDAN']); ?>"
-                                                                        class="btn btn-sm btn-outline-success" download title="Tải xuống">
-                                                                        <i class="fas fa-download"></i> Tải
-                                                                    </a>
-                                                                    <?php if ($user_role === 'Chủ nhiệm'): ?>
-                                                                        <button type="button" class="btn btn-sm btn-outline-danger delete-evaluation-file" 
-                                                                            data-file-id="<?php echo htmlspecialchars($file['FDG_MA']); ?>"
-                                                                            data-file-name="<?php echo htmlspecialchars($file['FDG_TEN']); ?>"
-                                                                            title="Xóa file">
-                                                                            <i class="fas fa-trash"></i> Xóa
-                                                                        </button>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                            <?php endif; ?>
-                                                        </div>
-                                                        <small class="text-muted">
-                                                            <i class="far fa-calendar-alt mr-1"></i>
-                                                            Ngày tạo: <?php echo isset($file['FDG_NGAYCAP']) ? formatDate($file['FDG_NGAYCAP']) : 'Chưa xác định'; ?>
-                                                        </small>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
-
-                                    <?php if ($user_role === 'Chủ nhiệm'): ?>
-                                        <hr>
-                                        <div class="upload-section">
-                                            <h6 class="mb-3"><i class="fas fa-upload mr-2"></i>Thêm file đánh giá mới</h6>
-                                            <form action="upload_evaluation_file.php" method="post" enctype="multipart/form-data"
-                                                class="evaluation-upload-form">
-                                                <input type="hidden" name="project_id"
-                                                    value="<?php echo htmlspecialchars($project['DT_MADT']); ?>">
-                                                <input type="hidden" name="report_id"
-                                                    value="<?php echo htmlspecialchars($decision['BB_SOBB']); ?>">
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="evaluation_name">
-                                                                <i class="fas fa-file-signature mr-1"></i> Tên file đánh giá <span class="text-danger">*</span>
-                                                            </label>
-                                                            <input type="text" class="form-control" id="evaluation_name"
-                                                                name="evaluation_name" placeholder="Nhập tên file đánh giá" required>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="evaluation_file">
-                                                                <i class="fas fa-file mr-1"></i> File đánh giá <span class="text-danger">*</span>
-                                                            </label>
-                                                            <div class="custom-file">
-                                                                <input type="file" class="custom-file-input" id="evaluation_file"
-                                                                    name="evaluation_file" accept=".pdf,.doc,.docx,.txt" required>
-                                                                <label class="custom-file-label" for="evaluation_file">Chọn file...</label>
-                                                            </div>
-                                                            <small class="form-text text-muted">
-                                                                Chỉ chấp nhận file PDF, DOC, DOCX, TXT (tối đa 10MB)
-                                                            </small>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <button type="submit" class="btn btn-success">
-                                                    <i class="fas fa-plus-circle mr-1"></i> Thêm file đánh giá
-                                                </button>
-                                            </form>
                                         </div>
                                     <?php endif; ?>
-
-                                <?php elseif ($decision && $user_role === 'Chủ nhiệm'): ?>
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle mr-2"></i> Chưa có file đánh giá. Bạn có thể tải lên file đánh giá mới.
+                                    
+                                    <!-- Hội đồng nghiệm thu -->
+                                    <?php if (count($council_members) > 0): ?>
+                                        <div class="mb-4">
+                                            <h6 class="mb-3"><i class="fas fa-users text-info mr-2"></i>Hội đồng nghiệm thu</h6>
+                                            <div class="council-members-list">
+                                                <?php foreach ($council_members as $index => $member): ?>
+                                                    <div class="card mb-3">
+                                                        <div class="card-body py-2">
+                                                            <div class="row align-items-center">
+                                                                <div class="col-8">
+                                                                    <h6 class="mb-1"><?php echo htmlspecialchars($member['GV_HOTEN']); ?></h6>
+                                                                    <div class="d-flex align-items-center">
+                                                                        <span class="badge badge-primary mr-2"><?php echo htmlspecialchars($member['TV_VAITRO']); ?></span>
+                                                                        <?php if ($member['TC_NDDANHGIA']): ?>
+                                                                            <small class="text-muted"><?php echo htmlspecialchars($member['TC_NDDANHGIA']); ?></small>
+                                                                        <?php endif; ?>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-4 text-right">
+                                                                    <?php if ($member['TV_DIEM'] !== null): ?>
+                                                                        <div class="h5 mb-0 text-primary"><?php echo number_format($member['TV_DIEM'], 1); ?></div>
+                                                                        <small class="text-muted">/ <?php echo $member['TC_DIEMTOIDA'] ?? '10'; ?></small>
+                                                                    <?php else: ?>
+                                                                        <span class="text-muted">Chưa chấm</span>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <!-- File đánh giá -->
+                                    <div class="mb-4">
+                                        <h6 class="mb-3"><i class="fas fa-file-alt text-success mr-2"></i>File đánh giá</h6>
+                                        
+                                        <?php if (count($evaluation_files) > 0): ?>
+                                            <div class="evaluation-files-grid">
+                                                <?php foreach ($evaluation_files as $file): ?>
+                                                    <div class="evaluation-file-card">
+                                                        <div class="card">
+                                                            <div class="card-body">
+                                                                <h6 class="card-title mb-2">
+                                                                    <i class="fas fa-file-pdf text-danger mr-2"></i>
+                                                                    <?php echo htmlspecialchars($file['FDG_TENFILE'] ?? $file['FDG_DUONGDAN']); ?>
+                                                                </h6>
+                                                                <p class="card-text">
+                                                                    <small class="text-muted">
+                                                                        Loại: <?php echo htmlspecialchars($file['FDG_LOAI'] ?? 'Không xác định'); ?><br>
+                                                                        Ngày tải: <?php echo formatDate($file['FDG_NGAYTAO']); ?>
+                                                                    </small>
+                                                                </p>
+                                                                <div class="btn-group btn-group-sm">
+                                                                    <a href="/NLNganh/uploads/reports/<?php echo htmlspecialchars($file['FDG_DUONGDAN']); ?>" 
+                                                                       class="btn btn-primary" target="_blank">
+                                                                        <i class="fas fa-download mr-1"></i>Tải xuống
+                                                                    </a>
+                                                                    <a href="/NLNganh/uploads/reports/<?php echo htmlspecialchars($file['FDG_DUONGDAN']); ?>" 
+                                                                       class="btn btn-outline-primary" target="_blank">
+                                                                        <i class="fas fa-eye mr-1"></i>Xem
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle mr-2"></i>Chưa có file đánh giá nào.
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
-                                    <div class="upload-section">
-                                        <form action="upload_evaluation_file.php" method="post" enctype="multipart/form-data"
+                                    
+                                    <!-- Form upload file đánh giá (chỉ cho chủ nhiệm) -->
+                                    <?php if ($user_role === 'Chủ nhiệm'): ?>
+                                        <div class="evaluation-upload-form">
+                                            <div class="upload-section">
+                                                <h6 class="mb-3 text-center">
+                                                    <i class="fas fa-cloud-upload-alt mr-2"></i>Upload file đánh giá
+                                                </h6>
+                                                <form action="upload_evaluation.php" method="post" enctype="multipart/form-data">
+                                                    <input type="hidden" name="project_id" value="<?php echo htmlspecialchars($project['DT_MADT']); ?>">
+                                                    
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <div class="form-group">
+                                                                <label for="file_type">Loại file <span class="text-danger">*</span></label>
+                                                                <select class="form-control" id="file_type" name="file_type" required>
+                                                                    <option value="">Chọn loại file</option>
+                                                                    <option value="Biên bản họp">Biên bản họp</option>
+                                                                    <option value="Phiếu đánh giá">Phiếu đánh giá</option>
+                                                                    <option value="Báo cáo tổng hợp">Báo cáo tổng hợp</option>
+                                                                    <option value="Tài liệu khác">Tài liệu khác</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <div class="form-group">
+                                                                <label for="evaluation_file">File đánh giá <span class="text-danger">*</span></label>
+                                                                <div class="custom-file">
+                                                                    <input type="file" class="custom-file-input" id="evaluation_file" name="evaluation_file" 
+                                                                           accept=".pdf,.doc,.docx,.xls,.xlsx" required>
+                                                                    <label class="custom-file-label" for="evaluation_file">Chọn file...</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="form-group">
+                                                        <label for="file_description">Mô tả file</label>
+                                                        <textarea class="form-control" id="file_description" name="file_description" 
+                                                                  rows="3" placeholder="Nhập mô tả về nội dung file đánh giá..."></textarea>
+                                                    </div>
+                                                    
+                                                    <div class="text-center">
+                                                        <button type="submit" class="btn btn-success">
+                                                            <i class="fas fa-upload mr-2"></i>Upload file đánh giá
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                <?php else: ?>
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle mr-2"></i>Chưa có biên bản nghiệm thu để hiển thị thông tin đánh giá.
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
                                             class="evaluation-upload-form">
                                             <input type="hidden" name="project_id"
                                                 value="<?php echo htmlspecialchars($project['DT_MADT']); ?>">
@@ -2529,19 +2549,23 @@ if ($decision) {
                                                     <i class="fas fa-exclamation-circle"></i> Cần phải có quyết định nghiệm thu trước khi có thể thêm file đánh giá.
                                                 </small>
                                             </div>
-                                        <?php else: ?>
-                                            Chưa có file đánh giá nào.
-                                            <?php if ($user_role !== 'Chủ nhiệm'): ?>
-                                                <div class="mt-2">
-                                                    <small class="text-muted">
-                                                        <i class="fas fa-info-circle"></i> Chỉ chủ nhiệm đề tài mới có thể tải lên file đánh giá.
-                                                    </small>
-                                                </div>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
+                                        </div>
                                     </div>
-                                <?php endif; ?>
+                                <?php endforeach; ?>
                             </div>
+                        <?php else: ?>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle mr-2"></i>Chưa có file đánh giá nào.
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                <?php else: ?>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Chưa có biên bản nghiệm thu để hiển thị thông tin đánh giá.
+                    </div>
+                <?php endif; ?>
+            </div>
                         </div>
                     </div>
                 </div>

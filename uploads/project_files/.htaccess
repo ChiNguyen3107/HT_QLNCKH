@@ -1,0 +1,12 @@
+# Chỉ cho phép download file
+Options -Indexes
+<Files "*.php">
+    Order Deny,Allow
+    Deny from all
+</Files>
+
+# Chỉ cho phép các loại file nhất định
+<FilesMatch "\.(pdf|doc|docx)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>

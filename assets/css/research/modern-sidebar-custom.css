@@ -38,7 +38,7 @@
    ============================================== */
 
 /* Tùy chỉnh content-wrapper chính */
-#content-wrapper {
+/* #content-wrapper {
     margin-left: 280px !important;
     padding-left: 15px !important;
     padding-right: 15px !important;
@@ -47,21 +47,21 @@
     min-height: 100vh;
     background-color: #f8f9fc;
     transition: all 0.3s ease;
-}
+} */
 
 /* Container bên trong content-wrapper */
-.container-fluid {
+/* .container-fluid {
     padding-left: 20px !important;
     padding-right: 20px !important;
     padding-top: 1.5rem !important;
     max-width: none !important;
-}
+} */
 
 /* Điều chỉnh main content area */
-body, .main-content {
+/* body, .main-content {
     margin-left: 280px !important;
     width: calc(100% - 280px) !important;
-}
+} */
 
 /* ==============================================
    TÙY CHỌN CONTENT-WRAPPER KHÁC - Uncomment để thử
@@ -176,7 +176,7 @@ body, .main-content {
 
 /* Responsive padding adjustments */
 @media (max-width: 768px) {
-    body, #content-wrapper, .main-content {
+    /* body, #content-wrapper, .main-content {
         margin-left: 0 !important;
         padding-left: 10px !important;
         padding-right: 10px !important;
@@ -186,18 +186,18 @@ body, .main-content {
     .container-fluid {
         padding-left: 10px !important;
         padding-right: 10px !important;
-    }
+    } */
 }
 
 @media (min-width: 769px) {
     /* Desktop: Giảm padding để nội dung không quá xa sidebar */
-    #content-wrapper {
+    /* #content-wrapper {
         padding-left: 20px !important;
     }
     
     .container-fluid {
         max-width: none !important;
-    }
+    } */
 }
 
 /* ==============================================

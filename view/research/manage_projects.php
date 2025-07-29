@@ -190,413 +190,7 @@ if ($stats_result) {
 $page_title = "Quản lý đề tài | Quản lý nghiên cứu";
 
 // Define any additional CSS specific to this page
-$additional_css = '<style>
-    /* Layout positioning - tương tự như dashboard và profile */
-    #content-wrapper {
-        margin-left: 260px !important;
-        width: calc(100% - 260px) !important;
-        padding-left: 15px !important;
-        padding-right: 15px !important;
-    }
-    
-    .container-fluid {
-        padding-left: 15px !important;
-        padding-right: 15px !important;
-        max-width: none !important;
-    }
-    
-    /* Đảm bảo body layout đúng */
-    body {
-        margin-left: 0 !important;
-    }
-    
-    /* Enhanced card counter styling */
-    .card-counter {
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        padding: 25px 15px;
-        background-color: #fff;
-        height: 120px;
-        border-radius: 12px;
-        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        overflow: hidden;
-        position: relative;
-        border: none;
-    }
-    
-    .card-counter:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    }
-    
-    .card-counter i {
-        font-size: 4.5em;
-        opacity: 0.15;
-        position: absolute;
-        right: 15px;
-        bottom: -5px;
-        transition: all 0.3s ease;
-    }
-    
-    .card-counter:hover i {
-        opacity: 0.25;
-        transform: scale(1.1);
-    }
-    
-    .card-counter .count-numbers {
-        position: absolute;
-        right: 25px;
-        top: 20px;
-        font-size: 32px;
-        font-weight: 700;
-        display: block;
-        line-height: 1;
-    }
-    
-    .card-counter .count-name {
-        position: absolute;
-        right: 25px;
-        top: 65px;
-        text-transform: uppercase;
-        opacity: 0.9;
-        display: block;
-        font-size: 13px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        line-height: 1.2;
-    }
-    
-    .card-counter.primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: #FFF;
-    }
-    
-    .card-counter.info {
-        background: linear-gradient(135deg, #36b9cc 0%, #1cc88a 100%);
-        color: #FFF;
-    }
-    
-    .card-counter.success {
-        background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%);
-        color: #FFF;
-    }
-    
-    .card-counter.warning {
-        background: linear-gradient(135deg, #f6c23e 0%, #fd7e14 100%);
-        color: #FFF;
-    }
-    
-    /* Enhanced card styling */
-    .card {
-        border: none;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
-    }
-    
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-    }
-    
-    .card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 12px 12px 0 0 !important;
-        border-bottom: none;
-        padding: 20px;
-    }
-    
-    .card-body {
-        padding: 25px;
-    }
-    
-    /* Project status badges */
-    .project-status {
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        display: inline-block;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .status-pending {
-        background: linear-gradient(135deg, #f6c23e 0%, #fd7e14 100%);
-        color: white;
-    }
-    
-    .status-progress {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    
-    .status-completed {
-        background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%);
-        color: white;
-    }
-    
-    .status-rejected {
-        background: linear-gradient(135deg, #e74a3b 0%, #c82333 100%);
-        color: white;
-    }
-    
-    .status-warning {
-        background: linear-gradient(135deg, #f6c23e 0%, #e0a800 100%);
-        color: white;
-    }
-    
-    .status-info {
-        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-        color: white;
-    }
-    
-    /* Form controls */
-    .form-control {
-        border-radius: 8px;
-        padding: 12px 15px;
-        border: 2px solid #e9ecef;
-        transition: all 0.3s ease;
-        font-size: 0.95em;
-    }
-    
-    .form-control:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        transform: translateY(-1px);
-    }
-    
-    /* Button improvements */
-    .btn {
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        border: none;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-size: 0.85em;
-    }
-    
-    .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    .btn-success {
-        background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%);
-    }
-    
-    .btn-warning {
-        background: linear-gradient(135deg, #f6c23e 0%, #fd7e14 100%);
-    }
-    
-    .btn-info {
-        background: linear-gradient(135deg, #36b9cc 0%, #1cc88a 100%);
-    }
-    
-    .btn-danger {
-        background: linear-gradient(135deg, #e74a3b 0%, #c82333 100%);
-    }
-    
-    .btn-secondary {
-        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-    }
-    
-    .btn-sm {
-        padding: 6px 12px;
-        font-size: 0.8em;
-    }
-    
-    /* Table improvements */
-    .table-responsive {
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-    }
-    
-    .table thead th {
-        background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
-        border-bottom: 2px solid #e3e6f0;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 12px;
-        letter-spacing: 0.5px;
-        color: #5a5c69;
-        padding: 15px;
-    }
-    
-    .table tbody tr {
-        transition: all 0.3s ease;
-    }
-    
-    .table tbody tr:hover {
-        background-color: #f8f9fc;
-        transform: scale(1.01);
-    }
-    
-    .table td {
-        padding: 15px;
-        vertical-align: middle;
-    }
-    
-    /* Badge improvements */
-    .badge {
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .badge-info {
-        background: linear-gradient(135deg, #36b9cc 0%, #1cc88a 100%);
-    }
-    
-    .badge-light {
-        background: linear-gradient(135deg, #f8f9fc 0%, #e9ecef 100%);
-        color: #5a5c69;
-    }
-    
-    /* Empty state styling */
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        color: #6c757d;
-    }
-    
-    .empty-state i {
-        font-size: 5rem;
-        color: #d1d3e2;
-        margin-bottom: 25px;
-        opacity: 0.5;
-    }
-    
-    .empty-state h5 {
-        color: #5a5c69;
-        margin-bottom: 15px;
-        font-weight: 600;
-    }
-    
-    .empty-state p {
-        color: #858796;
-        margin-bottom: 25px;
-        font-size: 1.1em;
-    }
-    
-    /* Animation classes */
-    .animate-on-scroll {
-        opacity: 0;
-        transform: translateY(30px);
-        transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
-    }
-    
-    .animate-on-scroll.visible {
-        opacity: 1;
-        transform: translateY(0);
-    }
-    
-    /* DataTable customization */
-    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        border-color: #667eea !important;
-        color: white !important;
-    }
-    
-    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-        background: linear-gradient(135deg, #5a67d8 0%, #6b4c93 100%) !important;
-        border-color: #5a67d8 !important;
-        color: white !important;
-    }
-    
-    .dataTables_wrapper .dataTables_filter input {
-        border-radius: 8px;
-        border: 2px solid #e9ecef;
-        padding: 8px 12px;
-    }
-    
-    .dataTables_wrapper .dataTables_length select {
-        border-radius: 8px;
-        border: 2px solid #e9ecef;
-        padding: 8px 12px;
-    }
-    
-    /* Responsive improvements */
-    @media (max-width: 992px) {
-        .card-counter {
-            height: 100px;
-            margin-bottom: 20px;
-        }
-        
-        .card-counter .count-numbers {
-            font-size: 24px;
-            top: 15px;
-        }
-        
-        .card-counter .count-name {
-            font-size: 11px;
-            top: 50px;
-        }
-        
-        .card-counter i {
-            font-size: 3.5em;
-        }
-        
-        #content-wrapper {
-            margin-left: 0 !important;
-            width: 100% !important;
-        }
-    }
-    
-    @media (max-width: 768px) {
-        .container-fluid {
-            padding: 20px 15px !important;
-        }
-        
-        .btn-group .btn {
-            margin-bottom: 5px;
-        }
-        
-        .table-responsive {
-            font-size: 0.9em;
-        }
-        
-        .card-body {
-            padding: 20px;
-        }
-        
-        #content-wrapper {
-            margin-left: 0 !important;
-            width: 100% !important;
-        }
-    }
-    
-    @media (max-width: 576px) {
-        .card-counter {
-            height: 90px;
-        }
-        
-        .card-counter .count-numbers {
-            font-size: 20px;
-            top: 12px;
-        }
-        
-        .card-counter .count-name {
-            font-size: 10px;
-            top: 42px;
-        }
-        
-        .btn {
-            font-size: 0.8em;
-            padding: 8px 16px;
-        }
-    }
-</style>';
+$additional_css = '<link href="/NLNganh/assets/css/research/manage-projects-enhanced.css" rel="stylesheet">';
 
 // Include the research header
 include '../../include/research_header.php';
@@ -666,13 +260,11 @@ include '../../include/research_header.php';
         </div>
         <div class="card-body">
             <form method="GET" action="" class="needs-validation" novalidate>
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label for="status" class="form-label fw-bold">
-                            <i class="fas fa-tasks me-1"></i>Trạng thái đề tài
-                        </label>
+                <div class="row g-3 align-items-end">
+                    <div class="col-lg-2 col-md-6">
+                        <label for="status" class="form-label fw-bold"><i class="fas fa-tasks me-1"></i>Trạng thái</label>
                         <select class="form-select" id="status" name="status">
-                            <option value="">Tất cả trạng thái</option>
+                            <option value="">Tất cả</option>
                             <option value="Chờ duyệt" <?php echo $status_filter == 'Chờ duyệt' ? 'selected' : ''; ?>>Chờ duyệt</option>
                             <option value="Đang thực hiện" <?php echo $status_filter == 'Đang thực hiện' ? 'selected' : ''; ?>>Đang thực hiện</option>
                             <option value="Đã hoàn thành" <?php echo $status_filter == 'Đã hoàn thành' ? 'selected' : ''; ?>>Đã hoàn thành</option>
@@ -681,12 +273,10 @@ include '../../include/research_header.php';
                             <option value="Đang xử lý" <?php echo $status_filter == 'Đang xử lý' ? 'selected' : ''; ?>>Đang xử lý</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label for="type" class="form-label fw-bold">
-                            <i class="fas fa-layer-group me-1"></i>Loại đề tài
-                        </label>
+                    <div class="col-lg-2 col-md-6">
+                        <label for="type" class="form-label fw-bold"><i class="fas fa-layer-group me-1"></i>Loại đề tài</label>
                         <select class="form-select" id="type" name="type">
-                            <option value="">Tất cả loại</option>
+                            <option value="">Tất cả</option>
                             <?php foreach ($types_list as $type): ?>
                             <option value="<?php echo htmlspecialchars($type['LDT_MA']); ?>" <?php echo $type_filter == $type['LDT_MA'] ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($type['LDT_TENLOAI']); ?>
@@ -694,12 +284,10 @@ include '../../include/research_header.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label for="faculty" class="form-label fw-bold">
-                            <i class="fas fa-university me-1"></i>Khoa/Đơn vị
-                        </label>
+                    <div class="col-lg-2 col-md-6">
+                        <label for="faculty" class="form-label fw-bold"><i class="fas fa-university me-1"></i>Khoa</label>
                         <select class="form-select" id="faculty" name="faculty">
-                            <option value="">Tất cả khoa</option>
+                            <option value="">Tất cả</option>
                             <?php foreach ($faculties as $faculty): ?>
                             <option value="<?php echo htmlspecialchars($faculty['DV_MADV']); ?>" <?php echo $faculty_filter == $faculty['DV_MADV'] ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($faculty['DV_TENDV']); ?>
@@ -707,20 +295,14 @@ include '../../include/research_header.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label for="search" class="form-label fw-bold">
-                            <i class="fas fa-search me-1"></i>Tìm kiếm
-                        </label>
-                        <input type="text" class="form-control" id="search" name="search" placeholder="Tên đề tài, mã đề tài, tên GV" value="<?php echo htmlspecialchars($search_term); ?>">
+                    <div class="col-lg-4 col-md-6">
+                        <label for="search" class="form-label fw-bold"><i class="fas fa-search me-1"></i>Tìm kiếm</label>
+                        <input type="text" class="form-control" id="search" name="search" placeholder="Tên đề tài, mã, giảng viên..." value="<?php echo htmlspecialchars($search_term); ?>">
                     </div>
-                </div>
-                <div class="text-end mt-4">
-                    <button type="submit" class="btn btn-primary me-2">
-                        <i class="fas fa-search me-2"></i>Tìm kiếm
-                    </button>
-                    <a href="manage_projects.php" class="btn btn-secondary">
-                        <i class="fas fa-sync-alt me-2"></i>Đặt lại
-                    </a>
+                    <div class="col-lg-2 col-md-12 d-flex">
+                        <button type="submit" class="btn btn-primary w-100 me-2"><i class="fas fa-search"></i></button>
+                        <a href="manage_projects.php" class="btn btn-secondary w-100"><i class="fas fa-sync-alt"></i></a>
+                    </div>
                 </div>
             </form>
         </div>

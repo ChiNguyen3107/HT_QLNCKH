@@ -81,25 +81,6 @@ $page_title = "Cài đặt hệ thống | Quản lý nghiên cứu";
 
 // Define any additional CSS specific to this page
 $additional_css = '<style>
-    /* Layout positioning - tương tự như dashboard và các file khác */
-    #content-wrapper {
-        margin-left: 260px !important;
-        width: calc(100% - 260px) !important;
-        padding-left: 15px !important;
-        padding-right: 15px !important;
-    }
-    
-    .container-fluid {
-        padding-left: 15px !important;
-        padding-right: 15px !important;
-        max-width: none !important;
-    }
-    
-    /* Đảm bảo body layout đúng */
-    body {
-        margin-left: 0 !important;
-    }
-    
     /* Enhanced settings cards */
     .settings-card {
         border-radius: 12px;
@@ -253,15 +234,6 @@ $additional_css = '<style>
     
     /* Responsive improvements */
     @media (max-width: 768px) {
-        .container-fluid {
-            padding: 20px 15px !important;
-        }
-        
-        #content-wrapper {
-            margin-left: 0 !important;
-            width: 100% !important;
-        }
-        
         .settings-card .card-body {
             padding: 20px;
         }
@@ -280,33 +252,30 @@ include '../../include/research_header.php';
 <!-- SweetAlert2 for better notifications -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<!-- Content Wrapper -->
-<div id="content-wrapper" class="d-flex flex-column">
-    <div class="container-fluid py-4">
-        <!-- Page Heading -->
-        <div class="d-sm-flex align-items-center justify-content-between mb-4">
-            <h1 class="h3 mb-0 text-gray-800">
-                <i class="fas fa-cogs text-primary me-3"></i>
-                Cài đặt hệ thống
-            </h1>
-        </div>
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-cogs text-primary me-3"></i>
+        Cài đặt hệ thống
+    </h1>
+</div>
 
-        <!-- Messages -->
-        <?php if ($success_message): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle me-2"></i>
-                <?= htmlspecialchars($success_message) ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <?php endif; ?>
+<!-- Messages -->
+<?php if ($success_message): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>
+        <?= htmlspecialchars($success_message) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
 
-        <?php if ($error_message): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                <?= htmlspecialchars($error_message) ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <?php endif; ?>
+<?php if ($error_message): ?>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <?= htmlspecialchars($error_message) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
 
         <div class="row">
             <!-- System Settings -->
@@ -572,63 +541,6 @@ include '../../include/research_header.php';
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
-
-<script>
-$(document).ready(function() {
-    // Animation on scroll
-    function animateOnScroll() {
-        $('.animate-on-scroll').each(function() {
-            const elementTop = $(this).offset().top;
-            const elementHeight = $(this).outerHeight();
-            const windowHeight = $(window).height();
-            const scrollY = window.scrollY;
-            
-            if (elementTop < (scrollY + windowHeight - elementHeight / 2)) {
-                $(this).addClass('visible');
-            }
-        });
-    }
-    
-    // Execute animation on initial load
-    setTimeout(animateOnScroll, 100);
-    
-    // Execute animation on scroll
-    $(window).on('scroll', animateOnScroll);
-    
-    // Auto-hide alerts after 5 seconds
-    $('.alert').each(function() {
-        setTimeout(() => {
-            $(this).fadeOut('slow');
-        }, 5000);
-    });
-});
-
-function testDatabaseConnection() {
-    // Simulate database connection test
-    Swal.fire({
-        title: 'Kiểm tra kết nối...',
-        text: 'Đang kiểm tra kết nối cơ sở dữ liệu',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-    
-    setTimeout(() => {
-        Swal.fire({
-            icon: 'success',
-            title: 'Kết nối thành công!',
-            text: 'Cơ sở dữ liệu hoạt động bình thường',
-            timer: 2000,
-            showConfirmButton: false
-        });
-    }, 2000);
-}
-</script>
-
 <?php 
 // Include footer
 include '../../include/research_footer.php';

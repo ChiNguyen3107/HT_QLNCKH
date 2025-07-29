@@ -215,272 +215,7 @@ if ($rejected_result) {
 $page_title = "Phê duyệt đề tài | Quản lý nghiên cứu";
 
 // Define any additional CSS specific to this page
-$additional_css = '<style>
-    /* Layout positioning - tương tự như dashboard và profile */
-    #content-wrapper {
-        margin-left: 260px !important;
-        width: calc(100% - 260px) !important;
-        padding-left: 15px !important;
-        padding-right: 15px !important;
-    }
-    
-    .container-fluid {
-        padding-left: 15px !important;
-        padding-right: 15px !important;
-        max-width: none !important;
-    }
-    
-    /* Đảm bảo body layout đúng */
-    body {
-        margin-left: 0 !important;
-    }
-    
-    /* Enhanced project cards */
-    .project-card {
-        border: none;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
-        overflow: hidden;
-        background: white;
-    }
-    
-    .project-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    }
-    
-    .project-card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 20px;
-        border-bottom: none;
-    }
-    
-    .project-card-body {
-        padding: 25px;
-    }
-    
-    /* Statistics cards improvements */
-    .stats-card {
-        border: none;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
-        overflow: hidden;
-        background: white;
-        margin-bottom: 30px;
-    }
-    
-    .stats-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-    }
-    
-    .stats-card.border-left-primary {
-        border-left: 4px solid #667eea !important;
-    }
-    
-    .stats-card.border-left-success {
-        border-left: 4px solid #1cc88a !important;
-    }
-    
-    .stats-card.border-left-warning {
-        border-left: 4px solid #f6c23e !important;
-    }
-    
-    .stats-card.border-left-danger {
-        border-left: 4px solid #e74a3b !important;
-    }
-    
-    /* Enhanced buttons */
-    .btn {
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        border: none;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-size: 0.85em;
-    }
-    
-    .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    .btn-success {
-        background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%);
-    }
-    
-    .btn-warning {
-        background: linear-gradient(135deg, #f6c23e 0%, #fd7e14 100%);
-    }
-    
-    .btn-info {
-        background: linear-gradient(135deg, #36b9cc 0%, #1cc88a 100%);
-    }
-    
-    .btn-danger {
-        background: linear-gradient(135deg, #e74a3b 0%, #c82333 100%);
-    }
-    
-    .btn-secondary {
-        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-    }
-    
-    .btn-sm {
-        padding: 6px 12px;
-        font-size: 0.8em;
-    }
-    
-    /* Form controls */
-    .form-control {
-        border-radius: 8px;
-        padding: 12px 15px;
-        border: 2px solid #e9ecef;
-        transition: all 0.3s ease;
-        font-size: 0.95em;
-    }
-    
-    .form-control:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        transform: translateY(-1px);
-    }
-    
-    .form-select {
-        border-radius: 8px;
-        padding: 12px 15px;
-        border: 2px solid #e9ecef;
-        transition: all 0.3s ease;
-        font-size: 0.95em;
-    }
-    
-    .form-select:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        transform: translateY(-1px);
-    }
-    
-    /* Alert improvements */
-    .alert {
-        border-radius: 12px;
-        border: none;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        margin-bottom: 25px;
-    }
-    
-    .alert-success {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        color: #155724;
-    }
-    
-    .alert-danger {
-        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-        color: #721c24;
-    }
-    
-    /* Modal improvements */
-    .modal-content {
-        border-radius: 12px;
-        border: none;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    }
-    
-    .modal-header {
-        border-radius: 12px 12px 0 0;
-        border-bottom: none;
-        padding: 20px;
-    }
-    
-    .modal-body {
-        padding: 25px;
-    }
-    
-    .modal-footer {
-        border-top: none;
-        padding: 20px;
-    }
-    
-    /* Empty state */
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        color: #6c757d;
-    }
-    
-    .empty-state i {
-        font-size: 5rem;
-        color: #d1d3e2;
-        margin-bottom: 25px;
-        opacity: 0.5;
-    }
-    
-    .empty-state h5 {
-        color: #5a5c69;
-        margin-bottom: 15px;
-        font-weight: 600;
-    }
-    
-    .empty-state p {
-        color: #858796;
-        margin-bottom: 25px;
-        font-size: 1.1em;
-    }
-    
-    /* Pagination improvements */
-    .pagination {
-        border-radius: 8px;
-        overflow: hidden;
-    }
-    
-    .page-link {
-        border: none;
-        color: #667eea;
-        transition: all 0.3s ease;
-    }
-    
-    .page-link:hover {
-        background-color: #667eea;
-        color: white;
-        transform: translateY(-1px);
-    }
-    
-    .page-item.active .page-link {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-color: #667eea;
-    }
-    
-    /* Responsive improvements */
-    @media (max-width: 768px) {
-        .container-fluid {
-            padding: 20px 15px !important;
-        }
-        
-        .btn-group .btn {
-            margin-bottom: 5px;
-        }
-        
-        .project-card-body {
-            padding: 20px;
-        }
-        
-        .stats-card {
-            margin-bottom: 20px;
-        }
-        
-        #content-wrapper {
-            margin-left: 0 !important;
-            width: 100% !important;
-        }
-    }
-</style>';
+$additional_css = '<link href="/NLNganh/assets/css/research/review-projects-enhanced.css" rel="stylesheet">';
 
 // Include the research header
 include '../../include/research_header.php';
@@ -608,8 +343,8 @@ include '../../include/research_header.php';
                 </div>
                 <div class="card-body">
                     <form method="GET" action="" class="filter-form">
-                        <div class="row g-3">
-                            <div class="col-md-5">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-lg-4 col-md-6">
                                 <label for="faculty" class="form-label fw-bold">
                                     <i class="fas fa-building me-1"></i>Khoa/Đơn vị
                                 </label>
@@ -622,7 +357,7 @@ include '../../include/research_header.php';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-5">
+                            <div class="col-lg-4 col-md-6">
                                 <label for="search" class="form-label fw-bold">
                                     <i class="fas fa-search me-1"></i>Tìm kiếm
                                 </label>
@@ -630,18 +365,14 @@ include '../../include/research_header.php';
                                        placeholder="Tên đề tài, mã đề tài, tên GV" 
                                        value="<?php echo htmlspecialchars($search_term); ?>">
                             </div>
-                            <div class="col-md-2 d-flex align-items-end">
-                                <div class="w-100">
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="fas fa-search me-1"></i>Lọc
-                                    </button>
-                                </div>
+                            <div class="col-lg-2 col-md-6">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-search me-1"></i>Lọc
+                                </button>
                             </div>
-                        </div>
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <a href="review_projects.php" class="btn btn-secondary">
-                                    <i class="fas fa-sync-alt me-1"></i>Đặt lại bộ lọc
+                            <div class="col-lg-2 col-md-6">
+                                <a href="review_projects.php" class="btn btn-secondary w-100">
+                                    <i class="fas fa-sync-alt me-1"></i>Đặt lại
                                 </a>
                             </div>
                         </div>

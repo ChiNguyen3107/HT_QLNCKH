@@ -1,0 +1,74 @@
+# Database configuration
+include/config.php
+
+# Uploaded files (có thể chứa thông tin nhạy cảm)
+uploads/*.jpg
+uploads/*.jpeg
+uploads/*.png
+uploads/*.gif
+uploads/*.pdf
+uploads/*.doc
+uploads/*.docx
+uploads/*.xls
+uploads/*.xlsx
+uploads/*.zip
+uploads/*.rar
+
+# Log files
+*.log
+error_log
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Cache files
+cache/
+tmp/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Backup files
+*.bak
+*.backup
+
+# Session files
+session/
+sessions/
+
+# Vendor (nếu sử dụng Composer)
+vendor/
+
+# Node modules (nếu có)
+node_modules/
+
+# Build files
+build/
+dist/
+
+# Coverage reports
+coverage/
+
+# Test files
+tests/temp/
