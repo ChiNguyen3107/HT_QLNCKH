@@ -31,8 +31,8 @@ if (empty($project_id) || empty($progress_title) || empty($progress_content)) {
     exit;
 }
 
-// Kiểm tra quyền truy cập (sinh viên phải là thành viên của đề tài)
-$check_access_sql = "SELECT 1 FROM chi_tiet_tham_gia WHERE DT_MADT = ? AND SV_MASV = ?";
+// Kiểm tra quyền truy cập (sinh viên phải là chủ nhiệm của đề tài)
+$check_access_sql = "SELECT CTTG_VAITRO FROM chi_tiet_tham_gia WHERE DT_MADT = ? AND SV_MASV = ?";
 $stmt = $conn->prepare($check_access_sql);
 if ($stmt === false) {
     $_SESSION['error_message'] = "Lỗi chuẩn bị câu lệnh SQL: " . $conn->error;
@@ -47,6 +47,13 @@ $result = $stmt->get_result();
 if ($result->num_rows === 0) {
     $_SESSION['error_message'] = "Bạn không có quyền cập nhật tiến độ cho đề tài này.";
     header('Location: student_manage_projects.php');
+    exit;
+}
+
+$user_role = $result->fetch_assoc()['CTTG_VAITRO'];
+if ($user_role !== 'Chủ nhiệm') {
+    $_SESSION['error_message'] = "Chỉ chủ nhiệm đề tài mới có thể cập nhật tiến độ.";
+    header('Location: view_project.php?id=' . urlencode($project_id));
     exit;
 }
 

@@ -35,6 +35,26 @@ $decision_content = trim($_POST['decision_content'] ?? '');
 $update_reason = trim($_POST['update_reason'] ?? '');
 $user_id = $_SESSION['user_id'];
 
+// Kiểm tra quyền chủ nhiệm trước khi xử lý
+$check_role_sql = "SELECT CTTG_VAITRO FROM chi_tiet_tham_gia WHERE DT_MADT = ? AND SV_MASV = ?";
+$stmt = $conn->prepare($check_role_sql);
+$stmt->bind_param("ss", $project_id, $user_id);
+$stmt->execute();
+$role_result = $stmt->get_result();
+
+if ($role_result->num_rows === 0) {
+    $_SESSION['error_message'] = "Bạn không có quyền truy cập đề tài này.";
+    header("Location: view_project.php?id=" . urlencode($project_id));
+    exit();
+}
+
+$user_role = $role_result->fetch_assoc()['CTTG_VAITRO'];
+if ($user_role !== 'Chủ nhiệm') {
+    $_SESSION['error_message'] = "Chỉ chủ nhiệm đề tài mới có thể cập nhật thông tin quyết định nghiệm thu.";
+    header("Location: view_project.php?id=" . urlencode($project_id));
+    exit();
+}
+
 // Debug POST data
 error_log("Update decision info - Project ID: " . $project_id);
 error_log("Update decision info - Decision Number: " . $decision_number);
