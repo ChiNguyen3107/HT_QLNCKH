@@ -66,7 +66,7 @@ $status_result = $stmt->get_result();
 $project_status = $status_result->fetch_assoc()['DT_TRANGTHAI'];
 
 if ($project_status !== 'Đang thực hiện') {
-    $_SESSION['error_message'] = "Chỉ có thể cập nhật tiến độ cho đề tài đang thực hiện.";
+    $_SESSION['error_message'] = "Chỉ có thể cập nhật tiến độ khi đề tài đang trong trạng thái 'Đang thực hiện'. Trạng thái hiện tại: " . $project_status;
     header('Location: view_project.php?id=' . urlencode($project_id));
     exit;
 }

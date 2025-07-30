@@ -1463,6 +1463,14 @@ if ($decision) {
                                         <i class="fas fa-info-circle mr-1"></i> Chỉ chủ nhiệm đề tài mới có thể cập nhật tiến độ và tải file
                                     </small>
                                 <?php endif; ?>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-sm btn-secondary" disabled title="Chỉ có thể cập nhật khi đề tài đang thực hiện">
+                                    <i class="fas fa-ban mr-1"></i> Cập nhật tiến độ
+                                </button>
+                                <small class="text-muted d-block mt-1">
+                                    <i class="fas fa-info-circle mr-1"></i> Chỉ có thể cập nhật khi đề tài đang ở trạng thái "Đang thực hiện"
+                                    <br>Trạng thái hiện tại: <strong><?php echo htmlspecialchars($project['DT_TRANGTHAI']); ?></strong>
+                                </small>
                             <?php endif; ?>
                             
                             <button class="btn btn-sm btn-outline-primary no-print" id="printProjectBtn">
@@ -1829,7 +1837,7 @@ if ($decision) {
                                     </div>
                                 <?php endif; ?>
 
-                                <?php if ($has_access && $user_role === 'Chủ nhiệm'): ?>
+                                <?php if ($has_access && $user_role === 'Chủ nhiệm' && $project['DT_TRANGTHAI'] === 'Đang thực hiện'): ?>
                                     <div class="proposal-update-form">
                                         <h6 class="mb-3 text-center">
                                             <i class="fas fa-upload mr-2"></i>Cập nhật file thuyết minh
@@ -1879,6 +1887,12 @@ if ($decision) {
                                         <strong>Quyền hạn bị hạn chế:</strong> Chỉ chủ nhiệm đề tài mới có thể cập nhật file thuyết minh.
                                         <br><small class="text-muted">Vai trò của bạn: <strong><?php echo htmlspecialchars($user_role); ?></strong></small>
                                     </div>
+                                <?php elseif ($has_access && $project['DT_TRANGTHAI'] !== 'Đang thực hiện'): ?>
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle mr-2"></i> 
+                                        <strong>Không thể cập nhật:</strong> Chỉ có thể cập nhật file khi đề tài đang trong trạng thái "Đang thực hiện".
+                                        <br><small class="text-muted">Trạng thái hiện tại: <strong><?php echo htmlspecialchars($project['DT_TRANGTHAI']); ?></strong></small>
+                                    </div>
                                 <?php endif; ?>
                             </div>
 
@@ -1923,7 +1937,7 @@ if ($decision) {
                                     </div>
                                 <?php endif; ?>
 
-                                <?php if ($has_access && $user_role === 'Chủ nhiệm'): ?>
+                                <?php if ($has_access && $user_role === 'Chủ nhiệm' && $project['DT_TRANGTHAI'] === 'Đang thực hiện'): ?>
                                     <div class="contract-update-form">
                                         <h6 class="mb-3 text-center">
                                             <i class="fas fa-file-signature mr-2"></i>
@@ -2048,6 +2062,12 @@ if ($decision) {
                                         <strong>Quyền hạn bị hạn chế:</strong> Chỉ chủ nhiệm đề tài mới có thể cập nhật thông tin hợp đồng.
                                         <br><small class="text-muted">Vai trò của bạn: <strong><?php echo htmlspecialchars($user_role); ?></strong></small>
                                     </div>
+                                <?php elseif ($has_access && $project['DT_TRANGTHAI'] !== 'Đang thực hiện'): ?>
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle mr-2"></i> 
+                                        <strong>Không thể cập nhật:</strong> Chỉ có thể cập nhật hợp đồng khi đề tài đang trong trạng thái "Đang thực hiện".
+                                        <br><small class="text-muted">Trạng thái hiện tại: <strong><?php echo htmlspecialchars($project['DT_TRANGTHAI']); ?></strong></small>
+                                    </div>
                                 <?php endif; ?>
                             </div>
 
@@ -2082,7 +2102,7 @@ if ($decision) {
                                     </div>
                                 <?php endif; ?>
 
-                                <?php if ($has_access && $user_role === 'Chủ nhiệm'): ?>
+                                <?php if ($has_access && $user_role === 'Chủ nhiệm' && $project['DT_TRANGTHAI'] === 'Đang thực hiện'): ?>
                                     <div class="decision-update-form">
                                         <h6 class="mb-3 text-center">
                                             <i class="fas fa-gavel mr-2"></i>
@@ -2176,6 +2196,12 @@ if ($decision) {
                                         <strong>Quyền hạn bị hạn chế:</strong> Chỉ chủ nhiệm đề tài mới có thể cập nhật thông tin quyết định nghiệm thu.
                                         <br><small class="text-muted">Vai trò của bạn: <strong><?php echo htmlspecialchars($user_role); ?></strong></small>
                                     </div>
+                                <?php elseif ($has_access && $project['DT_TRANGTHAI'] !== 'Đang thực hiện'): ?>
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle mr-2"></i> 
+                                        <strong>Không thể cập nhật:</strong> Chỉ có thể cập nhật quyết định khi đề tài đang trong trạng thái "Đang thực hiện".
+                                        <br><small class="text-muted">Trạng thái hiện tại: <strong><?php echo htmlspecialchars($project['DT_TRANGTHAI']); ?></strong></small>
+                                    </div>
                                 <?php endif; ?>
                             </div>
 
@@ -2214,7 +2240,7 @@ if ($decision) {
                                     </div>
                                 <?php endif; ?>
 
-                                <?php if ($has_access && $user_role === 'Chủ nhiệm' && $decision): ?>
+                                <?php if ($has_access && $user_role === 'Chủ nhiệm' && $project['DT_TRANGTHAI'] === 'Đang thực hiện' && $decision): ?>
                                     <div class="report-update-form">
                                         <h6 class="mb-3 text-center">
                                             <i class="fas fa-file-invoice mr-2"></i>
@@ -2446,7 +2472,7 @@ if ($decision) {
                                                                         class="btn btn-sm btn-outline-success" download title="Tải xuống">
                                                                         <i class="fas fa-download"></i> Tải
                                                                     </a>
-                                                                    <?php if ($user_role === 'Chủ nhiệm'): ?>
+                                                                    <?php if ($user_role === 'Chủ nhiệm' && $project['DT_TRANGTHAI'] === 'Đang thực hiện'): ?>
                                                                         <button type="button" class="btn btn-sm btn-outline-danger delete-evaluation-file" 
                                                                             data-file-id="<?php echo htmlspecialchars($file['FDG_MA']); ?>"
                                                                             data-file-name="<?php echo htmlspecialchars($file['FDG_TEN']); ?>"
@@ -2467,7 +2493,7 @@ if ($decision) {
                                         <?php endforeach; ?>
                                     </div>
 
-                                    <?php if ($user_role === 'Chủ nhiệm'): ?>
+                                    <?php if ($user_role === 'Chủ nhiệm' && $project['DT_TRANGTHAI'] === 'Đang thực hiện'): ?>
                                         <hr>
                                         <div class="upload-section">
                                             <h6 class="mb-3"><i class="fas fa-upload mr-2"></i>Thêm file đánh giá mới</h6>
@@ -2510,7 +2536,7 @@ if ($decision) {
                                         </div>
                                     <?php endif; ?>
 
-                                <?php elseif ($decision && $user_role === 'Chủ nhiệm'): ?>
+                                <?php elseif ($decision && $user_role === 'Chủ nhiệm' && $project['DT_TRANGTHAI'] === 'Đang thực hiện'): ?>
                                     <div class="alert alert-info">
                                         <i class="fas fa-info-circle mr-2"></i> Chưa có file đánh giá. Bạn có thể tải lên file đánh giá mới.
                                     </div>
@@ -2568,6 +2594,13 @@ if ($decision) {
                                                 <div class="mt-2">
                                                     <small class="text-muted">
                                                         <i class="fas fa-info-circle"></i> Chỉ chủ nhiệm đề tài mới có thể tải lên file đánh giá.
+                                                    </small>
+                                                </div>
+                                            <?php elseif ($project['DT_TRANGTHAI'] !== 'Đang thực hiện'): ?>
+                                                <div class="mt-2">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-info-circle"></i> Chỉ có thể tải file khi đề tài đang trong trạng thái "Đang thực hiện".
+                                                        <br>Trạng thái hiện tại: <strong><?php echo htmlspecialchars($project['DT_TRANGTHAI']); ?></strong>
                                                     </small>
                                                 </div>
                                             <?php endif; ?>

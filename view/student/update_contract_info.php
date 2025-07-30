@@ -58,6 +58,26 @@ if ($user_role !== 'Chủ nhiệm') {
     exit();
 }
 
+// Kiểm tra trạng thái đề tài
+$check_status_sql = "SELECT DT_TRANGTHAI FROM de_tai_nghien_cuu WHERE DT_MADT = ?";
+$stmt = $conn->prepare($check_status_sql);
+$stmt->bind_param("s", $project_id);
+$stmt->execute();
+$status_result = $stmt->get_result();
+
+if ($status_result->num_rows === 0) {
+    $_SESSION['error_message'] = "Không tìm thấy đề tài.";
+    header("Location: view_project.php?id=" . urlencode($project_id));
+    exit();
+}
+
+$project_status = $status_result->fetch_assoc()['DT_TRANGTHAI'];
+if ($project_status !== 'Đang thực hiện') {
+    $_SESSION['error_message'] = "Chỉ có thể cập nhật thông tin khi đề tài đang trong trạng thái 'Đang thực hiện'. Trạng thái hiện tại: " . $project_status;
+    header("Location: view_project.php?id=" . urlencode($project_id));
+    exit();
+}
+
 // Debug POST data
 error_log("Update contract info - Project ID: " . $project_id);
 error_log("Update contract info - Contract Code: " . $contract_code);
