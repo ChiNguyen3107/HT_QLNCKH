@@ -63,8 +63,8 @@ if ($status_result->num_rows === 0) {
 }
 
 $project_status = $status_result->fetch_assoc()['DT_TRANGTHAI'];
-if ($project_status !== 'Đang thực hiện') {
-    $_SESSION['error_message'] = "Chỉ có thể tải file khi đề tài đang trong trạng thái 'Đang thực hiện'. Trạng thái hiện tại: " . $project_status;
+if ($project_status !== 'Đang thực hiện' && $project_status !== 'Đã hoàn thành') {
+    $_SESSION['error_message'] = "Chỉ có thể tải file đánh giá khi đề tài đang trong trạng thái 'Đang thực hiện' hoặc 'Đã hoàn thành'. Trạng thái hiện tại: " . $project_status;
     header('Location: view_project.php?id=' . urlencode($project_id));
     exit;
 }

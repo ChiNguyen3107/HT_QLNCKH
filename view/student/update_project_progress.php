@@ -21,7 +21,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $project_id = isset($_POST['project_id']) ? trim($_POST['project_id']) : '';
 $progress_title = isset($_POST['progress_title']) ? trim($_POST['progress_title']) : '';
 $progress_content = isset($_POST['progress_content']) ? trim($_POST['progress_content']) : '';
-$progress_completion = isset($_POST['progress_completion']) ? intval($_POST['progress_completion']) : 0;
 $student_id = $_SESSION['user_id'];
 
 // Kiểm tra dữ liệu đầu vào
@@ -126,10 +125,9 @@ $insert_sql = "INSERT INTO tien_do_de_tai (
                    SV_MASV,
                    TDDT_TIEUDE,
                    TDDT_NOIDUNG,
-                   TDDT_PHANTRAMHOANTHANH,
                    TDDT_FILE,
                    TDDT_NGAYCAPNHAT
-               ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+               ) VALUES (?, ?, ?, ?, ?, ?, NOW())";
 
 $stmt = $conn->prepare($insert_sql);
 if ($stmt === false) {
@@ -138,25 +136,16 @@ if ($stmt === false) {
     exit;
 }
 
-$stmt->bind_param("sssssds", 
+$stmt->bind_param("ssssss", 
     $progress_id,
     $project_id,
     $student_id,
     $progress_title,
     $progress_content,
-    $progress_completion,
     $uploaded_file
 );
 
 if ($stmt->execute()) {
-    // Tự động cập nhật trạng thái đề tài thành "Đã hoàn thành" nếu tiến độ là 100%
-    if ($progress_completion == 100) {
-        $update_status_sql = "UPDATE de_tai_nghien_cuu SET DT_TRANGTHAI = 'Đã hoàn thành' WHERE DT_MADT = ?";
-        $stmt = $conn->prepare($update_status_sql);
-        $stmt->bind_param("s", $project_id);
-        $stmt->execute();
-    }
-    
     $_SESSION['success_message'] = "Cập nhật tiến độ thành công!";
 } else {
     $_SESSION['error_message'] = "Lỗi khi cập nhật tiến độ: " . $stmt->error;

@@ -35,6 +35,18 @@ $decision_content = trim($_POST['decision_content'] ?? '');
 $update_reason = trim($_POST['update_reason'] ?? '');
 $user_id = $_SESSION['user_id'];
 
+// Debug - thêm log chi tiết cho việc validation
+error_log("===== DECISION UPDATE DEBUG =====");
+error_log("Raw POST data: " . print_r($_POST, true));
+error_log("Raw FILES data: " . print_r($_FILES, true));
+error_log("Processed values:");
+error_log("- project_id: '$project_id'");
+error_log("- decision_id: '$decision_id'");
+error_log("- decision_number: '$decision_number'");
+error_log("- decision_date: '$decision_date'");
+error_log("- update_reason: '$update_reason'");
+error_log("- user_id: '$user_id'");
+
 // Kiểm tra quyền chủ nhiệm trước khi xử lý
 $check_role_sql = "SELECT CTTG_VAITRO FROM chi_tiet_tham_gia WHERE DT_MADT = ? AND SV_MASV = ?";
 $stmt = $conn->prepare($check_role_sql);
@@ -82,9 +94,22 @@ error_log("Update decision info - Update reason: " . $update_reason);
 error_log("Update decision info - Files: " . print_r($_FILES, true));
 
 // Kiểm tra dữ liệu đầu vào
+error_log("Validation check:");
+error_log("- project_id empty: " . (empty($project_id) ? 'YES' : 'NO'));
+error_log("- decision_number empty: " . (empty($decision_number) ? 'YES' : 'NO'));
+error_log("- decision_date empty: " . (empty($decision_date) ? 'YES' : 'NO'));
+error_log("- update_reason empty: " . (empty($update_reason) ? 'YES' : 'NO'));
+
 if (empty($project_id) || empty($decision_number) || empty($decision_date) || empty($update_reason)) {
-    $_SESSION['error_message'] = "Vui lòng điền đầy đủ thông tin bắt buộc.";
-    header("Location: view_project.php?id=" . urlencode($project_id));
+    $missing_fields = [];
+    if (empty($project_id)) $missing_fields[] = 'project_id';
+    if (empty($decision_number)) $missing_fields[] = 'decision_number';
+    if (empty($decision_date)) $missing_fields[] = 'decision_date';
+    if (empty($update_reason)) $missing_fields[] = 'update_reason';
+    
+    error_log("Missing fields: " . implode(', ', $missing_fields));
+    $_SESSION['error_message'] = "Vui lòng điền đầy đủ thông tin bắt buộc. Thiếu: " . implode(', ', $missing_fields);
+    header("Location: view_project.php?id=" . urlencode($project_id ?: 'unknown'));
     exit();
 }
 
@@ -222,8 +247,8 @@ try {
         }
 
         // Tạo quyết định mới trước
-        $insert_decision_sql = "INSERT INTO quyet_dinh_nghiem_thu (QD_SO, QD_NGAY, QD_FILE, BB_SOBB) 
-                               VALUES (?, ?, ?, ?)";
+        $insert_decision_sql = "INSERT INTO quyet_dinh_nghiem_thu (QD_SO, QD_NGAY, QD_FILE) 
+                               VALUES (?, ?, ?)";
         
         $stmt = $conn->prepare($insert_decision_sql);
         if (!$stmt) {
@@ -231,44 +256,75 @@ try {
             throw new Exception("Lỗi chuẩn bị truy vấn tạo quyết định.");
         }
         
-        // Tạo mã biên bản tự động
-        $report_code = "BB" . substr($decision_number, 2); // BB021 từ QD021
-        
-        $stmt->bind_param("ssss", $decision_number, $decision_date, $new_filename, $report_code);
+        $stmt->bind_param("sss", $decision_number, $decision_date, $new_filename);
         
         if (!$stmt->execute()) {
             error_log("Failed to execute decision insert statement: " . $stmt->error);
             throw new Exception("Không thể tạo quyết định nghiệm thu.");
         }
 
-        // Tạo biên bản nghiệm thu sau (với thông tin mặc định)
-        $insert_report_sql = "INSERT INTO bien_ban (BB_SOBB, QD_SO, BB_NGAYNGHIEMTHU, BB_XEPLOAI) 
-                             VALUES (?, ?, ?, ?)";
-        
-        $stmt = $conn->prepare($insert_report_sql);
-        if (!$stmt) {
-            error_log("Failed to prepare report insert statement: " . $conn->error);
-            throw new Exception("Lỗi chuẩn bị truy vấn tạo biên bản.");
-        }
-        
-        // Sử dụng ngày quyết định và xếp loại mặc định
-        $default_acceptance_date = $decision_date;
-        $default_grade = "Chưa nghiệm thu";
-        
-        $stmt->bind_param("ssss", $report_code, $decision_number, $default_acceptance_date, $default_grade);
-        
-        if (!$stmt->execute()) {
-            error_log("Failed to execute report insert statement: " . $stmt->error);
-            throw new Exception("Không thể tạo biên bản nghiệm thu.");
-        }
-        
-        // Cập nhật đề tài với số quyết định
+        // Cập nhật đề tài với số quyết định ngay sau khi tạo
         $update_project_sql = "UPDATE de_tai_nghien_cuu SET QD_SO = ? WHERE DT_MADT = ?";
         $stmt = $conn->prepare($update_project_sql);
         $stmt->bind_param("ss", $decision_number, $project_id);
         if (!$stmt->execute()) {
             error_log("Failed to update project with decision: " . $stmt->error);
             throw new Exception("Không thể liên kết quyết định với đề tài.");
+        }
+
+        // Tạo biên bản nghiệm thu sau (với thông tin mặc định)
+        $report_code = "BB" . substr($decision_number, 2); // BB021 từ QD021
+        error_log("Creating report with code: $report_code");
+        error_log("Decision number: $decision_number");
+        error_log("Decision date: $decision_date");
+        
+        // Kiểm tra mã biên bản đã tồn tại chưa
+        $check_report_sql = "SELECT BB_SOBB FROM bien_ban WHERE BB_SOBB = ?";
+        $stmt = $conn->prepare($check_report_sql);
+        $stmt->bind_param("s", $report_code);
+        $stmt->execute();
+        if ($stmt->get_result()->num_rows > 0) {
+            // Nếu trùng, tạo mã mới với timestamp
+            $report_code = "BB" . substr($decision_number, 2) . "_" . time();
+            error_log("Report code exists, using alternative: $report_code");
+        }
+        
+        $insert_report_sql = "INSERT INTO bien_ban (BB_SOBB, QD_SO, BB_NGAYNGHIEMTHU, BB_XEPLOAI) 
+                             VALUES (?, ?, ?, ?)";
+        
+        $stmt = $conn->prepare($insert_report_sql);
+        if (!$stmt) {
+            error_log("Failed to prepare report insert statement: " . $conn->error);
+            error_log("SQL: $insert_report_sql");
+            throw new Exception("Lỗi chuẩn bị truy vấn tạo biên bản: " . $conn->error);
+        }
+        
+        // Sử dụng ngày quyết định và xếp loại mặc định
+        $default_acceptance_date = $decision_date;
+        $default_grade = "Chưa nghiệm thu";
+        
+        error_log("Report parameters:");
+        error_log("- BB_SOBB: $report_code");
+        error_log("- QD_SO: $decision_number");
+        error_log("- BB_NGAYNGHIEMTHU: $default_acceptance_date");
+        error_log("- BB_XEPLOAI: $default_grade");
+        
+        $stmt->bind_param("ssss", $report_code, $decision_number, $default_acceptance_date, $default_grade);
+        
+        if (!$stmt->execute()) {
+            error_log("Failed to execute report insert statement: " . $stmt->error);
+            error_log("MySQL errno: " . $conn->errno);
+            error_log("MySQL error: " . $conn->error);
+            throw new Exception("Không thể tạo biên bản nghiệm thu: " . $stmt->error);
+        }
+        
+        // Cập nhật lại quyết định với số biên bản
+        $update_decision_with_report_sql = "UPDATE quyet_dinh_nghiem_thu SET BB_SOBB = ? WHERE QD_SO = ?";
+        $stmt = $conn->prepare($update_decision_with_report_sql);
+        $stmt->bind_param("ss", $report_code, $decision_number);
+        if (!$stmt->execute()) {
+            error_log("Failed to update decision with report ID: " . $stmt->error);
+            throw new Exception("Không thể liên kết biên bản với quyết định.");
         }
         
         error_log("Decision and report created successfully");

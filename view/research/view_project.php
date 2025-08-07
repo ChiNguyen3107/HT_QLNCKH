@@ -95,18 +95,51 @@ $page_title = "Chi tiết đề tài: " . $project['DT_TENDT'];
 
 // Define additional CSS for this page
 $additional_css = '<style>
-    /* Layout positioning */
+    /* Layout positioning - Fixed to match 250px sidebar */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    #wrapper {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+    }
+    
     #content-wrapper {
-        margin-left: 280px !important;
-        width: calc(100% - 280px) !important;
-        padding-left: 15px !important;
-        padding-right: 15px !important;
+        margin-left: 250px !important;
+        width: calc(100% - 250px) !important;
+        padding: 0 !important;
+        flex: 1 !important;
+    }
+    
+    #content {
+        margin: 0 !important;
+        padding: 0 !important;
     }
     
     .container-fluid {
-        padding-left: 15px !important;
-        padding-right: 15px !important;
-        max-width: none !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        margin: 0 !important;
+    }
+    
+    /* Override any conflicting styles */
+    .modern-research-sidebar,
+    .simple-sidebar {
+        width: 250px !important;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+    }
+    
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+        #content-wrapper {
+            margin-left: 0 !important;
+            width: 100% !important;
+        }
     }
     
     /* Timeline styling */

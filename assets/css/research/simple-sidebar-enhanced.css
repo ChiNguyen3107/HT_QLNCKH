@@ -1,0 +1,193 @@
+/* Simple Sidebar Additional Styles */
+/* filepath: d:\xampp\htdocs\NLNganh\assets\css\research\simple-sidebar-enhanced.css */
+
+/* Enhanced animations and effects */
+.simple-sidebar .nav-link {
+    position: relative;
+    overflow: hidden;
+}
+
+.simple-sidebar .nav-link::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: #3498db;
+    transform: scaleY(0);
+    transition: transform 0.3s ease;
+}
+
+.simple-sidebar .nav-link.active::before,
+.simple-sidebar .nav-link:hover::before {
+    transform: scaleY(1);
+}
+
+/* Icon animations */
+.simple-sidebar .nav-icon {
+    transition: all 0.3s ease;
+}
+
+.simple-sidebar .nav-link:hover .nav-icon {
+    transform: scale(1.1);
+    color: #3498db;
+}
+
+.simple-sidebar .nav-link.active .nav-icon {
+    color: #fff;
+}
+
+/* Badge pulse animation */
+.nav-badge {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Enhanced user section */
+.sidebar-user {
+    position: relative;
+}
+
+.sidebar-user::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 20px;
+    right: 20px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #3d556b, transparent);
+}
+
+/* Smooth scrollbar */
+.sidebar-nav {
+    scrollbar-width: thin;
+    scrollbar-color: #576574 transparent;
+}
+
+/* Section title enhancement */
+.nav-section-title {
+    position: relative;
+    padding-left: 25px;
+}
+
+.nav-section-title::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 15px;
+    height: 1px;
+    background: #95a5a6;
+}
+
+/* Hover effect for section */
+.nav-section:hover .nav-section-title {
+    color: #bdc3c7;
+}
+
+/* Mobile improvements */
+@media (max-width: 768px) {
+    .simple-sidebar {
+        box-shadow: 0 0 50px rgba(0,0,0,0.5);
+    }
+    
+    .simple-sidebar.show {
+        animation: slideInLeft 0.3s ease-out;
+    }
+    
+    @keyframes slideInLeft {
+        from {
+            transform: translateX(-100%);
+        }
+        to {
+            transform: translateX(0);
+        }
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .simple-sidebar {
+        background: #1a202c;
+        color: #e2e8f0;
+    }
+    
+    .sidebar-header,
+    .sidebar-user {
+        background: #2d3748;
+        border-color: #4a5568;
+    }
+    
+    .nav-section-title {
+        color: #a0aec0;
+    }
+    
+    .nav-link {
+        color: #cbd5e0;
+    }
+    
+    .nav-link:hover {
+        background: #2d3748;
+        color: #e2e8f0;
+    }
+}
+
+/* Loading states */
+.sidebar-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.sidebar-loading .nav-link {
+    animation: loading-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 0.8; }
+}
+
+/* Focus accessibility */
+.nav-link:focus {
+    outline: 2px solid #3498db;
+    outline-offset: 2px;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .simple-sidebar {
+        background: #000;
+        color: #fff;
+        border-right: 3px solid #fff;
+    }
+    
+    .nav-link {
+        border: 1px solid transparent;
+    }
+    
+    .nav-link:hover,
+    .nav-link.active {
+        border-color: #fff;
+        background: #333;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .simple-sidebar,
+    .nav-link,
+    .nav-icon {
+        transition: none;
+    }
+    
+    .nav-badge {
+        animation: none;
+    }
+}

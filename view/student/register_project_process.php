@@ -54,24 +54,6 @@ function generateProjectID($conn)
     return 'DT' . str_pad($next_id, 7, '0', STR_PAD_LEFT);
 }
 
-// Hàm tạo mã QD_SO mới
-function generateDecisionID($conn)
-{
-    // Lấy mã quyết định cao nhất hiện tại
-    $query = "SELECT MAX(SUBSTRING(QD_SO, 3)) AS max_id FROM quyet_dinh_nghiem_thu";
-    $result = $conn->query($query);
-
-    if ($result && $result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        $next_id = intval($row['max_id']) + 1;
-    } else {
-        $next_id = 1;
-    }
-
-    // Format: QD001, QD002, ...
-    return 'QD' . str_pad($next_id, 3, '0', STR_PAD_LEFT);
-}
-
 try {
     // Bắt đầu transaction để đảm bảo tính toàn vẹn dữ liệu
     $conn->begin_transaction();
@@ -161,82 +143,32 @@ try {
     $project_id = generateProjectID($conn);
 
     // 1. Kiểm tra ràng buộc khóa ngoại và cấu trúc bảng
-    $check_columns = $conn->query("SHOW COLUMNS FROM de_tai_nghien_cuu WHERE Field = 'QD_SO'");
-    $qd_so_nullable = false;
-    if ($check_columns && $check_columns->num_rows > 0) {
-        $col_info = $check_columns->fetch_assoc();
-        if ($col_info['Null'] === 'YES') {
-            $qd_so_nullable = true;
-        }
+    // Khi đăng ký đề tài mới, không cần tạo quyết định nghiệm thu
+    // Quyết định sẽ được tạo sau khi đề tài được duyệt và cần nghiệm thu
+    $decision_id = null; // Luôn để NULL cho đề tài mới
+
+    // 2. Thêm đề tài nghiên cứu (không cần QD_SO cho đề tài mới)
+    $project_query = "INSERT INTO de_tai_nghien_cuu 
+                     (DT_MADT, LDT_MA, GV_MAGV, LVNC_MA, LVUT_MA, DT_TENDT, DT_MOTA, DT_TRANGTHAI, DT_FILEBTM, QD_SO, DT_NGAYTAO, DT_SLSV, HD_MA) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 'Chờ duyệt', ?, NULL, NOW(), ?, 'HD001')";
+    $project_stmt = $conn->prepare($project_query);
+
+    if ($project_stmt === false) {
+        throw new Exception("Lỗi khi chuẩn bị câu lệnh thêm đề tài: " . $conn->error);
     }
 
-    // 2. Tạo quyết định nghiệm thu tạm thời nếu cần
-    $decision_id = null;
-    if (!$qd_so_nullable) {
-        $decision_id = generateDecisionID($conn);
-
-        // Thêm quyết định nghiệm thu tạm thời
-        $qd_query = "INSERT INTO quyet_dinh_nghiem_thu (QD_SO, QD_NGAY, QD_FILE) 
-                     VALUES (?, ?, 'pending.pdf')";
-        $qd_stmt = $conn->prepare($qd_query);
-        if ($qd_stmt === false) {
-            throw new Exception("Lỗi khi chuẩn bị câu lệnh thêm quyết định: " . $conn->error);
-        }
-
-        $qd_stmt->bind_param("ss", $decision_id, $current_date_only);
-
-        if (!$qd_stmt->execute()) {
-            throw new Exception("Lỗi khi thêm quyết định tạm thời: " . $qd_stmt->error);
-        }
-    }
-
-    // 3. Thêm đề tài nghiên cứu
-    if ($qd_so_nullable) {
-        // Không cần QD_SO nếu cho phép NULL
-        $project_query = "INSERT INTO de_tai_nghien_cuu 
-                         (DT_MADT, LDT_MA, GV_MAGV, LVNC_MA, LVUT_MA, DT_TENDT, DT_MOTA, DT_TRANGTHAI, DT_FILEBTM) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?, 'Chờ duyệt', ?)";
-        $project_stmt = $conn->prepare($project_query);
-
-        if ($project_stmt === false) {
-            throw new Exception("Lỗi khi chuẩn bị câu lệnh thêm đề tài: " . $conn->error);
-        }
-
-        $project_stmt->bind_param(
-            "ssssssss",
-            $project_id,
-            $project_category,
-            $advisor_id,
-            $research_field,
-            $priority_field,
-            $project_title,
-            $project_description,
-            $project_outline_path
-        );
-    } else {
-        // Cần QD_SO nếu không cho phép NULL
-        $project_query = "INSERT INTO de_tai_nghien_cuu 
-                         (DT_MADT, LDT_MA, GV_MAGV, LVNC_MA, LVUT_MA, QD_SO, DT_TENDT, DT_MOTA, DT_TRANGTHAI, DT_FILEBTM) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Chờ duyệt', ?)";
-        $project_stmt = $conn->prepare($project_query);
-
-        if ($project_stmt === false) {
-            throw new Exception("Lỗi khi chuẩn bị câu lệnh thêm đề tài: " . $conn->error);
-        }
-
-        $project_stmt->bind_param(
-            "sssssssss",
-            $project_id,
-            $project_category,
-            $advisor_id,
-            $research_field,
-            $priority_field,
-            $decision_id,
-            $project_title,
-            $project_description,
-            $project_outline_path
-        );
-    }
+    $project_stmt->bind_param(
+        "ssssssssi",
+        $project_id,
+        $project_category,
+        $advisor_id,
+        $research_field,
+        $priority_field,
+        $project_title,
+        $project_description,
+        $project_outline_path,
+        $member_count
+    );
 
     if (!$project_stmt->execute()) {
         throw new Exception("Lỗi khi thêm đề tài: " . $project_stmt->error);

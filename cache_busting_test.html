@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cache Busting Test</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; text-decoration: none; display: inline-block; margin: 5px; }
+        .btn:hover { background: #0056b3; }
+        .alert { padding: 15px; margin: 10px 0; border-radius: 4px; }
+        .alert-info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .alert-warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        .code { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🧹 Cache Busting & Test Guide</h1>
+    
+    <div class="alert alert-warning">
+        <strong>⚠️ Vấn đề hiện tại:</strong> Browser có thể đang cache version cũ của view_project.php với HTML bị corrupt.
+    </div>
+    
+    <h2>🔄 Các bước Clear Cache:</h2>
+    
+    <div class="alert alert-info">
+        <strong>1. Hard Refresh (Khuyến nghị):</strong>
+        <div class="code">
+            Ctrl + F5 (hoặc Ctrl + Shift + R)
+        </div>
+    </div>
+    
+    <div class="alert alert-info">
+        <strong>2. Clear Browser Cache hoàn toàn:</strong>
+        <div class="code">
+            Ctrl + Shift + Delete → Chọn "Cached images and files" → Clear
+        </div>
+    </div>
+    
+    <div class="alert alert-info">
+        <strong>3. Disable Cache trong DevTools:</strong>
+        <div class="code">
+            F12 → Network tab → ✅ "Disable cache"
+        </div>
+    </div>
+    
+    <h2>🧪 Test Links (với cache busting):</h2>
+    
+    <?php
+    $timestamp = time();
+    $baseUrl = "http://localhost/NLNganh/view/student/view_project.php";
+    ?>
+    
+    <a href="<?php echo $baseUrl; ?>?id=DT0000003&tab=report&v=<?php echo $timestamp; ?>" class="btn" target="_blank">
+        🔗 Test DT0000003 (Đang thực hiện) - Với cache busting
+    </a>
+    
+    <a href="<?php echo $baseUrl; ?>?id=DT0000002&tab=report&v=<?php echo $timestamp; ?>" class="btn" target="_blank">
+        🔗 Test DT0000002 (Đã hoàn thành) - Với cache busting
+    </a>
+    
+    <h2>📝 Debugging Steps:</h2>
+    
+    <div class="alert alert-info">
+        <strong>A. Kiểm tra Console Errors:</strong>
+        <ol>
+            <li>Mở project page → F12 → Console tab</li>
+            <li>Tìm các lỗi màu đỏ</li>
+            <li>Kiểm tra có lỗi "Uncaught SyntaxError" hoặc "Unexpected token" không</li>
+        </ol>
+    </div>
+    
+    <div class="alert alert-info">
+        <strong>B. Kiểm tra HTML Source:</strong>
+        <ol>
+            <li>Right-click → "View Page Source"</li>
+            <li>Ctrl+F tìm "council_members"</li>
+            <li>Xem input hidden có còn chứa newlines không</li>
+        </ol>
+    </div>
+    
+    <div class="alert alert-info">
+        <strong>C. Kiểm tra Network Tab:</strong>
+        <ol>
+            <li>F12 → Network tab</li>
+            <li>Reload page</li>
+            <li>Kiểm tra các file JS/CSS có load thành công không (status 200)</li>
+        </ol>
+    </div>
+    
+    <h2>🔍 Test JavaScript Function:</h2>
+    
+    <div class="code">
+        // Paste vào Console để test tabs:
+        <br>$("#contract-tab").tab("show");
+        <br>console.log("Tab switched to contract");
+    </div>
+    
+    <h2>📋 Expected Result:</h2>
+    
+    <div class="alert alert-info">
+        <strong>✅ Nếu fix hoạt động:</strong>
+        <ul>
+            <li>Tabs chuyển đổi được bình thường</li>
+            <li>Không có lỗi trong Console</li>
+            <li>HTML source không chứa newlines trong input values</li>
+        </ul>
+    </div>
+    
+    <div class="alert alert-warning">
+        <strong>❌ Nếu vẫn lỗi:</strong>
+        <ul>
+            <li>Console hiển thị JavaScript errors</li>
+            <li>HTML source vẫn có newlines trong input values</li>
+            <li>Tabs không chuyển đổi được</li>
+        </ul>
+    </div>
+    
+    <script>
+        // Test basic JavaScript functionality
+        console.log("✅ Cache busting test page loaded successfully");
+        
+        // Check if jQuery is available (should not be in this page)
+        if (typeof $ === 'undefined') {
+            console.log("ℹ️ jQuery not loaded here (normal for this test page)");
+        }
+    </script>
+</body>
+</html>

@@ -23,7 +23,7 @@ body {
     background-color: #fff;
     overflow-x: hidden;
     flex: 1; /* Let flexbox handle the width */
-    margin-left: 260px;
+    margin-left: 250px; /* Match sidebar width */
 }
 
 #content {
@@ -37,7 +37,7 @@ body {
 
 /* Sidebar */
 .modern-sidebar {
-    width: 260px !important;
+    width: 250px !important; /* Match the simple sidebar width */
     min-height: 100vh;
     /* position: fixed; */ /* Removed */
     top: 0;

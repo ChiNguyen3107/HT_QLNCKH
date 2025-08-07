@@ -66,6 +66,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>    <!-- DataTable Helper -->
     <script src="/NLNganh/assets/js/research/datatable-helper.js"></script>
     
+    <!-- Simple Sidebar JavaScript -->
+    <script src="/NLNganh/assets/js/research/simple-sidebar.js"></script>
+    
     <!-- Modern Sidebar JavaScript -->
     <script src="/NLNganh/assets/js/research/research-sidebar-unified.js"></script>
     

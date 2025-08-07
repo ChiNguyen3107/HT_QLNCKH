@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Final Evaluation Test</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { background: #f5f5f5; padding: 15px; margin: 10px 0; border: 1px solid #ddd; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { background: #007cba; color: white; padding: 10px 15px; border: none; cursor: pointer; margin: 5px; }
+        pre { background: #eee; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Final Evaluation System Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Configuration</h2>
+        <p><strong>Student ID:</strong> B2110051 (real from database)</p>
+        <p><strong>Project ID:</strong> DT0000001 (real from database)</p>
+        <p><strong>Member ID:</strong> GV000002 (real from database)</p>
+        <p><strong>Decision ID:</strong> QDDT0 (real from database)</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Actions</h2>
+        <button onclick="testPermission()">1. Test Student Permission</button>
+        <button onclick="testMemberLookup()">2. Test Member Lookup</button>
+        <button onclick="testFullEvaluation()">3. Test Full Evaluation</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+    function addResult(title, content, type = 'info') {
+        const results = document.getElementById('results');
+        const div = document.createElement('div');
+        div.className = 'test-section';
+        div.innerHTML = `<h3 class="${type}">${title}</h3><pre>${content}</pre>`;
+        results.appendChild(div);
+    }
+
+    function clearResults() {
+        document.getElementById('results').innerHTML = '';
+    }
+
+    function testPermission() {
+        addResult('Testing Student Permission...', 'Checking if student B2110051 has access to project DT0000001', 'info');
+        
+        // This would be tested in the actual PHP script
+        fetch('view/student/debug_permission.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Student-ID': 'B2110051'
+            },
+            body: 'project_id=DT0000001'
+        })
+        .then(response => response.text())
+        .then(data => {
+            addResult('Permission Test Result', data, 'success');
+        })
+        .catch(error => {
+            addResult('Permission Test Error', error.toString(), 'error');
+        });
+    }
+
+    function testMemberLookup() {
+        addResult('Testing Member Lookup...', 'Looking up member GV000002 for project DT0000001', 'info');
+        
+        const testData = new FormData();
+        testData.append('action', 'test_member_lookup');
+        testData.append('member_id', 'GV000002');
+        testData.append('project_id', 'DT0000001');
+        
+        fetch('view/student/update_member_criteria_score.php', {
+            method: 'POST',
+            headers: {
+                'X-Student-ID': 'B2110051'
+            },
+            body: testData
+        })
+        .then(response => response.text())
+        .then(data => {
+            addResult('Member Lookup Result', data, data.includes('success') ? 'success' : 'error');
+        })
+        .catch(error => {
+            addResult('Member Lookup Error', error.toString(), 'error');
+        });
+    }
+
+    function testFullEvaluation() {
+        addResult('Testing Full Evaluation...', 'Submitting complete evaluation data', 'info');
+        
+        const formData = new FormData();
+        formData.append('project_id', 'DT0000001');
+        formData.append('member_id', 'GV000002');
+        formData.append('criteria_id[]', 'TC001');
+        formData.append('criteria_id[]', 'TC002');
+        formData.append('criteria_id[]', 'TC003');
+        formData.append('criteria_id[]', 'TC004');
+        formData.append('criteria_id[]', 'TC005');
+        formData.append('score[]', '8.5');
+        formData.append('score[]', '12.0');
+        formData.append('score[]', '13.5');
+        formData.append('score[]', '25.0');
+        formData.append('score[]', '12.5');
+        formData.append('criteria_comments[]', 'Good overview');
+        formData.append('criteria_comments[]', 'Clear objectives');
+        formData.append('criteria_comments[]', 'Sound methodology');
+        formData.append('criteria_comments[]', 'Excellent content');
+        formData.append('criteria_comments[]', 'Good contribution');
+        formData.append('overall_comment', 'This is a comprehensive evaluation with solid methodology and good results.');
+        formData.append('is_completed', '1');
+        
+        fetch('view/student/update_member_criteria_score.php', {
+            method: 'POST',
+            headers: {
+                'X-Student-ID': 'B2110051'
+            },
+            body: formData
+        })
+        .then(response => response.text())
+        .then(data => {
+            try {
+                const jsonData = JSON.parse(data);
+                addResult('Full Evaluation Result', JSON.stringify(jsonData, null, 2), jsonData.success ? 'success' : 'error');
+            } catch (e) {
+                addResult('Full Evaluation Result (Raw)', data, data.includes('success') ? 'success' : 'error');
+            }
+        })
+        .catch(error => {
+            addResult('Full Evaluation Error', error.toString(), 'error');
+        });
+    }
+    </script>
+</body>
+</html>

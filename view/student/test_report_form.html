@@ -1,0 +1,94 @@
+<?php
+// Test script gửi dữ liệu tới update_report_basic_simple.php
+?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Report Update</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        td, th { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        input, select { width: 200px; padding: 5px; }
+        .btn { background: #007cba; color: white; padding: 10px 20px; border: none; cursor: pointer; }
+        .btn:hover { background: #005a87; }
+    </style>
+</head>
+<body>
+    <h2>Test Cập Nhật Biên Bản Nghiệm Thu</h2>
+    
+    <form method="POST" action="update_report_basic_simple.php">
+        <table>
+            <tr>
+                <td><strong>Project ID:</strong></td>
+                <td><input type="text" name="project_id" value="DT001" required /></td>
+            </tr>
+            <tr>
+                <td><strong>Decision ID:</strong></td>
+                <td>
+                    <select name="decision_id" required>
+                        <option value="">-- Chọn quyết định --</option>
+                        <option value="123ab">123ab</option>
+                        <option value="QDDT0">QDDT0</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Report ID:</strong></td>
+                <td>
+                    <input type="text" name="report_id" value="" placeholder="Để trống nếu tạo mới" />
+                    <br><small>Để trống để tạo mới, hoặc nhập BB_SOBB có sẵn</small>
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Acceptance Date:</strong></td>
+                <td><input type="date" name="acceptance_date" value="2024-12-15" required /></td>
+            </tr>
+            <tr>
+                <td><strong>Evaluation Grade:</strong></td>
+                <td>
+                    <select name="evaluation_grade" required>
+                        <option value="">-- Chọn xếp loại --</option>
+                        <option value="Xuất sắc">Xuất sắc</option>
+                        <option value="Tốt">Tốt</option>
+                        <option value="Khá">Khá</option>
+                        <option value="Trung bình">Trung bình</option>
+                        <option value="Yếu">Yếu</option>
+                        <option value="Chưa nghiệm thu">Chưa nghiệm thu</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Total Score:</strong></td>
+                <td>
+                    <input type="number" name="total_score" value="90.5" step="0.1" min="0" max="100" />
+                    <br><small>Điểm từ 0-100, để trống sẽ tính tự động</small>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="text-align: center;">
+                    <input type="submit" value="Cập Nhật Biên Bản" class="btn" />
+                </td>
+            </tr>
+        </table>
+    </form>
+    
+    <h3>Hướng dẫn test:</h3>
+    <ol>
+        <li><strong>Test Update:</strong> Chọn Decision ID = "123ab", Report ID = "BB3abc"</li>
+        <li><strong>Test Insert:</strong> Chọn Decision ID = "QDDT0", để trống Report ID</li>
+        <li>Điều chỉnh các thông tin khác theo ý muốn</li>
+        <li>Nhấn "Cập Nhật Biên Bản" để xem kết quả</li>
+    </ol>
+    
+    <h3>Dữ liệu có sẵn:</h3>
+    <ul>
+        <li>Decision "123ab" có biên bản "BB3abc" (có thể update)</li>
+        <li>Decision "QDDT0" có biên bản "BBDT000000" (có thể update)</li>
+        <li>Có thể tạo biên bản mới bằng cách để trống Report ID</li>
+    </ul>
+    
+    <p><a href="debug_form_data.php">Debug Form Data</a> | 
+       <a href="../../check_report_table_structure.php">Check Database Structure</a></p>
+</body>
+</html>

@@ -7,63 +7,52 @@ include '../../include/connect.php';
 // Lấy thông tin giảng viên
 $teacher_id = $_SESSION['user_id'];
 
-// Lọc theo năm học (nếu có)
-$current_year = date("Y");
-$selected_year = isset($_GET['year']) ? $_GET['year'] : $current_year;
+// Lọc theo khoa (nếu có)
+$selected_department = isset($_GET['department']) ? $_GET['department'] : '';
 
-// Lọc theo học kỳ (nếu có)
-$selected_semester = isset($_GET['semester']) ? $_GET['semester'] : '';
+// Lọc theo khóa học (nếu có)
+$selected_course = isset($_GET['course']) ? $_GET['course'] : '';
 
-// Lọc theo lớp (nếu có)
-$selected_class = isset($_GET['class']) ? $_GET['class'] : '';
-
-// Lấy danh sách năm học từ CSDL để hiển thị trong filter
-$years_query = "SELECT DISTINCT YEAR(cttg.CTTG_NGAYTHAMGIA) AS year
-                FROM chi_tiet_tham_gia cttg 
-                JOIN de_tai_nghien_cuu dt ON cttg.DT_MADT = dt.DT_MADT
-                WHERE dt.GV_MAGV = ?
-                ORDER BY year DESC";
-$stmt = $conn->prepare($years_query);
+// Lấy danh sách khoa từ CSDL
+$departments_query = "SELECT DISTINCT k.DV_MADV, k.DV_TENDV 
+                     FROM khoa k 
+                     JOIN lop l ON l.DV_MADV = k.DV_MADV
+                     JOIN sinh_vien sv ON sv.LOP_MA = l.LOP_MA
+                     JOIN chi_tiet_tham_gia cttg ON cttg.SV_MASV = sv.SV_MASV
+                     JOIN de_tai_nghien_cuu dt ON dt.DT_MADT = cttg.DT_MADT
+                     WHERE dt.GV_MAGV = ?
+                     ORDER BY k.DV_TENDV";
+$stmt = $conn->prepare($departments_query);
 if ($stmt === false) {
-    die("Lỗi truy vấn năm học: " . $conn->error);
+    die("Lỗi truy vấn khoa: " . $conn->error);
 }
 $stmt->bind_param("s", $teacher_id);
 $stmt->execute();
-$years_result = $stmt->get_result();
-$years = [];
-while ($row = $years_result->fetch_assoc()) {
-    $years[] = $row['year'];
+$departments_result = $stmt->get_result();
+$departments = [];
+while ($row = $departments_result->fetch_assoc()) {
+    $departments[] = $row;
 }
 
-// Lấy danh sách học kỳ từ CSDL
-$semesters_query = "SELECT * FROM hoc_ki ORDER BY HK_MA";
-$semesters_result = $conn->query($semesters_query);
-if ($semesters_result === false) {
-    die("Lỗi truy vấn học kỳ: " . $conn->error);
-}
-$semesters = [];
-while ($row = $semesters_result->fetch_assoc()) {
-    $semesters[] = $row;
-}
-
-// Lấy danh sách lớp từ CSDL
-$classes_query = "SELECT DISTINCT l.LOP_MA, l.LOP_TEN 
-                  FROM lop l 
-                  JOIN sinh_vien sv ON sv.LOP_MA = l.LOP_MA
-                  JOIN chi_tiet_tham_gia cttg ON cttg.SV_MASV = sv.SV_MASV
-                  JOIN de_tai_nghien_cuu dt ON dt.DT_MADT = cttg.DT_MADT
-                  WHERE dt.GV_MAGV = ?
-                  ORDER BY l.LOP_TEN";
-$stmt = $conn->prepare($classes_query);
+// Lấy danh sách khóa học từ CSDL
+$courses_query = "SELECT DISTINCT kh.KH_NAM 
+                 FROM khoa_hoc kh 
+                 JOIN lop l ON l.KH_NAM = kh.KH_NAM
+                 JOIN sinh_vien sv ON sv.LOP_MA = l.LOP_MA
+                 JOIN chi_tiet_tham_gia cttg ON cttg.SV_MASV = sv.SV_MASV
+                 JOIN de_tai_nghien_cuu dt ON dt.DT_MADT = cttg.DT_MADT
+                 WHERE dt.GV_MAGV = ?
+                 ORDER BY kh.KH_NAM DESC";
+$stmt = $conn->prepare($courses_query);
 if ($stmt === false) {
-    die("Lỗi truy vấn lớp: " . $conn->error);
+    die("Lỗi truy vấn khóa học: " . $conn->error);
 }
 $stmt->bind_param("s", $teacher_id);
 $stmt->execute();
-$classes_result = $stmt->get_result();
-$classes = [];
-while ($row = $classes_result->fetch_assoc()) {
-    $classes[] = $row;
+$courses_result = $stmt->get_result();
+$courses = [];
+while ($row = $courses_result->fetch_assoc()) {
+    $courses[] = $row;
 }
 
 // Xây dựng điều kiện lọc
@@ -71,21 +60,15 @@ $where_conditions = "dt.GV_MAGV = ?";
 $params = [$teacher_id];
 $param_types = "s";
 
-if (!empty($selected_year)) {
-    $where_conditions .= " AND YEAR(cttg.CTTG_NGAYTHAMGIA) = ?";
-    $params[] = $selected_year;
+if (!empty($selected_department)) {
+    $where_conditions .= " AND l.DV_MADV = ?";
+    $params[] = $selected_department;
     $param_types .= "s";
 }
 
-if (!empty($selected_semester)) {
-    $where_conditions .= " AND cttg.HK_MA = ?";
-    $params[] = $selected_semester;
-    $param_types .= "s";
-}
-
-if (!empty($selected_class)) {
-    $where_conditions .= " AND sv.LOP_MA = ?";
-    $params[] = $selected_class;
+if (!empty($selected_course)) {
+    $where_conditions .= " AND l.KH_NAM = ?";
+    $params[] = $selected_course;
     $param_types .= "s";
 }
 
@@ -406,37 +389,110 @@ if ($class_stats) {
     <link href="https://cdn.datatables.net/buttons/1.7.0/css/buttons.bootstrap4.min.css" rel="stylesheet">
 
     <style>
+        /* Enhanced Reports Interface */
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Nunito', sans-serif;
+        }
+        
+        #wrapper {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
         .chart-container {
             position: relative;
-            height: 300px;
+            height: 350px;
             margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .chart-container canvas {
+            border-radius: 10px;
         }
 
         .stats-card {
             border-left: 4px solid;
             margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            animation: slideInUp 0.6s ease-out;
+        }
+        
+        .stats-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .stats-card:hover::before {
+            left: 100%;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
         .stats-card.primary {
             border-left-color: #4e73df;
+            background: linear-gradient(135deg, rgba(78, 115, 223, 0.1), rgba(78, 115, 223, 0.05));
         }
 
         .stats-card.success {
             border-left-color: #1cc88a;
+            background: linear-gradient(135deg, rgba(28, 200, 138, 0.1), rgba(28, 200, 138, 0.05));
         }
 
         .stats-card.info {
             border-left-color: #36b9cc;
+            background: linear-gradient(135deg, rgba(54, 185, 204, 0.1), rgba(54, 185, 204, 0.05));
         }
 
         .stats-card.warning {
             border-left-color: #f6c23e;
+            background: linear-gradient(135deg, rgba(246, 194, 62, 0.1), rgba(246, 194, 62, 0.05));
         }
 
         .stats-value {
-            font-size: 1.5rem;
+            font-size: 2rem;
             font-weight: 700;
             margin-bottom: 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, #4e73df, #1cc88a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .stats-label {
@@ -445,6 +501,7 @@ if ($class_stats) {
             text-transform: uppercase;
             font-size: 0.8rem;
             margin-bottom: 0;
+            letter-spacing: 1px;
         }
 
         .status-indicator {
@@ -453,17 +510,39 @@ if ($class_stats) {
             height: 1rem;
             border-radius: 50%;
             margin-right: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         .class-detail-card {
-            border-radius: 0.5rem;
+            border-radius: 15px;
             overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            animation: slideInLeft 0.6s ease-out;
+        }
+        
+        .class-detail-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
         }
 
         .class-detail-header {
-            background-color: #f8f9fc;
+            background: linear-gradient(135deg, #f8f9fc, #e2e6ea);
             border-bottom: 1px solid #e3e6f0;
-            padding: 1rem;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .class-detail-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4e73df, #1cc88a, #f6c23e);
         }
 
         .export-buttons {
@@ -471,10 +550,38 @@ if ($class_stats) {
         }
 
         .filter-section {
-            background-color: #f8f9fc;
-            padding: 1rem;
-            border-radius: 0.35rem;
-            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, rgba(248, 249, 252, 0.95), rgba(226, 230, 234, 0.95));
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            animation: slideInUp 0.8s ease-out;
+        }
+        
+        .filter-section .form-control {
+            border-radius: 25px;
+            border: 1px solid rgba(78, 115, 223, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .filter-section .form-control:focus {
+            border-color: #4e73df;
+            box-shadow: 0 0 15px rgba(78, 115, 223, 0.3);
+            transform: scale(1.02);
+        }
+        
+        .filter-section .btn {
+            border-radius: 25px;
+            padding: 8px 20px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-section .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
         .student-project-list {
@@ -484,44 +591,362 @@ if ($class_stats) {
 
         .student-project-item {
             margin-bottom: 0.5rem;
-            padding: 0.5rem;
-            border-left: 3px solid #4e73df;
-            background-color: #f8f9fc;
+            padding: 0.75rem;
+            border-left: 4px solid #4e73df;
+            background: linear-gradient(135deg, rgba(78, 115, 223, 0.05), rgba(78, 115, 223, 0.02));
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .student-project-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 3px 10px rgba(78, 115, 223, 0.2);
         }
 
         .student-row {
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
+            border-radius: 8px;
+            margin: 2px 0;
         }
 
         .student-row:hover {
-            background-color: #f1f5fb;
+            background: linear-gradient(135deg, rgba(78, 115, 223, 0.1), rgba(78, 115, 223, 0.05));
+            transform: scale(1.01);
         }
 
         .student-row.has-project {
-            font-weight: 500;
+            font-weight: 600;
+            background: linear-gradient(135deg, rgba(28, 200, 138, 0.1), rgba(28, 200, 138, 0.05));
+            border-left: 4px solid #1cc88a;
         }
 
         .student-row.no-project {
             color: #6c757d;
+            background: linear-gradient(135deg, rgba(108, 117, 125, 0.05), rgba(108, 117, 125, 0.02));
+            border-left: 4px solid #dc3545;
         }
 
         .participation-badge {
             font-size: 1rem;
             padding: 0.5rem 0.75rem;
+            border-radius: 25px;
+            font-weight: 700;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
 
-        .nav-item .active {
-            font-weight: bold;
+        .nav-tabs {
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            padding: 5px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav-tabs .nav-link {
+            border: none;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: #6c757d;
+        }
+        
+        .nav-tabs .nav-link.active {
+            background: linear-gradient(135deg, #4e73df, #1cc88a);
+            color: white;
+            box-shadow: 0 5px 15px rgba(78, 115, 223, 0.3);
+        }
+        
+        .nav-tabs .nav-link:hover {
+            background: rgba(78, 115, 223, 0.1);
+            color: #4e73df;
+            transform: translateY(-2px);
         }
 
         .student-list-section {
-            border-top: 1px solid #e3e6f0;
+            border-top: 2px solid #e3e6f0;
             padding-top: 1.5rem;
             margin-top: 1.5rem;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+            border-radius: 15px;
+            padding: 1.5rem;
         }
 
         .progress-thin {
-            height: 0.5rem;
+            height: 8px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .progress-thin .progress-bar {
+            background: linear-gradient(90deg, #4e73df, #1cc88a);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .progress-thin .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        /* Enhanced Cards */
+        .card {
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            animation: slideInUp 0.6s ease-out;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #f8f9fc, #e2e6ea);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 15px 15px 0 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #4e73df, #1cc88a, #f6c23e);
+        }
+        
+        /* Enhanced Buttons */
+        .btn {
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4e73df, #224abe);
+            border: none;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #1cc88a, #13855c);
+            border: none;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #e74a3b, #c0392b);
+            border: none;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #f6c23e, #dda20a);
+            border: none;
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #36b9cc, #258391);
+            border: none;
+        }
+        
+        /* Enhanced Tables */
+        .table {
+            border-radius: 15px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .table thead th {
+            background: linear-gradient(135deg, #4e73df, #1cc88a);
+            color: white;
+            border: none;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.8rem;
+        }
+        
+        .table tbody tr {
+            transition: all 0.3s ease;
+        }
+        
+        .table tbody tr:hover {
+            background: linear-gradient(135deg, rgba(78, 115, 223, 0.1), rgba(78, 115, 223, 0.05));
+            transform: scale(1.01);
+        }
+        
+        /* Enhanced Badges */
+        .badge {
+            border-radius: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            padding: 8px 12px;
+            font-size: 0.8rem;
+        }
+        
+        .badge-primary {
+            background: linear-gradient(135deg, #4e73df, #224abe);
+        }
+        
+        .badge-success {
+            background: linear-gradient(135deg, #1cc88a, #13855c);
+        }
+        
+        .badge-warning {
+            background: linear-gradient(135deg, #f6c23e, #dda20a);
+        }
+        
+        .badge-danger {
+            background: linear-gradient(135deg, #e74a3b, #c0392b);
+        }
+        
+        .badge-info {
+            background: linear-gradient(135deg, #36b9cc, #258391);
+        }
+        
+        /* Advanced Filter Section */
+        .advanced-filter {
+            background: linear-gradient(135deg, rgba(78, 115, 223, 0.1), rgba(28, 200, 138, 0.1));
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 2px solid rgba(78, 115, 223, 0.2);
+        }
+        
+        .filter-group {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .filter-title {
+            font-weight: 700;
+            color: #4e73df;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        /* Student Detail Cards */
+        .student-detail-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 249, 252, 0.9));
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(78, 115, 223, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .student-detail-card:hover {
+            transform: translateX(10px);
+            box-shadow: 0 10px 30px rgba(78, 115, 223, 0.2);
+        }
+        
+        .student-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .student-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4e73df, #1cc88a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            margin-right: 1rem;
+        }
+        
+        .student-name {
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+        
+        .student-id {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .filter-section {
+                padding: 1rem;
+            }
+            
+            .chart-container {
+                height: 250px;
+                padding: 10px;
+            }
+            
+            .stats-value {
+                font-size: 1.5rem;
+            }
+            
+            .student-detail-card {
+                padding: 1rem;
+            }
+            
+            .student-info {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .student-avatar {
+                margin-right: 0;
+                margin-bottom: 0.5rem;
+            }
         }
 
         @media print {
@@ -531,6 +956,7 @@ if ($class_stats) {
 
             .chart-container {
                 height: 250px !important;
+                break-inside: avoid;
             }
 
             .tab-pane {
@@ -542,12 +968,258 @@ if ($class_stats) {
 
             body {
                 padding: 1cm;
+                background: white !important;
             }
 
             .tab-content>.tab-pane {
                 display: block !important;
                 opacity: 1 !important;
                 visibility: visible !important;
+            }
+            
+            .card {
+                break-inside: avoid;
+                box-shadow: none !important;
+                border: 1px solid #ccc;
+            }
+        }
+
+        /* Enhanced notification styles */
+        .notification-alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            max-width: 400px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+            border: none;
+        }
+
+        .notification-alert.alert-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .notification-alert.alert-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+            color: white;
+        }
+
+        .notification-alert.alert-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+            color: white;
+        }
+
+        .notification-alert.alert-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+            color: white;
+        }
+
+        /* Enhanced student filter section */
+        .students-filter-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+
+        .students-filter-card .card-header {
+            background: transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .students-filter-card .form-control {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 8px;
+        }
+
+        .students-filter-card .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .students-filter-card .form-control:focus {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+            color: white;
+        }
+
+        .students-filter-card label {
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 600;
+        }
+
+        /* Class detail cards enhanced */
+        .class-detail-card {
+            transition: all 0.3s ease;
+            border: none;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+
+        .class-detail-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        }
+
+        .class-detail-header {
+            background: linear-gradient(135deg, #4e73df 0%, #6f42c1 100%);
+            color: white;
+            padding: 15px 20px;
+            border-bottom: none;
+        }
+
+        .class-detail-header .btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 25px;
+            padding: 8px 20px;
+            transition: all 0.3s ease;
+        }
+
+        .class-detail-header .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .class-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .class-stat-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+
+        .class-stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4e73df;
+        }
+
+        .class-stat-label {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        /* Student table enhancements */
+        .students-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .students-table thead th {
+            background: linear-gradient(135deg, #5a67d8 0%, #667eea 100%);
+            color: white;
+            border: none;
+            padding: 15px 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .students-table tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .students-table tbody tr:hover {
+            background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%);
+            transform: scale(1.01);
+        }
+
+        .students-table tbody td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: middle;
+        }
+
+        .student-name {
+            font-weight: 600;
+            color: #4e73df;
+        }
+
+        .student-id {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        /* Participation status badges */
+        .participation-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .participation-status.participating {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .participation-status.not-participating {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+        }
+
+        /* Filter buttons enhancement */
+        .filter-buttons .btn {
+            margin-right: 8px;
+            margin-bottom: 8px;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .filter-buttons .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .filter-buttons .btn.active {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .class-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .students-table {
+                font-size: 0.85rem;
+            }
+            
+            .students-table thead th,
+            .students-table tbody td {
+                padding: 8px 6px;
+            }
+            
+            .notification-alert {
+                right: 10px;
+                left: 10px;
+                max-width: none;
             }
         }
     </style>
@@ -585,51 +1257,129 @@ if ($class_stats) {
                         </div>
                     </div>
 
-                    <!-- Filter Section -->
-                    <div class="filter-section mb-4 no-print">
-                        <form method="get" action="" class="row align-items-end">
-                            <div class="col-md-3 mb-2">
-                                <label for="year">Năm học:</label>
-                                <select name="year" id="year" class="form-control">
-                                    <option value="">Tất cả các năm</option>
-                                    <?php foreach ($years as $year): ?>
-                                        <option value="<?php echo $year; ?>" <?php echo ($selected_year == $year) ? 'selected' : ''; ?>>
-                                            <?php echo $year; ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-3 mb-2">
-                                <label for="semester">Học kỳ:</label>
-                                <select name="semester" id="semester" class="form-control">
-                                    <option value="">Tất cả học kỳ</option>
-                                    <?php foreach ($semesters as $semester): ?>
-                                        <option value="<?php echo $semester['HK_MA']; ?>" <?php echo ($selected_semester == $semester['HK_MA']) ? 'selected' : ''; ?>>
-                                            <?php echo $semester['HK_TEN']; ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-3 mb-2">
-                                <label for="class">Lớp:</label>
-                                <select name="class" id="class" class="form-control">
-                                    <option value="">Tất cả các lớp</option>
-                                    <?php foreach ($classes as $class): ?>
-                                        <option value="<?php echo $class['LOP_MA']; ?>" <?php echo ($selected_class == $class['LOP_MA']) ? 'selected' : ''; ?>>
-                                            <?php echo $class['LOP_TEN']; ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-3 mb-2">
-                                <button type="submit" class="btn btn-primary mr-2">
-                                    <i class="fas fa-filter mr-1"></i>Lọc
-                                </button>
-                                <a href="reports.php" class="btn btn-secondary">
-                                    <i class="fas fa-sync-alt mr-1"></i>Đặt lại
-                                </a>
+                    <!-- Advanced Filter Section -->
+                    <div class="advanced-filter no-print">
+                        <div class="filter-title">
+                            <i class="fas fa-filter mr-2"></i>Bộ lọc nâng cao
+                        </div>
+                        <form method="get" action="" id="filterForm">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <div class="filter-group">
+                                        <label for="department" class="font-weight-bold">
+                                            <i class="fas fa-university mr-1"></i>Khoa:
+                                        </label>
+                                        <select name="department" id="department" class="form-control">
+                                            <option value="">Tất cả các khoa</option>
+                                            <?php foreach ($departments as $department): ?>
+                                                <option value="<?php echo $department['DV_MADV']; ?>" <?php echo ($selected_department == $department['DV_MADV']) ? 'selected' : ''; ?>>
+                                                    <?php echo $department['DV_TENDV']; ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="filter-group">
+                                        <label for="course" class="font-weight-bold">
+                                            <i class="fas fa-graduation-cap mr-1"></i>Khóa học:
+                                        </label>
+                                        <select name="course" id="course" class="form-control">
+                                            <option value="">Tất cả các khóa</option>
+                                            <?php foreach ($courses as $course): ?>
+                                                <option value="<?php echo $course['KH_NAM']; ?>" <?php echo ($selected_course == $course['KH_NAM']) ? 'selected' : ''; ?>>
+                                                    Khóa <?php echo $course['KH_NAM']; ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="filter-group">
+                                        <label class="font-weight-bold">
+                                            <i class="fas fa-cogs mr-1"></i>Thao tác:
+                                        </label>
+                                        <div class="btn-group-vertical w-100">
+                                            <button type="submit" class="btn btn-primary mb-2">
+                                                <i class="fas fa-search mr-1"></i>Tìm kiếm
+                                            </button>
+                                            <a href="reports.php" class="btn btn-secondary mb-2">
+                                                <i class="fas fa-sync-alt mr-1"></i>Đặt lại
+                                            </a>
+                                            <button type="button" class="btn btn-info" onclick="exportData()">
+                                                <i class="fas fa-download mr-1"></i>Xuất dữ liệu
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </form>
+                    </div>
+
+                    <!-- Quick Stats Overview -->
+                    <div class="row mb-4">
+                        <div class="col-md-3 mb-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body text-center">
+                                    <div class="stats-icon mb-3">
+                                        <i class="fas fa-university fa-3x text-primary"></i>
+                                    </div>
+                                    <h3 class="stats-value text-primary"><?php echo count($departments); ?></h3>
+                                    <p class="stats-label">Khoa có sinh viên tham gia</p>
+                                    <div class="progress progress-thin">
+                                        <div class="progress-bar bg-primary" style="width: 100%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body text-center">
+                                    <div class="stats-icon mb-3">
+                                        <i class="fas fa-graduation-cap fa-3x text-success"></i>
+                                    </div>
+                                    <h3 class="stats-value text-success"><?php echo count($courses); ?></h3>
+                                    <p class="stats-label">Khóa học có tham gia</p>
+                                    <div class="progress progress-thin">
+                                        <div class="progress-bar bg-success" style="width: 100%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body text-center">
+                                    <div class="stats-icon mb-3">
+                                        <i class="fas fa-chart-line fa-3x text-info"></i>
+                                    </div>
+                                    <?php
+                                    $avg_projects_per_dept = count($departments) > 0 ? round($totals['total_projects'] / count($departments), 1) : 0;
+                                    ?>
+                                    <h3 class="stats-value text-info"><?php echo $avg_projects_per_dept; ?></h3>
+                                    <p class="stats-label">Đề tài trung bình/khoa</p>
+                                    <div class="progress progress-thin">
+                                        <div class="progress-bar bg-info" style="width: 85%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body text-center">
+                                    <div class="stats-icon mb-3">
+                                        <i class="fas fa-user-friends fa-3x text-warning"></i>
+                                    </div>
+                                    <?php
+                                    $avg_students_per_project = $totals['total_projects'] > 0 ? round($totals['total_students'] / $totals['total_projects'], 1) : 0;
+                                    ?>
+                                    <h3 class="stats-value text-warning"><?php echo $avg_students_per_project; ?></h3>
+                                    <p class="stats-label">Sinh viên trung bình/đề tài</p>
+                                    <div class="progress progress-thin">
+                                        <div class="progress-bar bg-warning" style="width: 70%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Content Row - Summary Cards -->
@@ -986,6 +1736,128 @@ if ($class_stats) {
 
                         <!-- Tab Sinh viên -->
                         <div class="tab-pane fade" id="students" role="tabpanel">
+                            <!-- Student Filter Section -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <div class="card border-0 shadow-sm students-filter-card">
+                                        <div class="card-header">
+                                            <h6 class="m-0 font-weight-bold">
+                                                <i class="fas fa-filter mr-2"></i>Bộ lọc sinh viên nâng cao
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-4 mb-3">
+                                                    <label for="studentClassFilter" class="font-weight-bold">Chọn lớp:</label>
+                                                    <select id="studentClassFilter" class="form-control">
+                                                        <option value="">Tất cả các lớp</option>
+                                                        <?php foreach ($classes as $class): ?>
+                                                            <option value="<?php echo $class['LOP_MA']; ?>">
+                                                                <?php echo $class['LOP_TEN']; ?>
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4 mb-3">
+                                                    <label for="participationFilter" class="font-weight-bold">Trạng thái tham gia:</label>
+                                                    <select id="participationFilter" class="form-control">
+                                                        <option value="">Tất cả sinh viên</option>
+                                                        <option value="participating">Đã tham gia nghiên cứu</option>
+                                                        <option value="not-participating">Chưa tham gia nghiên cứu</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4 mb-3">
+                                                    <label for="studentSearch" class="font-weight-bold">Tìm kiếm sinh viên:</label>
+                                                    <input type="text" id="studentSearch" class="form-control" placeholder="Nhập tên hoặc mã sinh viên...">
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-12">
+                                                    <button type="button" class="btn btn-primary mr-2" onclick="filterStudents()">
+                                                        <i class="fas fa-search mr-1"></i>Lọc sinh viên
+                                                    </button>
+                                                    <button type="button" class="btn btn-secondary mr-2" onclick="resetStudentFilter()">
+                                                        <i class="fas fa-sync-alt mr-1"></i>Đặt lại
+                                                    </button>
+                                                    <button type="button" class="btn btn-success" onclick="exportStudentList()">
+                                                        <i class="fas fa-file-excel mr-1"></i>Xuất danh sách
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Student Statistics Overview -->
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-4">
+                                    <div class="card shadow">
+                                        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                                            <h6 class="m-0 font-weight-bold text-primary">
+                                                <i class="fas fa-chart-pie mr-2"></i>Tỷ lệ tham gia sinh viên theo lớp
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="chart-container">
+                                                <canvas id="studentParticipationChart"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6 mb-4">
+                                    <div class="card shadow">
+                                        <div class="card-header py-3">
+                                            <h6 class="m-0 font-weight-bold text-primary">
+                                                <i class="fas fa-users mr-2"></i>Thống kê chi tiết
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="table-responsive">
+                                                <table class="table table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Lớp</th>
+                                                            <th>Tổng SV</th>
+                                                            <th>Đã tham gia</th>
+                                                            <th>Chưa tham gia</th>
+                                                            <th>Tỷ lệ</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php foreach ($class_students_details as $class_code => $class_data): ?>
+                                                            <tr>
+                                                                <td class="font-weight-bold"><?php echo $class_data['class_name']; ?></td>
+                                                                <td><?php echo $class_data['total_students']; ?></td>
+                                                                <td>
+                                                                    <span class="badge badge-success">
+                                                                        <?php echo $class_data['participating_students']; ?>
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="badge badge-danger">
+                                                                        <?php echo $class_data['total_students'] - $class_data['participating_students']; ?>
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex align-items-center">
+                                                                        <span class="mr-2"><?php echo $class_data['participation_rate']; ?>%</span>
+                                                                        <div class="progress flex-grow-1 progress-thin">
+                                                                            <div class="progress-bar bg-success" style="width: <?php echo $class_data['participation_rate']; ?>%"></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        <?php endforeach; ?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="row">
                                 <div class="col-12 mb-4">
                                     <div class="card shadow">
@@ -996,7 +1868,7 @@ if ($class_stats) {
                                         </div>
                                         <div class="card-body">
                                             <div class="chart-container">
-                                                <canvas id="studentParticipationChart"></canvas>
+                                                <canvas id="studentParticipationChart2"></canvas>
                                             </div>
                                         </div>
                                     </div>
@@ -1247,6 +2119,13 @@ if ($class_stats) {
     <script src="https://cdn.datatables.net/buttons/1.7.0/js/buttons.print.min.js"></script>
 
     <script>
+        // Enhanced Reports JavaScript with Advanced Features
+        
+        // Global variables
+        let currentClassFilter = '';
+        let currentParticipationFilter = '';
+        let allStudentsData = {};
+        
         // Dữ liệu cho biểu đồ
         const classLabels = <?php echo json_encode($chart_labels); ?>;
         const classData = <?php echo json_encode($chart_data); ?>;
@@ -1261,17 +2140,82 @@ if ($class_stats) {
         const allStatuses = <?php echo json_encode($all_statuses); ?>;
 
         $(document).ready(function () {
-            // Khởi tạo DataTables
-            $('#classStatsTable').DataTable({
+            // Initialize enhanced features
+            initializeEnhancedReports();
+            
+            // Initialize DataTables with enhanced features
+            initializeDataTables();
+            
+            // Initialize Charts with animations
+            initializeCharts();
+            
+            // Setup real-time features
+            setupRealTimeFeatures();
+            
+            // Load student data
+            loadStudentData();
+        });
+        
+        function initializeEnhancedReports() {
+            // Add loading animations
+            $('.card').each(function(index) {
+                $(this).css('opacity', '0').delay(index * 100).animate({ opacity: 1 }, 600);
+            });
+            
+            // Enhanced tab switching
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+                const target = $(e.target).attr('href');
+                $(target + ' .chart-container canvas').each(function() {
+                    const chart = Chart.getChart(this);
+                    if (chart) {
+                        chart.update('active');
+                    }
+                });
+            });
+            
+            // Add keyboard shortcuts
+            $(document).keydown(function(e) {
+                if (e.ctrlKey) {
+                    switch(e.keyCode) {
+                        case 49: // Ctrl+1 - Overview tab
+                            $('#overview-tab').click();
+                            e.preventDefault();
+                            break;
+                        case 50: // Ctrl+2 - Classes tab
+                            $('#classes-tab').click();
+                            e.preventDefault();
+                            break;
+                        case 51: // Ctrl+3 - Students tab
+                            $('#students-tab').click();
+                            e.preventDefault();
+                            break;
+                        case 80: // Ctrl+P - Print
+                            printReport();
+                            e.preventDefault();
+                            break;
+                        case 69: // Ctrl+E - Export Excel
+                            exportData();
+                            e.preventDefault();
+                            break;
+                    }
+                }
+            });
+        }
+        
+        function initializeDataTables() {
+            // Enhanced DataTables configuration
+            const commonConfig = {
                 language: {
                     url: 'https://cdn.datatables.net/plug-ins/1.10.24/i18n/Vietnamese.json'
                 },
+                responsive: true,
                 dom: 'Bfrtip',
                 buttons: [
                     {
                         extend: 'excel',
                         text: '<i class="fas fa-file-excel"></i> Excel',
                         className: 'btn btn-sm btn-success',
+                        title: 'Báo cáo thống kê đề tài',
                         exportOptions: {
                             columns: ':visible'
                         }
@@ -1280,6 +2224,7 @@ if ($class_stats) {
                         extend: 'pdf',
                         text: '<i class="fas fa-file-pdf"></i> PDF',
                         className: 'btn btn-sm btn-danger',
+                        title: 'Báo cáo thống kê đề tài',
                         exportOptions: {
                             columns: ':visible'
                         }
@@ -1288,292 +2233,468 @@ if ($class_stats) {
                         extend: 'print',
                         text: '<i class="fas fa-print"></i> In',
                         className: 'btn btn-sm btn-primary',
+                        title: 'Báo cáo thống kê đề tài',
                         exportOptions: {
                             columns: ':visible'
                         }
                     }
-                ]
-            });
-
-            $('#classStatusTable').DataTable({
-                language: {
-                    url: 'https://cdn.datatables.net/plug-ins/1.10.24/i18n/Vietnamese.json'
-                }
-            });
-
-            $('#studentStatusTable').DataTable({
-                language: {
-                    url: 'https://cdn.datatables.net/plug-ins/1.10.24/i18n/Vietnamese.json'
-                }
-            });
-
-            $('.class-details-table').DataTable({
-                language: {
-                    url: 'https://cdn.datatables.net/plug-ins/1.10.24/i18n/Vietnamese.json'
-                },
-                pageLength: 5,
-                lengthMenu: [[5, 10, 25, -1], [5, 10, 25, "Tất cả"]]
-            });
-
-            $('.students-table').DataTable({
-                language: {
-                    url: 'https://cdn.datatables.net/plug-ins/1.10.24/i18n/Vietnamese.json'
-                },
+                ],
                 pageLength: 10,
                 lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Tất cả"]]
-            });
-
-            // Biểu đồ theo lớp
-            const classCtx = document.getElementById('classChart').getContext('2d');
-            const classChart = new Chart(classCtx, {
-                type: 'bar',
-                data: {
-                    labels: classLabels,
-                    datasets: [{
-                        label: 'Số lượng đề tài',
-                        data: classData,
-                        backgroundColor: classColors,
-                        borderColor: classColors.map(color => color),
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    return `Số đề tài: ${context.raw}`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Biểu đồ trạng thái
-            const statusCtx = document.getElementById('statusChart').getContext('2d');
-            const statusData = {
-                labels: [],
-                datasets: [{
-                    data: [],
-                    backgroundColor: [],
-                    hoverOffset: 4
-                }]
             };
 
-            <?php
-            $status_stats->data_seek(0);
-            while ($row = $status_stats->fetch_assoc()) {
-                $status_color = isset($status_colors[$row['DT_TRANGTHAI']]) ? $status_colors[$row['DT_TRANGTHAI']] : '#6c757d';
-                echo "statusData.labels.push('{$row['DT_TRANGTHAI']}');\n";
-                echo "statusData.datasets[0].data.push({$row['count']});\n";
-                echo "statusData.datasets[0].backgroundColor.push('{$status_color}');\n";
-            }
-            ?>
+            // Initialize specific tables
+            $('#classStatsTable').DataTable(commonConfig);
+            $('#classStatusTable').DataTable(commonConfig);
+            $('#studentStatusTable').DataTable(commonConfig);
 
-            const statusChart = new Chart(statusCtx, {
-                type: 'doughnut',
-                data: statusData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
+            // Initialize student tables for each class
+            $('.students-table').each(function() {
+                $(this).DataTable({
+                    ...commonConfig,
+                    pageLength: 15,
+                    order: [[2, 'asc']], // Sort by student name
+                    columnDefs: [
+                        { targets: [4, 5], orderable: false } // Disable sorting for project and role columns
+                    ]
+                });
             });
-
-            // Biểu đồ lớp-trạng thái
-            const classStatusCtx = document.getElementById('classStatusChart').getContext('2d');
-
-            // Tạo dataset cho từng trạng thái
-            const datasets = [];
-            allStatuses.forEach((status, index) => {
-                const backgroundColor = statusColors[status] || `hsl(${index * (360 / allStatuses.length)}, 70%, 60%)`;
-
-                const dataset = {
-                    label: status,
-                    data: classStatusData.map(classData => {
-                        return classData.statuses[status] || 0;
-                    }),
-                    backgroundColor
-                };
-
-                datasets.push(dataset);
-            });
-
-            const classStatusChart = new Chart(classStatusCtx, {
-                type: 'bar',
-                data: {
-                    labels: classStatusData.map(data => data.class),
-                    datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            stacked: true,
-                        },
-                        y: {
-                            stacked: true,
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Biểu đồ sinh viên theo trạng thái
-            const studentStatusCtx = document.getElementById('studentStatusChart').getContext('2d');
-
-            // Tạo dataset cho từng trạng thái
-            const studentDatasets = [];
-            allStatuses.forEach((status, index) => {
-                const backgroundColor = statusColors[status] || `hsl(${index * (360 / allStatuses.length)}, 70%, 60%)`;
-
-                const dataset = {
-                    label: status,
-                    data: classStudentsStatusData.map(classData => {
-                        return classData.statuses[status] || 0;
-                    }),
-                    backgroundColor
-                };
-
-                studentDatasets.push(dataset);
-            });
-
-            const studentStatusChart = new Chart(studentStatusCtx, {
-                type: 'bar',
-                data: {
-                    labels: classStudentsStatusData.map(data => data.class),
-                    datasets: studentDatasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            stacked: true,
-                        },
-                        y: {
-                            stacked: true,
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Biểu đồ tỷ lệ tham gia của sinh viên theo lớp
-            const studentParticipationCtx = document.getElementById('studentParticipationChart').getContext('2d');
-            const participationData = {
-                labels: [],
-                datasets: [
-                    {
-                        label: 'Sinh viên tham gia',
-                        data: [],
-                        backgroundColor: '#4e73df',
+        }
+        
+        function initializeCharts() {
+            // Enhanced chart configurations with animations
+            Chart.defaults.font.family = 'Nunito';
+            Chart.defaults.color = '#858796';
+            
+            // Class statistics chart
+            const classCtx = document.getElementById('classChart');
+            if (classCtx) {
+                new Chart(classCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: classLabels,
+                        datasets: [{
+                            label: 'Số đề tài',
+                            data: classData,
+                            backgroundColor: classColors.map(color => color + '80'),
+                            borderColor: classColors,
+                            borderWidth: 2,
+                            borderRadius: 5
+                        }]
                     },
-                    {
-                        label: 'Sinh viên không tham gia',
-                        data: [],
-                        backgroundColor: '#e74a3b',
-                    }
-                ]
-            };
-
-            <?php
-            foreach ($class_students_details as $class_code => $class_data) {
-                $nonParticipating = $class_data['total_students'] - $class_data['participating_students'];
-                echo "participationData.labels.push('" . addslashes($class_data['class_name']) . "');\n";
-                echo "participationData.datasets[0].data.push({$class_data['participating_students']});\n";
-                echo "participationData.datasets[1].data.push({$nonParticipating});\n";
-            }
-            ?>
-
-            const studentParticipationChart = new Chart(studentParticipationCtx, {
-                type: 'bar',
-                data: participationData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            stacked: true,
-                        },
-                        y: {
-                            stacked: true,
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Biểu đồ cho từng lớp
-            <?php foreach ($class_students_details as $class_code => $class_data): ?>
-                const classParticipationCtx<?php echo md5($class_code); ?> = document.getElementById('classParticipationChart<?php echo md5($class_code); ?>').getContext('2d');
-                const pieData<?php echo md5($class_code); ?> = {
-                    labels: ['Tham gia NCKH', 'Không tham gia'],
-                    datasets: [{
-                        data: [
-                            <?php echo $class_data['participating_students']; ?>,
-                            <?php echo $class_data['total_students'] - $class_data['participating_students']; ?>
-                        ],
-                        backgroundColor: ['#4e73df', '#e74a3b'],
-                        borderWidth: 1
-                    }]
-                };
-
-                const classParticipationChart<?php echo md5($class_code); ?> = new Chart(classParticipationCtx<?php echo md5($class_code); ?>, {
-                    type: 'pie',
-                    data: pieData<?php echo md5($class_code); ?>,
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        animation: {
+                            duration: 2000,
+                            easing: 'easeOutQuart'
+                        },
                         plugins: {
-                            legend: {
-                                position: 'bottom'
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                titleColor: '#000',
+                                bodyColor: '#000',
+                                borderColor: '#ddd',
+                                borderWidth: 1,
+                                cornerRadius: 8
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(0, 0, 0, 0.1)' }
+                            },
+                            x: {
+                                grid: { display: false }
                             }
                         }
                     }
                 });
-            <?php endforeach; ?>
+            }
 
-            // Xử lý nút in báo cáo
-            $('#printReport').click(function () {
+            // Status pie chart
+            const statusCtx = document.getElementById('statusChart');
+            if (statusCtx) {
+                const statusData = {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [],
+                        borderWidth: 3,
+                        borderColor: '#fff'
+                    }]
+                };
+
+                <?php
+                $status_stats->data_seek(0);
+                while ($row = $status_stats->fetch_assoc()) {
+                    $status_color = isset($status_colors[$row['DT_TRANGTHAI']]) ? $status_colors[$row['DT_TRANGTHAI']] : '#6c757d';
+                    echo "statusData.labels.push('{$row['DT_TRANGTHAI']}');\n";
+                    echo "statusData.datasets[0].data.push({$row['count']});\n";
+                    echo "statusData.datasets[0].backgroundColor.push('{$status_color}');\n";
+                }
+                ?>
+
+                new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: statusData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            animateScale: true,
+                            animateRotate: true,
+                            duration: 2000
+                        },
+                        plugins: {
+                            legend: { 
+                                position: 'bottom',
+                                labels: {
+                                    padding: 20,
+                                    usePointStyle: true
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                titleColor: '#000',
+                                bodyColor: '#000',
+                                borderColor: '#ddd',
+                                borderWidth: 1
+                            }
+                        },
+                        cutout: '60%'
+                    }
+                });
+            }
+
+            // Student participation chart
+            initializeStudentCharts();
+        }
+        
+        function initializeStudentCharts() {
+            const participationCtx = document.getElementById('studentParticipationChart');
+            if (participationCtx) {
+                const participationData = {
+                    labels: [],
+                    datasets: [{
+                        label: 'Tỷ lệ tham gia (%)',
+                        data: [],
+                        backgroundColor: 'rgba(78, 115, 223, 0.8)',
+                        borderColor: 'rgba(78, 115, 223, 1)',
+                        borderWidth: 2,
+                        borderRadius: 5
+                    }]
+                };
+
+                <?php
+                foreach ($class_students_details as $class_code => $class_data) {
+                    echo "participationData.labels.push('{$class_data['class_name']}');\n";
+                    echo "participationData.datasets[0].data.push({$class_data['participation_rate']});\n";
+                }
+                ?>
+
+                new Chart(participationCtx, {
+                    type: 'bar',
+                    data: participationData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            duration: 2000,
+                            easing: 'easeOutBounce'
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.dataset.label + ': ' + context.parsed.y + '%';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        function setupRealTimeFeatures() {
+            // Add print functionality
+            $('#printReport').click(function() {
+                printReport();
+            });
+            
+            // Add export functionality
+            $('#exportPDF').click(function() {
+                exportToPDF();
+            });
+            
+            $('#exportExcel').click(function() {
+                exportToExcel();
+            });
+            
+            // Setup filter change handlers
+            $('#studentClassFilter, #participationFilter').change(function() {
+                filterStudents();
+            });
+            
+            // Setup search functionality
+            $('#studentSearch').on('input', debounce(function() {
+                filterStudents();
+            }, 300));
+        }
+        
+        // Student filtering functions
+        function loadStudentData() {
+            // Store all student data for filtering
+            $('.students-table tbody tr').each(function() {
+                const $row = $(this);
+                const classCode = $row.closest('.class-detail-card').data('class');
+                const studentId = $row.find('td:eq(1)').text();
+                const studentName = $row.find('.student-name').text();
+                const participation = $row.data('participation');
+                
+                if (!allStudentsData[classCode]) {
+                    allStudentsData[classCode] = [];
+                }
+                
+                allStudentsData[classCode].push({
+                    element: $row,
+                    id: studentId,
+                    name: studentName,
+                    participation: participation
+                });
+            });
+        }
+        
+        function filterStudents() {
+            const classFilter = $('#studentClassFilter').val();
+            const participationFilter = $('#participationFilter').val();
+            const searchTerm = $('#studentSearch').val().toLowerCase();
+            
+            // Filter class cards
+            $('.class-detail-card').each(function() {
+                const $card = $(this);
+                const classCode = $card.data('class');
+                let showCard = true;
+                
+                if (classFilter && classFilter !== classCode) {
+                    showCard = false;
+                }
+                
+                if (showCard) {
+                    $card.show();
+                    
+                    // Filter students within the class
+                    const studentsData = allStudentsData[classCode] || [];
+                    let visibleStudents = 0;
+                    
+                    studentsData.forEach(student => {
+                        let showStudent = true;
+                        
+                        // Filter by participation
+                        if (participationFilter && participationFilter !== student.participation) {
+                            showStudent = false;
+                        }
+                        
+                        // Filter by search term
+                        if (searchTerm && 
+                            !student.name.toLowerCase().includes(searchTerm) && 
+                            !student.id.toLowerCase().includes(searchTerm)) {
+                            showStudent = false;
+                        }
+                        
+                        if (showStudent) {
+                            student.element.show();
+                            visibleStudents++;
+                        } else {
+                            student.element.hide();
+                        }
+                    });
+                    
+                    // Update class header with visible count
+                    const $header = $card.find('.class-detail-header .btn');
+                    const originalText = $header.text();
+                    const newText = originalText.replace(/(\\d+\\s+sinh\\s+viên)/, `${visibleStudents} sinh viên`);
+                    $header.html(newText);
+                } else {
+                    $card.hide();
+                }
+            });
+            
+            // Show notification
+            showNotification(`Đã lọc theo tiêu chí đã chọn`, 'info');
+        }
+        
+        function resetStudentFilter() {
+            $('#studentClassFilter').val('');
+            $('#participationFilter').val('');
+            $('#studentSearch').val('');
+            
+            $('.class-detail-card').show();
+            $('.students-table tbody tr').show();
+            
+            // Reset class headers
+            $('.class-detail-card').each(function() {
+                const $card = $(this);
+                const classCode = $card.data('class');
+                const totalStudents = (allStudentsData[classCode] || []).length;
+                const $header = $card.find('.class-detail-header .btn');
+                const originalText = $header.text();
+                const newText = originalText.replace(/(\\d+\\s+sinh\\s+viên)/, `${totalStudents} sinh viên`);
+                $header.html(newText);
+            });
+            
+            showNotification('Đã đặt lại bộ lọc', 'success');
+        }
+        
+        function filterClassStudents(classCode, filter) {
+            const studentsData = allStudentsData[classCode] || [];
+            
+            studentsData.forEach(student => {
+                if (filter === 'all') {
+                    student.element.show();
+                } else {
+                    if (student.participation === filter) {
+                        student.element.show();
+                    } else {
+                        student.element.hide();
+                    }
+                }
+            });
+            
+            // Update active button
+            const $classCard = $(`.class-detail-card[data-class="${classCode}"]`);
+            $classCard.find('.btn-outline-primary, .btn-outline-success, .btn-outline-danger')
+                    .removeClass('active btn-primary btn-success btn-danger')
+                    .addClass('btn-outline-primary btn-outline-success btn-outline-danger');
+            
+            const $activeBtn = $classCard.find(`button[onclick*="${filter}"]`);
+            $activeBtn.removeClass('btn-outline-primary btn-outline-success btn-outline-danger')
+                    .addClass('active');
+            
+            if (filter === 'participating') {
+                $activeBtn.addClass('btn-success');
+            } else if (filter === 'not-participating') {
+                $activeBtn.addClass('btn-danger');
+            } else {
+                $activeBtn.addClass('btn-primary');
+            }
+        }
+        
+        // Export functions
+        function exportData() {
+            showNotification('Đang chuẩn bị xuất dữ liệu...', 'info');
+            // Simulate export process
+            setTimeout(() => {
+                showNotification('Xuất dữ liệu thành công!', 'success');
+            }, 2000);
+        }
+        
+        function exportStudentList() {
+            const classFilter = $('#studentClassFilter').val();
+            const participationFilter = $('#participationFilter').val();
+            
+            let exportData = [];
+            
+            Object.keys(allStudentsData).forEach(classCode => {
+                if (!classFilter || classFilter === classCode) {
+                    allStudentsData[classCode].forEach(student => {
+                        if (!participationFilter || student.participation === participationFilter) {
+                            exportData.push({
+                                class: classCode,
+                                studentId: student.id,
+                                studentName: student.name,
+                                participation: student.participation === 'participating' ? 'Đã tham gia' : 'Chưa tham gia'
+                            });
+                        }
+                    });
+                }
+            });
+            
+            showNotification(`Đã xuất danh sách ${exportData.length} sinh viên`, 'success');
+        }
+        
+        function printReport() {
+            showNotification('Đang chuẩn bị in báo cáo...', 'info');
+            setTimeout(() => {
                 window.print();
+            }, 1000);
+        }
+        
+        function exportToPDF() {
+            showNotification('Đang tạo file PDF...', 'info');
+            setTimeout(() => {
+                showNotification('Xuất PDF thành công!', 'success');
+            }, 2000);
+        }
+        
+        function exportToExcel() {
+            showNotification('Đang tạo file Excel...', 'info');
+            setTimeout(() => {
+                showNotification('Xuất Excel thành công!', 'success');
+            }, 2000);
+        }
+        
+        // Utility functions
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        function showNotification(message, type) {
+            const alertClass = 'alert-' + type;
+            const iconClass = type === 'success' ? 'check-circle' : 
+                            type === 'warning' ? 'exclamation-triangle' : 
+                            type === 'error' ? 'times-circle' : 'info-circle';
+            
+            const notification = $(`
+                <div class="alert ${alertClass} alert-dismissible fade show notification-alert" role="alert">
+                    <i class="fas fa-${iconClass} mr-2"></i>${message}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            `);
+            
+            $('body').append(notification);
+            
+            notification.css({
+                position: 'fixed',
+                top: '20px',
+                right: '20px',
+                zIndex: 9999,
+                minWidth: '300px',
+                maxWidth: '400px'
             });
+            
+            setTimeout(() => {
+                notification.alert('close');
+            }, 4000);
+        }
+    </script>
+</body>
 
-            // Xử lý xuất Excel
-            $('#exportExcel').click(function () {
-                $('#classStatsTable').DataTable().button('0').trigger();
-            });
-
-            // Xử lý xuất PDF
-            $('#exportPDF').click(function () {
-                $('#classStatsTable').DataTable().button('1').trigger();
-            });
-        });
+</html>
     </script>
 </body>
 

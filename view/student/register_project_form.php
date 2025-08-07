@@ -1580,11 +1580,14 @@ if ($priority_fields_result) {
                 
                 // Gửi request AJAX để lấy thông tin sinh viên
                 $.ajax({
-                    url: '/NLNganh/get_student_info.php',
+                    url: '/NLNganh/get_student_info_test.php', // Sử dụng version test
                     method: 'GET',
                     data: { student_id: studentId },
                     dataType: 'json',
+                    timeout: 10000, // 10 giây timeout
                     success: function(response) {
+                        console.log('Student search response:', response);
+                        
                         if (response.success) {
                             const data = response.data;
                             
@@ -1603,12 +1606,39 @@ if ($priority_fields_result) {
                             // Hiện nút clear
                             memberCard.find('.clear-student-info').show();
                             
+                            // Thông báo thành công
+                            memberCard.find('.member-name').parent().append('<small class="text-success"><i class="fas fa-check-circle mr-1"></i>Đã tải thông tin thành công</small>');
+                            
                         } else {
-                            alert('Không tìm thấy sinh viên với MSSV này. Vui lòng kiểm tra lại.');
+                            alert('Lỗi: ' + response.message);
+                            console.error('API Error:', response);
                         }
                     },
-                    error: function() {
-                        alert('Có lỗi xảy ra khi tìm kiếm thông tin sinh viên. Vui lòng thử lại sau.');
+                    error: function(xhr, status, error) {
+                        console.error('AJAX Error Details:', {
+                            xhr: xhr,
+                            status: status,
+                            error: error,
+                            responseText: xhr.responseText,
+                            readyState: xhr.readyState,
+                            statusText: xhr.statusText
+                        });
+                        
+                        let errorMessage = 'Có lỗi xảy ra khi tìm kiếm thông tin sinh viên.';
+                        
+                        if (status === 'timeout') {
+                            errorMessage = 'Kết nối quá chậm. Vui lòng thử lại sau.';
+                        } else if (status === 'error') {
+                            if (xhr.status === 404) {
+                                errorMessage = 'Không tìm thấy API endpoint. Vui lòng liên hệ quản trị viên.';
+                            } else if (xhr.status === 500) {
+                                errorMessage = 'Lỗi server. Vui lòng thử lại sau.';
+                            } else if (xhr.status === 0) {
+                                errorMessage = 'Không thể kết nối đến server. Kiểm tra kết nối mạng.';
+                            }
+                        }
+                        
+                        alert(errorMessage + '\n\nChi tiết lỗi: ' + error + ' (Status: ' + xhr.status + ')');
                     },
                     complete: function() {
                         // Khôi phục nút tìm kiếm

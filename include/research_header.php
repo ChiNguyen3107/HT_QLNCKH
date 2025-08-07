@@ -34,6 +34,12 @@ if (basename($_SERVER['PHP_SELF']) === 'research_header.php') {
     <!-- Modern Sidebar Layout CSS -->
     <link href="/NLNganh/assets/css/research/modern-sidebar-layout.css" rel="stylesheet">
     
+    <!-- Simple Sidebar CSS -->
+    <link href="/NLNganh/assets/css/research/simple-sidebar.css" rel="stylesheet">
+    
+    <!-- Simple Sidebar Enhanced CSS -->
+    <link href="/NLNganh/assets/css/research/simple-sidebar-enhanced.css" rel="stylesheet">
+    
     <!-- Modern Sidebar Custom CSS -->
     <link href="/NLNganh/assets/css/research/modern-sidebar-custom.css" rel="stylesheet">
     
@@ -55,11 +61,36 @@ if (basename($_SERVER['PHP_SELF']) === 'research_header.php') {
     <?php if (isset($additional_css)): ?>
         <?php echo $additional_css; ?>
     <?php endif; ?>
+    
+    <!-- Layout Fix CSS to prevent sidebar overlap -->
+    <style>
+        #wrapper {
+            display: flex !important;
+        }
+        
+        .simple-sidebar {
+            position: fixed !important;
+            z-index: 1000 !important;
+        }
+        
+        #content-wrapper {
+            margin-left: 250px !important;
+            width: calc(100% - 250px) !important;
+            flex: 1 !important;
+        }
+        
+        @media (max-width: 768px) {
+            #content-wrapper {
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+        }
+    </style>
 </head>
 <body id="page-top">
     <div id="wrapper">
-    <!-- Modern Research Sidebar -->
-    <?php include __DIR__ . '/modern_research_sidebar.php'; ?>
+    <!-- Simple Research Sidebar -->
+    <?php include __DIR__ . '/simple_research_sidebar.php'; ?>
     
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column content-wrapper">

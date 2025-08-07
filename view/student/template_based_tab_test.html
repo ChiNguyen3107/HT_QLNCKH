@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Template Based Tab Test</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <h3>Test Template-Based Tab System</h3>
+        
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <a class="nav-link simple-tab active" data-tab="proposal" href="#" id="proposal-tab">
+                    <i class="fas fa-file-alt mr-1"></i> Thuyết minh
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link simple-tab" data-tab="contract" href="#" id="contract-tab">
+                    <i class="fas fa-file-contract mr-1"></i> Hợp đồng
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link simple-tab" data-tab="decision" href="#" id="decision-tab">
+                    <i class="fas fa-file-signature mr-1"></i> Quyết định
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link simple-tab" data-tab="report" href="#" id="report-tab">
+                    <i class="fas fa-file-invoice mr-1"></i> Biên bản
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link simple-tab" data-tab="evaluation" href="#" id="evaluation-tab">
+                    <i class="fas fa-clipboard-check mr-1"></i> Đánh giá
+                </a>
+            </li>
+        </ul>
+
+        <!-- Single Content Area -->
+        <div class="tab-content">
+            <div id="single-tab-content" style="padding: 20px; border: 1px solid #dee2e6; border-radius: 8px; background: #f8f9fa; min-height: 400px;">
+                <div class="text-center text-muted">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                    <p>Đang tải nội dung...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Panel -->
+        <div class="mt-4">
+            <div class="card">
+                <div class="card-header">Debug Information</div>
+                <div class="card-body">
+                    <p><strong>Current Tab:</strong> <span id="debug-current-tab">none</span></p>
+                    <p><strong>URL Tab:</strong> <span id="debug-url-tab">none</span></p>
+                    <p><strong>Content Length:</strong> <span id="debug-content-length">0</span></p>
+                    <p><strong>Available Templates:</strong> <span id="debug-templates">none</span></p>
+                    <button class="btn btn-sm btn-info" onclick="showDebugInfo()">Refresh Debug Info</button>
+                    <button class="btn btn-sm btn-warning" onclick="forceLoadTab('proposal')">Force Load Proposal</button>
+                    <button class="btn btn-sm btn-danger" onclick="testTemplateAccess()">Test Template Access</button>
+                    <a href="?tab=report" class="btn btn-sm btn-success">Test URL ?tab=report</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Hidden Templates -->
+        <div style="display: none;" id="content-templates">
+            <div id="template-proposal">
+                <div style="background: #ffebee; border: 2px solid #f44336; padding: 20px; border-radius: 8px;">
+                    <h4 style="color: #d32f2f;">🔴 THUYẾT MINH ĐỀ TÀI</h4>
+                    <div class="alert alert-danger">
+                        <strong>Tab Thuyết minh active!</strong> Chỉ content này hiển thị.
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>File thuyết minh hiện tại</h6>
+                            <p>Đây là nội dung thuyết minh của đề tài...</p>
+                            <div class="d-flex justify-content-between">
+                                <span>proposal_document.pdf</span>
+                                <button class="btn btn-primary btn-sm">Tải xuống</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="template-contract">
+                <div style="background: #e3f2fd; border: 2px solid #2196f3; padding: 20px; border-radius: 8px;">
+                    <h4 style="color: #1976d2;">🔵 HỢP ĐỒNG THỰC HIỆN</h4>
+                    <div class="alert alert-primary">
+                        <strong>Tab Hợp đồng active!</strong> Content thuyết minh đã biến mất.
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>Thông tin hợp đồng</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Mã hợp đồng:</strong> HD001/2025
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Ngày ký:</strong> 15/01/2025
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <strong>Giá trị:</strong> 50,000,000 VNĐ
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Thời hạn:</strong> 12 tháng
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="template-decision">
+                <div style="background: #fff3e0; border: 2px solid #ff9800; padding: 20px; border-radius: 8px;">
+                    <h4 style="color: #ef6c00;">🟠 QUYẾT ĐỊNH NGHIỆM THU</h4>
+                    <div class="alert alert-warning">
+                        <strong>Tab Quyết định active!</strong> Chỉ content này được hiển thị.
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>Quyết định thành lập hội đồng</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Số quyết định:</strong> 123/QĐ-ĐHSPKT
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Ngày ban hành:</strong> 01/12/2024
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <h6>Thành viên hội đồng:</h6>
+                                <ul>
+                                    <li>PGS.TS Nguyễn Văn A - Chủ tịch</li>
+                                    <li>TS. Trần Thị B - Thành viên</li>
+                                    <li>TS. Lê Văn C - Thư ký</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="template-report">
+                <div style="background: #e8f5e8; border: 2px solid #4caf50; padding: 20px; border-radius: 8px;">
+                    <h4 style="color: #388e3c;">🟢 BIÊN BẢN NGHIỆM THU</h4>
+                    <div class="alert alert-success">
+                        <strong>Tab Biên bản active!</strong> Các tab khác đã ẩn.
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>Thông tin biên bản</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Ngày nghiệm thu:</strong> 20/12/2024
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Địa điểm:</strong> Phòng họp A1.201
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <strong>Kết quả:</strong> <span class="badge badge-success">Đạt</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Điểm số:</strong> 85/100
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-warning">Cập nhật thành viên hội đồng</button>
+                                <button class="btn btn-info ml-2">Xem chi tiết</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="template-evaluation">
+                <div style="background: #f3e5f5; border: 2px solid #9c27b0; padding: 20px; border-radius: 8px;">
+                    <h4 style="color: #7b1fa2;">🟣 ĐÁNH GIÁ NGHIỆM THU</h4>
+                    <div class="alert alert-info">
+                        <strong>Tab Đánh giá active!</strong> Content duy nhất hiển thị.
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>Kết quả đánh giá tổng hợp</h6>
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <h3 class="text-success">85</h3>
+                                    <small>Điểm trung bình</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <h3 class="text-primary">Tốt</h3>
+                                    <small>Xếp loại</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <h3 class="text-warning">5/5</h3>
+                                    <small>Thành viên đã chấm</small>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <h6>Chi tiết điểm số:</h6>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar bg-success" style="width: 85%">Nội dung khoa học (85%)</div>
+                                </div>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar bg-info" style="width: 80%">Hình thức trình bày (80%)</div>
+                                </div>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar bg-warning" style="width: 90%">Thuyết trình (90%)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'proposal';
+        
+        $(document).ready(function() {
+            console.log('=== TEMPLATE-BASED TAB TEST LOADED ===');
+            initializeTabs();
+            setInterval(showDebugInfo, 2000); // Auto refresh debug info
+        });
+
+        function initializeTabs() {
+            console.log('=== INITIALIZING TEMPLATE-BASED TABS ===');
+            
+            // Debug: Check what templates are available
+            const templates = $('[id^="template-"]');
+            console.log('Available templates:', templates.map(function() { return this.id; }).get());
+            console.log('Total templates found:', templates.length);
+            
+            // Get initial tab from URL or default to proposal
+            const urlParams = new URLSearchParams(window.location.search);
+            const initialTab = urlParams.get('tab') || 'proposal';
+            console.log('Initial tab from URL:', urlParams.get('tab'));
+            console.log('Final initial tab:', initialTab);
+            
+            // Initialize tab content
+            loadTabContent(initialTab);
+            updateActiveTab(initialTab);
+            
+            // Handle tab clicks
+            $('.simple-tab').off('click').on('click', function(e) {
+                e.preventDefault();
+                const tabName = $(this).data('tab');
+                console.log('=== TAB CLICKED:', tabName, '===');
+                loadTabContent(tabName);
+                updateActiveTab(tabName);
+                updateUrl(tabName);
+            });
+            
+            // Handle URL changes (back/forward buttons)
+            window.addEventListener('popstate', function(event) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlTab = urlParams.get('tab') || 'proposal';
+                console.log('=== URL CHANGED (POPSTATE):', urlTab, '===');
+                loadTabContent(urlTab);
+                updateActiveTab(urlTab);
+            });
+            
+            console.log('✅ Template-based tabs initialized successfully');
+        }
+        
+        function loadTabContent(tabName) {
+            console.log('=== LOADING CONTENT FOR TAB:', tabName, '===');
+            
+            // Debug: Check if template exists
+            const templateElement = $('#template-' + tabName);
+            console.log('Template element found:', templateElement.length > 0);
+            console.log('Template selector:', '#template-' + tabName);
+            
+            // Get content from template
+            const templateContent = templateElement.html();
+            console.log('Template content length:', templateContent ? templateContent.length : 0);
+            console.log('Template content preview:', templateContent ? templateContent.substring(0, 100) + '...' : 'EMPTY');
+            
+            if (templateContent && templateContent.trim().length > 0) {
+                console.log('✅ Template found, replacing content...');
+                // Replace content completely
+                $('#single-tab-content').html(templateContent);
+                currentTab = tabName;
+                console.log('✅ Content loaded successfully for:', tabName);
+                
+                // Verify content was actually set
+                const newContent = $('#single-tab-content').html();
+                console.log('✅ Verification - new content length:', newContent.length);
+                
+            } else {
+                console.error('❌ Template not found or empty for tab:', tabName);
+                $('#single-tab-content').html(`
+                    <div class="alert alert-danger">
+                        <strong>Lỗi:</strong> Không tìm thấy template cho tab "${tabName}"
+                        <br><small>Template selector: #template-${tabName}</small>
+                        <br><small>Available templates: ${$('[id^="template-"]').map(function() { return this.id; }).get().join(', ')}</small>
+                    </div>
+                `);
+            }
+        }
+        
+        function updateActiveTab(tabName) {
+            // Update tab link states
+            $('.simple-tab').removeClass('active');
+            $('.simple-tab[data-tab="' + tabName + '"]').addClass('active');
+            console.log('Active tab updated to:', tabName);
+        }
+        
+        function updateUrl(tabName) {
+            if (history.pushState) {
+                const newUrl = window.location.pathname + '?tab=' + tabName;
+                history.pushState(null, null, newUrl);
+                console.log('URL updated to:', newUrl);
+            }
+        }
+        
+        function showDebugInfo() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlTab = urlParams.get('tab') || 'none';
+            const contentLength = $('#single-tab-content').html().length;
+            const templates = $('[id^="template-"]').map(function() { return this.id; }).get().join(', ');
+            
+            $('#debug-current-tab').text(currentTab);
+            $('#debug-url-tab').text(urlTab);
+            $('#debug-content-length').text(contentLength);
+            $('#debug-templates').text(templates || 'none');
+            
+            console.log('=== DEBUG INFO ===');
+            console.log('Current Tab:', currentTab);
+            console.log('URL Tab:', urlTab);
+            console.log('Content Length:', contentLength);
+            console.log('Available Templates:', templates);
+        }
+        
+        function forceLoadTab(tabName) {
+            console.log('=== FORCE LOADING TAB:', tabName, '===');
+            loadTabContent(tabName);
+            updateActiveTab(tabName);
+        }
+        
+        function testTemplateAccess() {
+            console.log('=== TESTING TEMPLATE ACCESS ===');
+            const templates = ['proposal', 'contract', 'decision', 'report', 'evaluation'];
+            
+            templates.forEach(function(tabName) {
+                const templateElement = $('#template-' + tabName);
+                const content = templateElement.html();
+                console.log(`Template ${tabName}:`, {
+                    exists: templateElement.length > 0,
+                    contentLength: content ? content.length : 0,
+                    preview: content ? content.substring(0, 50) + '...' : 'EMPTY'
+                });
+            });
+        }
+    </script>
+</body>
+</html>

@@ -124,10 +124,10 @@ $page_title = "Thông báo | Quản lý nghiên cứu";
 
 // Define any additional CSS specific to this page
 $additional_css = '<style>
-    /* Layout positioning - tương tự như dashboard và profile */
+    /* Layout positioning - Fixed to match 250px sidebar */
     #content-wrapper {
-        margin-left: 260px !important;
-        width: calc(100% - 260px) !important;
+        margin-left: 250px !important;
+        width: calc(100% - 250px) !important;
         padding-left: 15px !important;
         padding-right: 15px !important;
     }
@@ -138,9 +138,30 @@ $additional_css = '<style>
         max-width: none !important;
     }
     
-    /* Đảm bảo body layout đúng */
+    /* Layout fix for notifications - Remove any extra spacing */
     body {
-        margin-left: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    #wrapper {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+    }
+    
+    #content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Override any conflicting styles */
+    .modern-research-sidebar,
+    .simple-sidebar {
+        width: 250px !important;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
     }
     
     /* Enhanced notification cards */

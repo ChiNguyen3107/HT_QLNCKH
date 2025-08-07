@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Member Evaluation Buttons</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h3>Test Bảng Thành Viên Hội Đồng</h3>
+        
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover table-sm">
+                <thead class="thead-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Họ tên</th>
+                        <th>Vai trò</th>
+                        <th class="text-center">Điểm</th>
+                        <th class="text-center">Trạng thái</th>
+                        <th class="text-center">File đánh giá</th>
+                        <th class="text-center">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>
+                            <strong>Nguyễn Văn A</strong><br>
+                            <small class="text-muted">Mã GV: GV001</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-danger">Chủ tịch hội đồng</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="text-muted">-</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-warning">Chưa đánh giá</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="text-muted">
+                                <i class="fas fa-file-times mr-1"></i>Chưa có
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group-vertical" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary evaluate-member-btn mb-1" 
+                                        data-member-id="GV001"
+                                        data-member-name="Nguyễn Văn A"
+                                        data-member-role="Chủ tịch hội đồng"
+                                        data-member-score=""
+                                        title="Nhập điểm đánh giá">
+                                    <i class="fas fa-star mr-1"></i>Nhập điểm
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success upload-evaluation-btn" 
+                                        data-member-id="GV001"
+                                        data-member-name="Nguyễn Văn A"
+                                        data-member-role="Chủ tịch hội đồng"
+                                        title="Upload file đánh giá">
+                                    <i class="fas fa-upload mr-1"></i>Upload file
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>
+                            <strong>Trần Thị B</strong><br>
+                            <small class="text-muted">Vai trò: Thư ký</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-info">Thư ký</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="font-weight-bold text-primary">85.5</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-success">Đã đánh giá</span>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown" title="Có 2 file">
+                                    <i class="fas fa-file-check mr-1"></i>2 file
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="#" target="_blank">
+                                        <i class="fas fa-download mr-1"></i>Báo cáo đánh giá 1
+                                    </a>
+                                    <a class="dropdown-item" href="#" target="_blank">
+                                        <i class="fas fa-download mr-1"></i>Báo cáo đánh giá 2
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group-vertical" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary evaluate-member-btn mb-1" 
+                                        data-member-id="GV002"
+                                        data-member-name="Trần Thị B"
+                                        data-member-role="Thư ký"
+                                        data-member-score="85.5"
+                                        title="Nhập điểm đánh giá">
+                                    <i class="fas fa-star mr-1"></i>Nhập điểm
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success upload-evaluation-btn" 
+                                        data-member-id="GV002"
+                                        data-member-name="Trần Thị B"
+                                        data-member-role="Thư ký"
+                                        title="Upload file đánh giá">
+                                    <i class="fas fa-upload mr-1"></i>Upload file
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal nhập điểm đánh giá -->
+    <div class="modal fade" id="evaluationScoreModal" tabindex="-1" role="dialog" aria-labelledby="evaluationScoreModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="evaluationScoreModalLabel">
+                        <i class="fas fa-star mr-2"></i>Nhập điểm đánh giá
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="evaluationScoreForm">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="member_info"><i class="fas fa-user mr-1"></i>Thành viên hội đồng:</label>
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <strong id="score_member_name"></strong><br>
+                                    <small class="text-muted" id="score_member_role"></small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="member_score">
+                                <i class="fas fa-star mr-1"></i>Điểm đánh giá <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" class="form-control" id="member_score" name="member_score" 
+                                   min="0" max="100" step="0.1" placeholder="Nhập điểm từ 0 đến 100" required>
+                            <small class="form-text text-muted">Điểm từ 0 đến 100, có thể nhập số thập phân (ví dụ: 85.5)</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="score_comment">
+                                <i class="fas fa-comment mr-1"></i>Nhận xét (tùy chọn)
+                            </label>
+                            <textarea class="form-control" id="score_comment" name="score_comment" 
+                                      rows="3" placeholder="Nhập nhận xét về việc đánh giá..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                            <i class="fas fa-times mr-1"></i>Hủy
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save mr-1"></i>Lưu điểm
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal upload file đánh giá -->
+    <div class="modal fade" id="uploadEvaluationModal" tabindex="-1" role="dialog" aria-labelledby="uploadEvaluationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uploadEvaluationModalLabel">
+                        <i class="fas fa-upload mr-2"></i>Upload file đánh giá
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="uploadEvaluationForm">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="upload_member_info"><i class="fas fa-user mr-1"></i>Thành viên hội đồng:</label>
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <strong id="upload_member_name"></strong><br>
+                                    <small class="text-muted" id="upload_member_role"></small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="evaluation_file_name">
+                                <i class="fas fa-file-signature mr-1"></i>Tên file đánh giá <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="evaluation_file_name" name="evaluation_file_name" 
+                                   placeholder="Nhập tên mô tả cho file đánh giá" required>
+                            <small class="form-text text-muted">Ví dụ: "Báo cáo đánh giá của [Tên thành viên]"</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="evaluation_file_upload">
+                                <i class="fas fa-file mr-1"></i>File đánh giá <span class="text-danger">*</span>
+                            </label>
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="evaluation_file_upload" 
+                                       name="evaluation_file" accept=".pdf,.doc,.docx,.txt,.xls,.xlsx" required>
+                                <label class="custom-file-label" for="evaluation_file_upload">Chọn file...</label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Chấp nhận: PDF, DOC, DOCX, TXT, XLS, XLSX (tối đa 10MB)
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="file_description">
+                                <i class="fas fa-comment mr-1"></i>Mô tả file (tùy chọn)
+                            </label>
+                            <textarea class="form-control" id="file_description" name="file_description" 
+                                      rows="3" placeholder="Mô tả nội dung file đánh giá..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                            <i class="fas fa-times mr-1"></i>Hủy
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-upload mr-1"></i>Upload file
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Xử lý nút nhập điểm đánh giá
+            $(document).on('click', '.evaluate-member-btn', function() {
+                const memberId = $(this).data('member-id');
+                const memberName = $(this).data('member-name');
+                const memberRole = $(this).data('member-role');
+                const memberScore = $(this).data('member-score');
+                
+                $('#score_member_name').text(memberName);
+                $('#score_member_role').text('Vai trò: ' + memberRole);
+                $('#member_score').val(memberScore || '');
+                
+                $('#evaluationScoreModal').modal('show');
+            });
+            
+            // Xử lý nút upload file đánh giá
+            $(document).on('click', '.upload-evaluation-btn', function() {
+                const memberId = $(this).data('member-id');
+                const memberName = $(this).data('member-name');
+                const memberRole = $(this).data('member-role');
+                
+                $('#upload_member_name').text(memberName);
+                $('#upload_member_role').text('Vai trò: ' + memberRole);
+                $('#evaluation_file_name').val('File đánh giá của ' + memberName);
+                
+                $('#uploadEvaluationModal').modal('show');
+            });
+            
+            // Xử lý form nhập điểm
+            $('#evaluationScoreForm').on('submit', function(e) {
+                e.preventDefault();
+                alert('Form nhập điểm đã được submit!\nĐiểm: ' + $('#member_score').val() + '\nNhận xét: ' + $('#score_comment').val());
+                $('#evaluationScoreModal').modal('hide');
+            });
+            
+            // Xử lý form upload file
+            $('#uploadEvaluationForm').on('submit', function(e) {
+                e.preventDefault();
+                alert('Form upload file đã được submit!\nTên file: ' + $('#evaluation_file_name').val());
+                $('#uploadEvaluationModal').modal('hide');
+            });
+            
+            // Cập nhật label cho custom file input
+            $(document).on('change', '.custom-file-input', function() {
+                const fileName = $(this)[0].files[0]?.name || 'Chọn file...';
+                $(this).next('.custom-file-label').text(fileName);
+            });
+        });
+    </script>
+</body>
+</html>

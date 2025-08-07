@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload Member Evaluation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>🧪 Test Upload File Đánh Giá Thành Viên</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="testUploadForm" action="view/student/upload_member_evaluation.php" method="post" enctype="multipart/form-data">
+                            <div class="form-group">
+                                <label for="project_id">Project ID:</label>
+                                <input type="text" class="form-control" id="project_id" name="project_id" value="DT0000001" required>
+                                <small class="text-muted">Mã đề tài để test</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="member_id">Member ID:</label>
+                                <input type="text" class="form-control" id="member_id" name="member_id" value="GV000002" required>
+                                <small class="text-muted">Mã thành viên hội đồng</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="decision_id">Decision ID:</label>
+                                <input type="text" class="form-control" id="decision_id" name="decision_id" value="QDDT0">
+                                <small class="text-muted">Mã quyết định (có thể để trống)</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="evaluation_file_name">Tên file:</label>
+                                <input type="text" class="form-control" id="evaluation_file_name" name="evaluation_file_name" value="Đánh giá test" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="file_description">Mô tả:</label>
+                                <textarea class="form-control" id="file_description" name="file_description" rows="3">File test đánh giá thành viên hội đồng</textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="evaluation_file">Chọn file:</label>
+                                <input type="file" class="form-control-file" id="evaluation_file" name="evaluation_file" required>
+                                <small class="text-muted">Hỗ trợ: PDF, DOC, DOCX, TXT, XLS, XLSX (tối đa 10MB)</small>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fas fa-upload"></i> Test Upload
+                            </button>
+                        </form>
+                        
+                        <div id="result" class="mt-3"></div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6>📝 Hướng dẫn test:</h6>
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            <li>Đảm bảo đã login với tài khoản student</li>
+                            <li>Chọn một file nhỏ để test (TXT hoặc PDF)</li>
+                            <li>Kiểm tra kết quả trong console browser (F12)</li>
+                            <li>Nếu thành công, file sẽ xuất hiện trong thư mục uploads/member_evaluations/</li>
+                        </ol>
+                        
+                        <div class="alert alert-info">
+                            <strong>Lưu ý:</strong> Đây là file test, chỉ sử dụng để debug lỗi upload.
+                            Sau khi test xong, hãy xóa file này.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $('#testUploadForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            var formData = new FormData(this);
+            
+            $('#result').html('<div class="alert alert-info">Đang upload...</div>');
+            
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                dataType: 'json',
+                success: function(response) {
+                    console.log('Response:', response);
+                    if (response.success) {
+                        $('#result').html('<div class="alert alert-success">✅ Upload thành công!<br>' + 
+                                        'File: ' + response.file_name + '<br>' +
+                                        'Path: ' + response.file_path + '</div>');
+                    } else {
+                        $('#result').html('<div class="alert alert-danger">❌ Lỗi: ' + response.message + '</div>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', xhr.responseText);
+                    $('#result').html('<div class="alert alert-danger">❌ Lỗi AJAX: ' + error + '<br>' +
+                                    'Response: ' + xhr.responseText + '</div>');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

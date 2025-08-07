@@ -168,7 +168,46 @@ while ($row = $faculty_result->fetch_assoc()) {
 $page_title = "Quản lý nhà nghiên cứu | Hệ thống quản lý nghiên cứu";
 
 // Additional CSS
-$additional_css = '<link href="/NLNganh/assets/css/research/manage-researchers-enhanced.css" rel="stylesheet">';
+$additional_css = '<link href="/NLNganh/assets/css/research/manage-researchers-enhanced.css" rel="stylesheet">
+<style>
+/* Additional layout fix with higher specificity for manage_researchers.php */
+body#page-top {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+div#wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+}
+
+div#content-wrapper.d-flex.flex-column.content-wrapper {
+    margin-left: 250px !important;
+    padding: 0 !important;
+    width: calc(100% - 250px) !important;
+    flex: 1 !important;
+}
+
+div#content {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+div.container-fluid {
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    margin: 0 !important;
+}
+
+/* Mobile responsive with higher specificity */
+@media (max-width: 768px) {
+    div#content-wrapper.d-flex.flex-column.content-wrapper {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+}
+</style>';
 
 // Include the research header
 include '../../include/research_header.php';

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test JavaScript Variable Conflicts</title>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+</head>
+<body>
+    <h1>Test JavaScript Variable Conflicts</h1>
+    <div id="test-results"></div>
+
+    <script>
+        // Test với biến projectCouncilMembers và projectTeachers
+        let projectCouncilMembers = [];
+        let projectTeachers = [];
+        
+        // Test function
+        function testVariables() {
+            try {
+                // Test projectCouncilMembers
+                projectCouncilMembers.push({
+                    id: 'test1',
+                    name: 'Test Teacher',
+                    role: 'Chủ tịch'
+                });
+                
+                // Test projectTeachers  
+                projectTeachers.push({
+                    id: 'teacher1',
+                    name: 'Test Teacher',
+                    department: 'Khoa CNTT'
+                });
+                
+                $('#test-results').html(`
+                    <div style="color: green;">
+                        <h3>✓ Test Passed!</h3>
+                        <p>projectCouncilMembers length: ${projectCouncilMembers.length}</p>
+                        <p>projectTeachers length: ${projectTeachers.length}</p>
+                        <p>No variable conflicts detected.</p>
+                    </div>
+                `);
+                
+                console.log('Variables tested successfully:', {
+                    projectCouncilMembers,
+                    projectTeachers
+                });
+                
+            } catch (error) {
+                $('#test-results').html(`
+                    <div style="color: red;">
+                        <h3>✗ Test Failed!</h3>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `);
+                console.error('Variable test failed:', error);
+            }
+        }
+        
+        // Run test when page loads
+        $(document).ready(function() {
+            testVariables();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Ajax Evaluation</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h2>Test Ajax Evaluation System</h2>
+    
+    <div id="result"></div>
+    
+    <button onclick="testEvaluation()">Test Evaluation Update</button>
+    
+    <script>
+    function testEvaluation() {
+        const formData = new FormData();
+        formData.append('project_id', 'DT0000001');
+        formData.append('member_id', 'GV000002');
+        formData.append('criteria_id[]', 'TC001');
+        formData.append('criteria_id[]', 'TC002');
+        formData.append('criteria_id[]', 'TC003');
+        formData.append('criteria_id[]', 'TC004');
+        formData.append('criteria_id[]', 'TC005');
+        formData.append('score[]', '8.5');
+        formData.append('score[]', '12.0');
+        formData.append('score[]', '13.5');
+        formData.append('score[]', '25.0');
+        formData.append('score[]', '12.5');
+        formData.append('criteria_comments[]', 'Good overview');
+        formData.append('criteria_comments[]', 'Clear objectives');
+        formData.append('criteria_comments[]', 'Sound methodology');
+        formData.append('criteria_comments[]', 'Excellent content');
+        formData.append('criteria_comments[]', 'Good contribution');
+        formData.append('overall_comment', 'This is a comprehensive evaluation.');
+        formData.append('is_completed', '1');
+        
+        // Simulate student session by adding session data via cookie or header
+        
+        $.ajax({
+            url: 'view/student/update_member_criteria_score_test.php',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            beforeSend: function(xhr) {
+                // Add student session simulation
+                xhr.setRequestHeader('X-Student-ID', 'B2110051');
+            },
+            success: function(response) {
+                $('#result').html('<div style="color: green;">Success: ' + JSON.stringify(response, null, 2) + '</div>');
+            },
+            error: function(xhr, status, error) {
+                $('#result').html('<div style="color: red;">Error: ' + xhr.responseText + '<br>Status: ' + status + '<br>Error: ' + error + '</div>');
+            }
+        });
+    }
+    </script>
+</body>
+</html>

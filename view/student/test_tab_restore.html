@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Tab Restore Functionality</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .debug-panel {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .debug-button {
+            margin: 5px;
+        }
+        .tab-pane {
+            min-height: 200px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h2>Test Tab Restore After Form Submit</h2>
+        
+        <div class="debug-panel">
+            <h5>Debug Controls</h5>
+            <button class="btn btn-info debug-button" onclick="window.debugTabState()">Check Tab State</button>
+            <button class="btn btn-warning debug-button" onclick="localStorage.setItem('lastActiveTab', 'report'); location.reload();">Simulate Form Submit (Report Tab)</button>
+            <button class="btn btn-warning debug-button" onclick="localStorage.setItem('lastActiveTab', 'evaluation'); location.reload();">Simulate Form Submit (Evaluation Tab)</button>
+            <button class="btn btn-success debug-button" onclick="localStorage.clear(); location.reload();">Clear Storage & Reload</button>
+            <button class="btn btn-secondary debug-button" onclick="console.clear();">Clear Console</button>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs" id="documentTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="proposal-tab" data-toggle="tab" href="#proposal" role="tab">
+                    <i class="fas fa-file-alt mr-1"></i>Thuyết minh
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="contract-tab" data-toggle="tab" href="#contract" role="tab">
+                    <i class="fas fa-handshake mr-1"></i>Hợp đồng
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="decision-tab" data-toggle="tab" href="#decision" role="tab">
+                    <i class="fas fa-gavel mr-1"></i>Quyết định
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="report-tab" data-toggle="tab" href="#report" role="tab">
+                    <i class="fas fa-clipboard-check mr-1"></i>Biên bản
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="evaluation-tab" data-toggle="tab" href="#evaluation" role="tab">
+                    <i class="fas fa-star mr-1"></i>Đánh giá
+                </a>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="documentTabsContent">
+            <div class="tab-pane fade show active" id="proposal" role="tabpanel">
+                <h4>Tab Thuyết minh</h4>
+                <p>Nội dung tab thuyết minh đề tài.</p>
+                <div class="alert alert-info">
+                    Tab này đang active. Thử click các tab khác để test chức năng switching.
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="contract" role="tabpanel">
+                <h4>Tab Hợp đồng</h4>
+                <p>Nội dung tab hợp đồng đề tài.</p>
+                <form onsubmit="return testFormSubmit(event, 'contract')">
+                    <button type="submit" class="btn btn-primary">Test Form Submit (Contract)</button>
+                </form>
+            </div>
+            
+            <div class="tab-pane fade" id="decision" role="tabpanel">
+                <h4>Tab Quyết định</h4>
+                <p>Nội dung tab quyết định nghiệm thu.</p>
+                <form onsubmit="return testFormSubmit(event, 'decision')">
+                    <button type="submit" class="btn btn-primary">Test Form Submit (Decision)</button>
+                </form>
+            </div>
+            
+            <div class="tab-pane fade" id="report" role="tabpanel">
+                <h4>Tab Biên bản</h4>
+                <p>Nội dung tab biên bản nghiệm thu.</p>
+                <form onsubmit="return testFormSubmit(event, 'report')">
+                    <button type="submit" class="btn btn-primary">Test Council Members Update</button>
+                </form>
+            </div>
+            
+            <div class="tab-pane fade" id="evaluation" role="tabpanel">
+                <h4>Tab Đánh giá</h4>
+                <p>Nội dung tab đánh giá đề tài.</p>
+                <form onsubmit="return testFormSubmit(event, 'evaluation')">
+                    <button type="submit" class="btn btn-primary">Test Form Submit (Evaluation)</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script>
+
+    <script>
+        $(document).ready(function() {
+            console.log('=== TAB RESTORE TEST PAGE LOADED ===');
+            console.log('jQuery version:', $.fn.jquery);
+            console.log('Bootstrap tab available:', typeof $.fn.tab);
+            
+            // Debug function to check current tab state
+            window.debugTabState = function() {
+                console.log('=== CURRENT TAB STATE ===');
+                console.log('Active tab link:', $('#documentTabs .nav-link.active').attr('href'));
+                console.log('Active tab pane:', $('.tab-pane.active').attr('id'));
+                console.log('Visible tab panes:', $('.tab-pane:visible').map(function() { return this.id; }).get());
+                console.log('Saved tab in localStorage:', localStorage.getItem('lastActiveTab'));
+                console.log('=========================');
+            };
+            
+            // Check for tab from localStorage first (for after form submissions)
+            var savedTab = localStorage.getItem('lastActiveTab');
+            var urlParams = new URLSearchParams(window.location.search);
+            var initialTab = urlParams.get('tab') || savedTab;
+            
+            // Clear saved tab after using it
+            if (savedTab) {
+                localStorage.removeItem('lastActiveTab');
+                console.log('Restored tab from localStorage:', savedTab);
+            }
+            
+            if (initialTab && $('#' + initialTab).length) {
+                console.log('Activating tab:', initialTab, savedTab ? '(from localStorage)' : '(from URL)');
+                
+                // Remove active from all
+                $('#documentTabs .nav-link').removeClass('active');
+                $('.tab-pane').removeClass('show active').hide();
+                
+                // Activate target tab
+                $('#documentTabs a[href="#' + initialTab + '"]').addClass('active');
+                $('#' + initialTab).addClass('show active').show();
+                
+                // Update URL if restored from localStorage
+                if (savedTab && !urlParams.get('tab')) {
+                    if (history.pushState) {
+                        var newUrl = window.location.pathname + '?tab=' + initialTab;
+                        history.pushState(null, null, newUrl);
+                    }
+                }
+            } else {
+                console.log('Activating first tab (proposal)');
+                
+                // Remove active from all
+                $('#documentTabs .nav-link').removeClass('active');
+                $('.tab-pane').removeClass('show active').hide();
+                
+                // Activate first tab
+                $('#documentTabs a:first').addClass('active');
+                $('#proposal').addClass('show active').show();
+            }
+            
+            // Manual tab click handling
+            $('#documentTabs a[data-toggle="tab"]').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                var targetTab = $(this).attr('href');
+                console.log('Tab clicked:', targetTab);
+                
+                // Remove active from all tabs and content
+                $('#documentTabs .nav-link').removeClass('active');
+                $('.tab-pane').removeClass('show active').hide();
+                
+                // Add active to clicked tab
+                $(this).addClass('active');
+                
+                // Show target content
+                $(targetTab).addClass('show active').show();
+                
+                // Update URL
+                if (history.pushState) {
+                    var tabName = targetTab.replace('#', '');
+                    var newUrl = window.location.pathname + '?tab=' + tabName;
+                    history.pushState(null, null, newUrl);
+                }
+                
+                console.log('Tab switched to:', targetTab);
+            });
+            
+            // Final tab state check
+            setTimeout(function() {
+                console.log('=== FINAL TAB STATE CHECK ===');
+                window.debugTabState();
+                
+                // Ensure at least one tab is active and visible
+                if ($('.tab-pane.show.active:visible').length === 0) {
+                    console.warn('No active tab found! Force activating first tab.');
+                    $('#documentTabs .nav-link').removeClass('active');
+                    $('.tab-pane').removeClass('show active').hide();
+                    $('#documentTabs a:first').addClass('active');
+                    $('#proposal').addClass('show active').show();
+                    console.log('Forced activation of first tab completed.');
+                }
+            }, 500);
+        });
+        
+        // Test form submit function
+        function testFormSubmit(event, tabName) {
+            event.preventDefault();
+            
+            // Save current tab
+            const currentTab = $('#documentTabs .nav-link.active').attr('href');
+            if (currentTab) {
+                const currentTabName = currentTab.replace('#', '');
+                localStorage.setItem('lastActiveTab', currentTabName);
+                console.log('Saving current tab before form submit:', currentTabName);
+            }
+            
+            // Simulate form processing delay
+            setTimeout(function() {
+                alert('Form submitted! Page will reload to test tab restoration.');
+                location.reload();
+            }, 1000);
+            
+            return false;
+        }
+    </script>
+</body>
+</html>

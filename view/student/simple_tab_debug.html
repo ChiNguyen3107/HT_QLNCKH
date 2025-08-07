@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Tab Debug</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <h3>Debug Tab - Only URL Changes Issue</h3>
+        
+        <div class="alert alert-warning">
+            <strong>Vấn đề:</strong> "chỉ thay đổi url còn lại không hoạt động"
+        </div>
+
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <a class="nav-link simple-tab active" data-tab="tab1" href="#" onclick="switchTab('tab1'); return false;">
+                    Tab 1 - Red
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link simple-tab" data-tab="tab2" href="#" onclick="switchTab('tab2'); return false;">
+                    Tab 2 - Blue
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link simple-tab" data-tab="tab3" href="#" onclick="switchTab('tab3'); return false;">
+                    Tab 3 - Green
+                </a>
+            </li>
+        </ul>
+
+        <!-- Content Area -->
+        <div id="content-area" style="border: 3px solid #000; padding: 30px; min-height: 200px; background: #f8f9fa;">
+            <div class="text-center">
+                <h4>Initial Content</h4>
+                <p>Click tab to change content</p>
+            </div>
+        </div>
+
+        <!-- Debug Panel -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Live Debug</div>
+                    <div class="card-body">
+                        <div id="debug-info">
+                            <p><strong>Current URL:</strong> <span id="current-url">-</span></p>
+                            <p><strong>Last Action:</strong> <span id="last-action">Page loaded</span></p>
+                            <p><strong>Content Length:</strong> <span id="content-length">0</span></p>
+                            <p><strong>jQuery Status:</strong> <span id="jquery-status">-</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Manual Tests</div>
+                    <div class="card-body">
+                        <button class="btn btn-info btn-sm" onclick="testJQuery()">Test jQuery</button>
+                        <button class="btn btn-warning btn-sm" onclick="forceChangeContent()">Force Change Content</button>
+                        <button class="btn btn-success btn-sm" onclick="switchTab('tab2')">Force Tab 2</button>
+                        <a href="?tab=tab3" class="btn btn-primary btn-sm">URL Test ?tab=tab3</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Console Log Display -->
+        <div class="mt-3">
+            <div class="card">
+                <div class="card-header">Console Log</div>
+                <div class="card-body">
+                    <div id="console-log" style="background: #2d3748; color: #e2e8f0; padding: 10px; font-family: monospace; height: 200px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'tab1';
+        let logCount = 0;
+
+        // Simple logging function
+        function log(message) {
+            logCount++;
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${logCount}] ${timestamp} - ${message}`;
+            
+            console.log(logMessage);
+            
+            const logElement = document.getElementById('console-log');
+            if (logElement) {
+                logElement.innerHTML += logMessage + '\n';
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            
+            // Update last action
+            const lastActionElement = document.getElementById('last-action');
+            if (lastActionElement) {
+                lastActionElement.textContent = message;
+            }
+        }
+
+        // Content templates
+        const contentTemplates = {
+            tab1: `
+                <div style="background: #ffebee; border: 3px solid #f44336; padding: 20px; border-radius: 8px;">
+                    <h3 style="color: #d32f2f;">🔴 TAB 1 - RED CONTENT</h3>
+                    <p><strong>CONTENT CHANGED!</strong> This is Tab 1 content</p>
+                    <div class="alert alert-danger">If you see other tab content, there's a problem!</div>
+                    <p>Time: ${new Date().toLocaleTimeString()}</p>
+                </div>
+            `,
+            tab2: `
+                <div style="background: #e3f2fd; border: 3px solid #2196f3; padding: 20px; border-radius: 8px;">
+                    <h3 style="color: #1976d2;">🔵 TAB 2 - BLUE CONTENT</h3>
+                    <p><strong>CONTENT REPLACED!</strong> This is Tab 2 content</p>
+                    <div class="alert alert-primary">Red content should be gone!</div>
+                    <p>Time: ${new Date().toLocaleTimeString()}</p>
+                </div>
+            `,
+            tab3: `
+                <div style="background: #e8f5e8; border: 3px solid #4caf50; padding: 20px; border-radius: 8px;">
+                    <h3 style="color: #388e3c;">🟢 TAB 3 - GREEN CONTENT</h3>
+                    <p><strong>CONTENT SWAPPED!</strong> This is Tab 3 content</p>
+                    <div class="alert alert-success">Only this content should be visible!</div>
+                    <p>Time: ${new Date().toLocaleTimeString()}</p>
+                </div>
+            `
+        };
+
+        // Main tab switching function
+        function switchTab(tabName) {
+            log(`=== SWITCHING TO TAB: ${tabName} ===`);
+            
+            try {
+                // 1. Update tab appearances
+                log(`Step 1: Updating tab appearances`);
+                updateTabAppearance(tabName);
+                
+                // 2. Change content
+                log(`Step 2: Changing content`);
+                changeContent(tabName);
+                
+                // 3. Update URL
+                log(`Step 3: Updating URL`);
+                updateURL(tabName);
+                
+                // 4. Update current tab
+                currentTab = tabName;
+                log(`✅ Tab switch completed: ${tabName}`);
+                
+            } catch (error) {
+                log(`❌ ERROR in switchTab: ${error.message}`);
+            }
+            
+            updateDebugInfo();
+        }
+
+        function updateTabAppearance(tabName) {
+            try {
+                // Remove active from all tabs
+                const allTabs = document.querySelectorAll('.simple-tab');
+                allTabs.forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                
+                // Add active to target tab
+                const targetTab = document.querySelector(`[data-tab="${tabName}"]`);
+                if (targetTab) {
+                    targetTab.classList.add('active');
+                    log(`✅ Tab appearance updated: ${tabName}`);
+                } else {
+                    log(`❌ Target tab not found: ${tabName}`);
+                }
+            } catch (error) {
+                log(`❌ ERROR in updateTabAppearance: ${error.message}`);
+            }
+        }
+
+        function changeContent(tabName) {
+            try {
+                const contentArea = document.getElementById('content-area');
+                if (!contentArea) {
+                    log(`❌ Content area not found`);
+                    return;
+                }
+                
+                const newContent = contentTemplates[tabName];
+                if (!newContent) {
+                    log(`❌ Template not found for: ${tabName}`);
+                    return;
+                }
+                
+                log(`Before change - content length: ${contentArea.innerHTML.length}`);
+                contentArea.innerHTML = newContent;
+                log(`After change - content length: ${contentArea.innerHTML.length}`);
+                log(`✅ Content changed to: ${tabName}`);
+                
+            } catch (error) {
+                log(`❌ ERROR in changeContent: ${error.message}`);
+            }
+        }
+
+        function updateURL(tabName) {
+            try {
+                if (history.pushState) {
+                    const newURL = window.location.pathname + '?tab=' + tabName;
+                    history.pushState(null, null, newURL);
+                    log(`✅ URL updated to: ${newURL}`);
+                } else {
+                    log(`❌ history.pushState not supported`);
+                }
+            } catch (error) {
+                log(`❌ ERROR in updateURL: ${error.message}`);
+            }
+        }
+
+        function updateDebugInfo() {
+            try {
+                const currentUrlElement = document.getElementById('current-url');
+                const contentLengthElement = document.getElementById('content-length');
+                const jqueryStatusElement = document.getElementById('jquery-status');
+                
+                if (currentUrlElement) {
+                    currentUrlElement.textContent = window.location.href;
+                }
+                
+                if (contentLengthElement) {
+                    const contentArea = document.getElementById('content-area');
+                    contentLengthElement.textContent = contentArea ? contentArea.innerHTML.length : 0;
+                }
+                
+                if (jqueryStatusElement) {
+                    jqueryStatusElement.textContent = typeof $ !== 'undefined' ? 'Available' : 'Not available';
+                }
+            } catch (error) {
+                log(`❌ ERROR in updateDebugInfo: ${error.message}`);
+            }
+        }
+
+        function testJQuery() {
+            if (typeof $ !== 'undefined') {
+                log(`✅ jQuery is available: version ${$.fn.jquery}`);
+            } else {
+                log(`❌ jQuery is NOT available`);
+            }
+        }
+
+        function forceChangeContent() {
+            const contentArea = document.getElementById('content-area');
+            const randomContent = `
+                <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px;">
+                    <h4>🟡 FORCED CONTENT CHANGE</h4>
+                    <p>This is manually forced content change</p>
+                    <p>Time: ${new Date().toLocaleTimeString()}</p>
+                </div>
+            `;
+            contentArea.innerHTML = randomContent;
+            log(`✅ Content force changed`);
+            updateDebugInfo();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            log(`=== PAGE LOADED ===`);
+            
+            // Check URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlTab = urlParams.get('tab');
+            
+            if (urlTab) {
+                log(`URL tab parameter found: ${urlTab}`);
+                switchTab(urlTab);
+            } else {
+                log(`No URL tab parameter, staying on default`);
+            }
+            
+            updateDebugInfo();
+            
+            // Auto update debug info every 2 seconds
+            setInterval(updateDebugInfo, 2000);
+        });
+
+        // Handle back/forward buttons
+        window.addEventListener('popstate', function(event) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlTab = urlParams.get('tab') || 'tab1';
+            log(`=== POPSTATE EVENT - URL tab: ${urlTab} ===`);
+            switchTab(urlTab);
+        });
+    </script>
+</body>
+</html>
