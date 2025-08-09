@@ -120,6 +120,31 @@ if (!strtotime($decision_date)) {
     exit();
 }
 
+// Ràng buộc: Ngày quyết định phải trước hoặc bằng hạn cuối của hợp đồng
+$contract_end_date = null;
+$hd_stmt = $conn->prepare("SELECT HD_NGAYKT FROM hop_dong WHERE DT_MADT = ? LIMIT 1");
+if ($hd_stmt) {
+    $hd_stmt->bind_param("s", $project_id);
+    if ($hd_stmt->execute()) {
+        $hd_res = $hd_stmt->get_result();
+        if ($hd_res && $hd_res->num_rows > 0) {
+            $contract_end_date = $hd_res->fetch_assoc()['HD_NGAYKT'];
+        }
+    }
+}
+
+if (empty($contract_end_date)) {
+    $_SESSION['error_message'] = "Chưa có thông tin hợp đồng hoặc ngày kết thúc hợp đồng. Vui lòng nhập hợp đồng trước.";
+    header("Location: view_project.php?id=" . urlencode($project_id));
+    exit();
+}
+
+if (strtotime($decision_date) > strtotime($contract_end_date)) {
+    $_SESSION['error_message'] = "Ngày quyết định phải trước hoặc bằng ngày kết thúc hợp đồng (" . date('d/m/Y', strtotime($contract_end_date)) . ").";
+    header("Location: view_project.php?id=" . urlencode($project_id));
+    exit();
+}
+
 // Kiểm tra file upload nếu có
 $new_filename = null;
 $upload_path = null;

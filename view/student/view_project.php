@@ -49,57 +49,108 @@ function checkProjectCompleteness($project_id, $conn) {
         'evaluation' => false   // File đánh giá
     ];
     
-    // Kiểm tra file thuyết minh
-    $proposal_sql = "SELECT DT_FILEBTM FROM de_tai_nghien_cuu WHERE DT_MADT = ? AND DT_FILEBTM IS NOT NULL AND DT_FILEBTM != ''";
-    $stmt = $conn->prepare($proposal_sql);
-    if ($stmt) {
-        $stmt->bind_param("s", $project_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $required_files['proposal'] = ($result->num_rows > 0);
-    }
-    
-    // Kiểm tra file hợp đồng
-    $contract_sql = "SELECT HD_FILE FROM hop_dong WHERE DT_MADT = ? AND HD_FILE IS NOT NULL AND HD_FILE != ''";
-    $stmt = $conn->prepare($contract_sql);
-    if ($stmt) {
-        $stmt->bind_param("s", $project_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $required_files['contract'] = ($result->num_rows > 0);
-    }
-    
-    // Kiểm tra file quyết định và biên bản
-    $decision_sql = "SELECT qd.QD_FILE, bb.BB_SOBB 
-                    FROM de_tai_nghien_cuu dt
-                    INNER JOIN quyet_dinh_nghiem_thu qd ON dt.QD_SO = qd.QD_SO
-                    LEFT JOIN bien_ban bb ON qd.QD_SO = bb.QD_SO
-                    WHERE dt.DT_MADT = ?
-                    AND qd.QD_FILE IS NOT NULL AND qd.QD_FILE != ''
-                    AND bb.BB_SOBB IS NOT NULL";
-    $stmt = $conn->prepare($decision_sql);
-    if ($stmt) {
-        $stmt->bind_param("s", $project_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $required_files['decision'] = ($result->num_rows > 0);
-    }
-    
-    // Kiểm tra file đánh giá
-    if ($required_files['decision']) {
-        $eval_sql = "SELECT COUNT(*) as file_count FROM file_danh_gia fg
-                    INNER JOIN bien_ban bb ON fg.BB_SOBB = bb.BB_SOBB
-                    INNER JOIN quyet_dinh_nghiem_thu qd ON bb.QD_SO = qd.QD_SO
-                    INNER JOIN de_tai_nghien_cuu dt ON dt.QD_SO = qd.QD_SO
-                    WHERE dt.DT_MADT = ?";
-        $stmt = $conn->prepare($eval_sql);
+    try {
+        // 1. Kiểm tra file thuyết minh
+        $proposal_sql = "SELECT DT_FILEBTM FROM de_tai_nghien_cuu WHERE DT_MADT = ? AND DT_FILEBTM IS NOT NULL AND TRIM(DT_FILEBTM) != ''";
+        $stmt = $conn->prepare($proposal_sql);
         if ($stmt) {
             $stmt->bind_param("s", $project_id);
             $stmt->execute();
             $result = $stmt->get_result();
-            $row = $result->fetch_assoc();
-            $required_files['evaluation'] = ($row['file_count'] > 0);
+            $required_files['proposal'] = ($result->num_rows > 0);
+            $stmt->close();
         }
+        
+        // 2. Kiểm tra file hợp đồng - chỉ kiểm tra HD_FILEHD (theo cấu trúc bảng thực tế)
+        $contract_sql = "SELECT HD_FILEHD FROM hop_dong WHERE DT_MADT = ? AND HD_FILEHD IS NOT NULL AND TRIM(HD_FILEHD) != ''";
+        $stmt = $conn->prepare($contract_sql);
+        if ($stmt) {
+            $stmt->bind_param("s", $project_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $required_files['contract'] = ($result->num_rows > 0);
+            $stmt->close();
+        }
+        
+        // 3. Kiểm tra file quyết định và biên bản
+        $decision_sql = "SELECT qd.QD_FILE, bb.BB_SOBB 
+                        FROM de_tai_nghien_cuu dt
+                        INNER JOIN quyet_dinh_nghiem_thu qd ON dt.QD_SO = qd.QD_SO
+                        LEFT JOIN bien_ban bb ON qd.QD_SO = bb.QD_SO
+                        WHERE dt.DT_MADT = ?
+                        AND qd.QD_FILE IS NOT NULL AND TRIM(qd.QD_FILE) != ''
+                        AND bb.BB_SOBB IS NOT NULL";
+        $stmt = $conn->prepare($decision_sql);
+        if ($stmt) {
+            $stmt->bind_param("s", $project_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $required_files['decision'] = ($result->num_rows > 0);
+            $stmt->close();
+        }
+        
+        // 4. Kiểm tra file đánh giá: ĐỦ khi có ít nhất 1 file đánh giá từ thành viên hội đồng
+        $required_files['evaluation'] = false;
+        
+        // Lấy QD_SO từ đề tài
+        $qd_so = null;
+        $qd_sql = "SELECT QD_SO FROM de_tai_nghien_cuu WHERE DT_MADT = ? AND QD_SO IS NOT NULL";
+        $stmt = $conn->prepare($qd_sql);
+        if ($stmt) {
+            $stmt->bind_param("s", $project_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($row = $result->fetch_assoc()) {
+                $qd_so = $row['QD_SO'];
+            }
+            $stmt->close();
+        }
+        
+        if ($qd_so) {
+            $file_count1 = 0;
+            $completed_evaluations = 0;
+            
+            // Kiểm tra file đánh giá theo 2 cách:
+            // Cách 1: Kiểm tra trong bảng file_dinh_kem với loại member_evaluation
+            $eval_sql1 = "SELECT COUNT(*) as cnt FROM file_dinh_kem fd
+                          INNER JOIN thanh_vien_hoi_dong tvhd ON fd.GV_MAGV = tvhd.GV_MAGV 
+                          WHERE tvhd.QD_SO = ? 
+                          AND fd.FDG_LOAI = 'member_evaluation' 
+                          AND fd.FDG_FILE IS NOT NULL 
+                          AND TRIM(fd.FDG_FILE) != ''";
+            
+            $stmt = $conn->prepare($eval_sql1);
+            if ($stmt) {
+                $stmt->bind_param("s", $qd_so);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $row = $result->fetch_assoc();
+                $file_count1 = $row['cnt'] ?? 0;
+                $stmt->close();
+            }
+            
+            // Cách 2: Kiểm tra trạng thái đánh giá của thành viên hội đồng
+            $eval_sql2 = "SELECT COUNT(*) as cnt FROM thanh_vien_hoi_dong 
+                          WHERE QD_SO = ? 
+                          AND (TV_TRANGTHAI = 'Đã hoàn thành' OR TV_DIEM IS NOT NULL)";
+            
+            $stmt = $conn->prepare($eval_sql2);
+            if ($stmt) {
+                $stmt->bind_param("s", $qd_so);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $row = $result->fetch_assoc();
+                $completed_evaluations = $row['cnt'] ?? 0;
+                $stmt->close();
+            }
+            
+            // Đánh giá được coi là đầy đủ nếu có ít nhất 1 file đánh giá HOẶC có thành viên đã hoàn thành đánh giá
+            $required_files['evaluation'] = ($file_count1 > 0 || $completed_evaluations > 0);
+        }
+        
+    } catch (Exception $e) {
+        // Log error nếu cần thiết
+        error_log("Error in checkProjectCompleteness: " . $e->getMessage());
     }
     
     return $required_files;
@@ -187,6 +238,14 @@ if ($result->num_rows === 0) {
 }
 
 $project = $result->fetch_assoc();
+
+// Lấy thời hạn thực hiện (tháng) từ ghi chú đề tài nếu có
+$duration_months = 6;
+if (!empty($project['DT_GHICHU'])) {
+    if (preg_match('/duration_months\s*=\s*(\d+)/i', $project['DT_GHICHU'], $matches)) {
+        $duration_months = max(1, intval($matches[1]));
+    }
+}
 
 // Tự động kiểm tra và cập nhật trạng thái đề tài nếu đã nộp đủ file
 $status_updated = updateProjectStatusIfComplete($project_id, $conn);
@@ -292,7 +351,7 @@ $eval_files_error = null;
 $eval_files_debug = "";
 if ($decision) {
     $eval_files_debug = "BB_SOBB: " . $decision['BB_SOBB'];
-    $eval_files_sql = "SELECT * FROM file_danh_gia WHERE BB_SOBB = ?";
+    $eval_files_sql = "SELECT * FROM file_dinh_kem WHERE BB_SOBB = ? AND FDG_LOAI = 'member_evaluation'";
     $stmt = $conn->prepare($eval_files_sql);
     if ($stmt === false) {
         $eval_files_error = "Lỗi truy vấn file đánh giá: " . $conn->error;
@@ -361,21 +420,29 @@ if ($decision && isset($decision['QD_SO'])) {
     }
 }
 
-// Lấy danh sách file đánh giá của các thành viên hội đồng
+// Lấy danh sách file đánh giá của các thành viên hội đồng CHỈ CỦA ĐỀ TÀI HIỆN TẠI
 $member_evaluation_files = [];
-if (!empty($council_members)) {
+if (!empty($council_members) && !empty($project['QD_SO'])) {
     try {
         $stmt = $conn->prepare("
-            SELECT FDG_TENFILE as FDK_TEN, FDG_FILE as FDK_DUONGDAN, GV_MAGV as FDK_MEMBER_ID, FDG_MOTA as FDK_MOTA, FDG_NGAYTAO as FDK_NGAYTAO 
-            FROM file_dinh_kem 
-            WHERE FDG_LOAI = 'member_evaluation' AND GV_MAGV IS NOT NULL
+            SELECT fd.FDG_TENFILE as FDK_TEN, fd.FDG_FILE as FDK_DUONGDAN, fd.GV_MAGV as FDK_MEMBER_ID, 
+                   fd.FDG_MOTA as FDK_MOTA, fd.FDG_NGAYTAO as FDK_NGAYTAO 
+            FROM file_dinh_kem fd
+            INNER JOIN thanh_vien_hoi_dong tvhd ON fd.GV_MAGV = tvhd.GV_MAGV
+            WHERE fd.FDG_LOAI = 'member_evaluation' 
+            AND fd.GV_MAGV IS NOT NULL
+            AND tvhd.QD_SO = ?
+            AND fd.FDG_FILE IS NOT NULL 
+            AND TRIM(fd.FDG_FILE) != ''
         ");
         if ($stmt) {
+            $stmt->bind_param("s", $project['QD_SO']);
             $stmt->execute();
             $result = $stmt->get_result();
             while ($file = $result->fetch_assoc()) {
                 $member_evaluation_files[] = $file;
             }
+            $stmt->close();
         }
     } catch (Exception $e) {
         // Log error nhưng không hiển thị cho user
@@ -527,11 +594,10 @@ try {
             transition: all 0.3s ease;
         }        .project-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 35px 40px;
             border-radius: 20px;
             margin-bottom: 30px;
             color: white;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 15px 50px rgba(102, 126, 234, 0.2);
             position: relative;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -548,66 +614,435 @@ try {
             pointer-events: none;
         }
         
-        .project-header::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -20px;
-            width: 200px;
-            height: 200px;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-            border-radius: 50%;
-            animation: float 6s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-10px) rotate(5deg); }
-        }
-        
-        .project-header .row {
+        .header-content {
+            display: flex;
+            align-items: stretch;
             position: relative;
             z-index: 2;
+            padding: 40px;
+        }
+        
+        .project-main-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .project-title-section {
+            margin-bottom: 10px;
         }
         
         .project-title {
             font-weight: 800;
-            font-size: 2.2rem;
+            font-size: 2.4rem;
             margin-bottom: 15px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
             line-height: 1.2;
             letter-spacing: -0.5px;
         }
         
-        .project-header .info-item {
+        .project-meta {
             display: flex;
+            gap: 25px;
             align-items: center;
-            margin-bottom: 12px;
-            padding: 8px 0;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-        
-        .project-header .info-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            padding-left: 10px;
-            transform: translateX(5px);
-        }
-        
-        .project-header .info-item i {
-            width: 20px;
-            text-align: center;
-            margin-right: 12px;
-            font-size: 1.1rem;
+            font-size: 1rem;
             opacity: 0.9;
         }
         
-        .project-header .badge {
-            font-size: 0.9rem;
-            padding: 6px 12px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+        .project-meta span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 25px;
             backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .project-meta i {
+            font-size: 0.9rem;
+        }
+        
+        .project-details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .detail-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .detail-icon {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .detail-content {
+            flex: 1;
+        }
+        
+        .detail-label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        
+        .detail-value {
+            font-size: 1rem;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        
+        .project-status-sidebar {
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            padding-left: 30px;
+        }
+        
+        .status-container {
+            text-align: center;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 28px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .status-badge i {
+            font-size: 1.2rem;
+        }
+        
+        .status-badge.status-warning {
+            color: #f39c12;
+        }
+        
+        .status-badge.status-primary {
+            color: #3498db;
+        }
+        
+        .status-badge.status-success {
+            color: #27ae60;
+        }
+        
+        .status-badge.status-info {
+            color: #17a2b8;
+        }
+        
+        .status-badge.status-danger {
+            color: #e74c3c;
+        }
+        
+        .completion-indicators {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 20px;
+            padding: 25px;
+            border: 2px solid #e9ecef;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            margin: 20px 0;
+        }
+        
+        .completion-indicators:hover {
+            border-color: #007bff;
+            box-shadow: 0 15px 40px rgba(0, 123, 255, 0.15);
+            transform: translateY(-3px);
+        }
+        
+        /* CSS cho dropdown file đánh giá thành viên */
+        .dropdown-menu {
+            max-width: 350px;
+            min-width: 280px;
+        }
+        
+        .dropdown-header {
+            font-weight: 600;
+            color: #495057;
+            background-color: #f8f9fa;
+            padding: 8px 16px;
+            margin: 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .dropdown-item {
+            padding: 10px 16px;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+            transform: translateX(2px);
+        }
+        
+        .dropdown-item .font-weight-medium {
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .dropdown-item small.text-muted {
+            font-size: 0.75rem;
+            line-height: 1.2;
+        }
+        
+        .dropdown-divider {
+            margin: 0.25rem 0;
+        }
+        
+        /* CSS cho thống kê cấu trúc hội đồng */
+        .bg-light-success {
+            background-color: #d4edda !important;
+        }
+        
+        .bg-light-warning {
+            background-color: #fff3cd !important;
+        }
+        
+        .border-success {
+            border-color: #28a745 !important;
+        }
+        
+        .border-warning {
+            border-color: #ffc107 !important;
+        }
+        
+        .badge-sm {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.4rem;
+        }
+        
+        .completion-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #333;
+            border-bottom: 2px solid #f1f3f4;
+            padding-bottom: 10px;
+        }
+        
+        .completion-title i {
+            color: #007bff;
+            font-size: 1.2em;
+            margin-right: 10px;
+        }
+        
+        .completion-title small {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75em !important;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+        }
+        
+        .file-indicators {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .file-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 15px 18px;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            cursor: help;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .file-indicator::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .file-indicator:hover::before {
+            left: 100%;
+        }
+        
+        .file-indicator:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .file-indicator i {
+            width: 24px;
+            height: 24px;
+            text-align: center;
+            line-height: 24px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            font-size: 1.1em;
+        }
+        
+        .file-indicator.completed {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            border-color: #28a745;
+        }
+        
+        .file-indicator.completed i {
+            background: #28a745;
+            color: white;
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+        }
+        
+        .file-indicator.completed:hover {
+            border-color: #1e7e34;
+            background: linear-gradient(135deg, #c3e6cb 0%, #b1dfbb 100%);
+        }
+        
+        .file-indicator.completed:hover i {
+            transform: scale(1.1) rotate(360deg);
+            box-shadow: 0 0 0 5px rgba(40, 167, 69, 0.3);
+        }
+        
+        .file-indicator.pending {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            color: #856404;
+            border-color: #ffc107; /* was #c29306ff */
+        }
+        
+        .file-indicator.pending i {
+            background: #ffc107;
+            color: #856404;
+            box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.2);
+        }
+        
+        .file-indicator.pending:hover {
+            border-color: #e0a800;
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+        }
+        
+        .file-indicator.pending:hover i {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 5px rgba(255, 193, 7, 0.3);
+        }
+
+        /* Remove dark-theme text override; keep readable text on light yellow */
+        .file-indicator.pending {
+            color: #856404; /* was rgba(255, 255, 255, 0.6) */
+        }
+        
+        .file-indicator.pending:hover {
+            color: #5c4403; /* was rgba(255, 255, 255, 0.8) */
+        }
+        
+        .completion-summary {
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            border: 1px solid #dee2e6;
+            text-align: center;
+        }
+        
+        .completion-summary .progress {
+            height: 12px;
+            margin: 10px 0;
+            overflow: hidden;
+            border-radius: 6px;
+            background: #e9ecef;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .completion-summary .progress-bar {
+            background: linear-gradient(45deg, #28a745, #20c997, #17a2b8);
+            background-size: 40px 40px;
+            animation: progress-stripe 1s linear infinite;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+        
+        @keyframes progress-stripe {
+            0% { background-position: 0 0; }
+            100% { background-position: 40px 0; }
+        }
+        
+        .completion-summary {
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+        
+        .completion-summary .progress {
+            margin: 5px 0;
+            overflow: hidden;
+        }
+        
+        .header-actions {
+            display: flex;
+            justify-content: center;
+        }
+        
+        .header-actions .btn {
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header-actions .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
         }
 
         .project-progress {
@@ -1366,13 +1801,36 @@ try {
         /* Responsive adjustments */
         @media (max-width: 992px) {
             .project-header {
-                padding: 20px;
                 margin-bottom: 20px;
             }
             
-            .project-sidebar-container {
-                margin-top: 20px;
-                padding: 20px;
+            .header-content {
+                flex-direction: column;
+                padding: 30px 25px;
+                gap: 25px;
+            }
+            
+            .project-status-sidebar {
+                width: 100%;
+                padding-left: 0;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: flex-start;
+            }
+            
+            .project-details-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .project-title {
+                font-size: 2rem;
+            }
+            
+            .project-meta {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
             }
 
             .timeline {
@@ -1385,6 +1843,169 @@ try {
 
             .timeline-item::after {
                 left: -28px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .project-header {
+                border-radius: 15px;
+            }
+            
+            .header-content {
+                padding: 25px 20px;
+            }
+            
+            .project-title {
+                font-size: 1.8rem;
+                line-height: 1.3;
+            }
+            
+            .project-meta span {
+                padding: 6px 12px;
+                font-size: 0.9rem;
+            }
+            
+            .detail-item {
+                padding: 12px 15px;
+            }
+            
+            .detail-icon {
+                width: 38px;
+                height: 38px;
+                font-size: 1rem;
+            }
+            
+            .status-badge {
+                padding: 12px 20px;
+                font-size: 1rem;
+            }
+            
+            .completion-indicators {
+                padding: 20px 15px;
+                margin: 15px 0;
+                border-radius: 15px;
+            }
+            
+            .completion-title {
+                font-size: 1rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+                margin-bottom: 15px;
+            }
+            
+            .file-indicators {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .file-indicator {
+                padding: 12px 15px;
+                font-size: 0.9rem;
+            }
+            
+            .file-indicator i {
+                width: 20px;
+                height: 20px;
+                line-height: 20px;
+                font-size: 1rem;
+            }
+            
+            .completion-summary {
+                padding: 15px;
+            }
+            
+            .project-status-sidebar {
+                flex-direction: column;
+                gap: 20px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .header-content {
+                padding: 20px 15px;
+            }
+            
+            .project-title {
+                font-size: 1.6rem;
+            }
+            
+            .project-meta {
+                gap: 10px;
+            }
+            
+            .project-meta span {
+                padding: 4px 10px;
+                font-size: 0.85rem;
+            }
+            
+            .detail-item {
+                padding: 10px 12px;
+                gap: 10px;
+            }
+            
+            .detail-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 0.9rem;
+            }
+            
+            .detail-label {
+                font-size: 0.8rem;
+            }
+            
+            .detail-value {
+                font-size: 0.9rem;
+            }
+            
+            .status-badge {
+                padding: 10px 16px;
+                font-size: 0.9rem;
+            }
+            
+            .completion-indicators {
+                padding: 15px 12px;
+                margin: 10px 0;
+            }
+            
+            .completion-title {
+                font-size: 0.95rem;
+                margin-bottom: 12px;
+            }
+            
+            .completion-title i {
+                font-size: 1.1em;
+            }
+            
+            .completion-title small {
+                padding: 2px 6px;
+                font-size: 0.7em !important;
+            }
+            
+            .file-indicator {
+                padding: 10px 12px;
+                font-size: 0.85rem;
+                gap: 10px;
+            }
+            
+            .file-indicator i {
+                width: 18px;
+                height: 18px;
+                line-height: 18px;
+                font-size: 0.9rem;
+            }
+            
+            .completion-summary {
+                padding: 12px;
+            }
+            
+            .completion-summary .progress {
+                height: 10px;
+            }
+            
+            .header-actions .btn {
+                padding: 10px 18px;
+                font-size: 0.9rem;
             }
         }
 
@@ -1623,15 +2244,320 @@ try {
         .selected-council-members {
             min-height: 60px;
             border: 2px dashed #e9ecef;
-            border-radius: 8px;
-            padding: 15px;
-            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(248, 249, 250, 0.8) 0%, rgba(233, 236, 239, 0.5) 100%);
+            backdrop-filter: blur(10px);
             transition: all 0.3s ease;
+            position: relative;
         }
         
         .selected-council-members:not(:empty) {
-            border-color: #007bff;
-            background-color: #f0f8ff;
+            border: 2px solid rgba(0, 123, 255, 0.3);
+            background: linear-gradient(135deg, rgba(0, 123, 255, 0.05) 0%, rgba(102, 126, 234, 0.08) 100%);
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.1);
+        }
+        
+        .selected-council-members.empty-state {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+        }
+        
+        .selected-council-members.empty-state::before {
+            content: "\f0c0";
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            font-size: 1.5rem;
+            margin-right: 10px;
+            opacity: 0.5;
+        }
+        
+        /* Styled member cards */
+        .member-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.8) 100%);
+            border: 1px solid rgba(0, 123, 255, 0.2);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 12px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .member-card:last-child {
+            margin-bottom: 0;
+        }
+        
+        .member-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, #007bff, #0056b3);
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .member-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.15);
+            border-color: rgba(0, 123, 255, 0.4);
+        }
+        
+        .member-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .member-details {
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        .member-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 4px;
+            font-size: 1.05rem;
+        }
+        
+        .member-role {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 3px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-right: 8px;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .member-role.role-chairman {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+        }
+        
+        .member-role.role-secretary {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+        
+        .member-role.role-member {
+            background: linear-gradient(135deg, #6f42c1, #5a32a3);
+            box-shadow: 0 2px 8px rgba(111, 66, 193, 0.3);
+        }
+        
+        .member-role.role-reviewer {
+            background: linear-gradient(135deg, #fd7e14, #e85d04);
+            box-shadow: 0 2px 8px rgba(253, 126, 20, 0.3);
+        }
+        
+        /* Role Statistics Styles */
+        .role-statistics {
+            background: linear-gradient(135deg, rgba(0, 123, 255, 0.05) 0%, rgba(102, 126, 234, 0.08) 100%);
+            border: 1px solid rgba(0, 123, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+        }
+        
+        .stats-header {
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(0, 123, 255, 0.1);
+        }
+        
+        .stats-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        
+        .role-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+        
+        .role-stat.complete {
+            background-color: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.2);
+        }
+        
+        .role-stat.incomplete {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.2);
+        }
+        
+        .role-name {
+            font-weight: 600;
+        }
+        
+        .role-count {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        
+        /* Disabled role options */
+        #memberRole option.role-full {
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        #memberRole option:disabled {
+            background-color: #f8f9fa !important;
+        }
+        
+        /* Modal improvements */
+        .modal-body .alert-info {
+            margin-bottom: 15px;
+        }
+        
+        .member-department {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .member-department::before {
+            content: "\f19c";
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            margin-right: 6px;
+            opacity: 0.7;
+        }
+        
+        .remove-member-btn {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+            font-size: 0.9rem;
+        }
+        
+        .remove-member-btn:hover {
+            background: linear-gradient(135deg, #c82333, #bd2130);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+            color: white;
+        }
+        
+        .members-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(0, 123, 255, 0.1);
+        }
+        
+        .members-header h6 {
+            margin: 0;
+            color: #2c3e50;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        
+        .members-header .fas {
+            color: #007bff;
+            margin-right: 8px;
+            font-size: 1.2rem;
+        }
+        
+        .members-count {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: auto;
+            box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+            animation: fadeInScale 0.3s ease-out;
+        }
+        
+        /* Animations */
+        @keyframes fadeInScale {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        @keyframes slideInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .member-card {
+            animation: slideInUp 0.3s ease-out;
+        }
+        
+        .member-card:nth-child(2) { animation-delay: 0.1s; }
+        .member-card:nth-child(3) { animation-delay: 0.2s; }
+        .member-card:nth-child(4) { animation-delay: 0.3s; }
+        .member-card:nth-child(5) { animation-delay: 0.4s; }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .member-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            
+            .member-details {
+                min-width: 100%;
+                margin-bottom: 8px;
+            }
+            
+            .remove-member-btn {
+                align-self: flex-end;
+                width: auto;
+            }
+            
+            .members-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .members-count {
+                margin-left: 0;
+            }
         }
         
         #councilMemberModal .modal-dialog {
@@ -2082,45 +3008,68 @@ try {
 
         <!-- Header đề tài -->
         <div class="project-header animate-fade-in">
-            <div class="row align-items-center">
-                <div class="col-lg-8 col-md-7">
-                    <h1 class="project-title"><?php echo htmlspecialchars($project['DT_TENDT']); ?></h1>
-                    
-                    <div class="info-item">
-                        <i class="fas fa-barcode"></i>
-                        <span>Mã đề tài: <span class="badge badge-light ml-2"><?php echo htmlspecialchars($project['DT_MADT']); ?></span></span>
+            <div class="header-content">
+                <div class="project-main-info">
+                    <div class="project-title-section">
+                        <h1 class="project-title"><?php echo htmlspecialchars($project['DT_TENDT']); ?></h1>
+                        <div class="project-meta">
+                            <span class="project-code">
+                                <i class="fas fa-hashtag"></i>
+                                <?php echo htmlspecialchars($project['DT_MADT']); ?>
+                            </span>
+                            <span class="project-date">
+                                <i class="far fa-calendar-alt"></i>
+                                <?php echo formatDate($project['DT_NGAYTAO']); ?>
+                            </span>
+                        </div>
                     </div>
                     
-                    <div class="info-item">
-                        <i class="far fa-calendar-alt"></i>
-                        <span>Ngày tạo: <?php echo formatDate($project['DT_NGAYTAO']); ?></span>
-                    </div>
-                    
-                    <div class="info-item">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span>Thời gian thực hiện: <?php echo formatDate($project['HD_NGAYBD']) . ' - ' . formatDate($project['HD_NGAYKT']); ?></span>
-                    </div>
-                    
-                    <div class="info-item">
-                        <i class="fas fa-tag"></i>
-                        <span>Loại đề tài: <?php echo htmlspecialchars($project['LDT_TENLOAI'] ?? 'Không xác định'); ?></span>
-                    </div>
-                    
-                    <div class="info-item">
-                        <i class="fas fa-microscope"></i>
-                        <span>Lĩnh vực nghiên cứu: <?php echo htmlspecialchars($project['LVNC_TEN'] ?? 'Không xác định'); ?></span>
-                    </div>
-                    
-                    <!-- Thông tin tiến độ -->
-                    <div class="mt-4">
-                        <div class="progress-label">
-                            <span>Số cập nhật tiến độ: <?php echo $progress_count; ?></span>
+                    <div class="project-details-grid">
+                        <div class="detail-item">
+                            <div class="detail-icon">
+                                <i class="fas fa-calendar-check text-primary"></i>
+                            </div>
+                            <div class="detail-content">
+                                <div class="detail-label">Thời gian thực hiện</div>
+                                <div class="detail-value"><?php echo formatDate($project['HD_NGAYBD']) . ' - ' . formatDate($project['HD_NGAYKT']); ?></div>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-icon">
+                                <i class="fas fa-tag text-info"></i>
+                            </div>
+                            <div class="detail-content">
+                                <div class="detail-label">Loại đề tài</div>
+                                <div class="detail-value"><?php echo htmlspecialchars($project['LDT_TENLOAI'] ?? 'Không xác định'); ?></div>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-icon">
+                                <i class="fas fa-microscope text-success"></i>
+                            </div>
+                            <div class="detail-content">
+                                <div class="detail-label">Lĩnh vực nghiên cứu</div>
+                                <div class="detail-value"><?php echo htmlspecialchars($project['LVNC_TEN'] ?? 'Không xác định'); ?></div>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-icon">
+                                <i class="fas fa-user-tie text-warning"></i>
+                            </div>
+                            <div class="detail-content">
+                                <div class="detail-label">GVHD</div>
+                                <div class="detail-value"><?php echo htmlspecialchars($project['GV_HOTEN'] ?? 'Chưa có'); ?></div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="col-lg-4 col-md-5 text-md-right project-sidebar-container">
-                    <!-- Trạng thái đề tài -->                    <div class="project-status-container">
+                <div class="project-status-sidebar">
+                    <!-- Trạng thái đề tài -->
+                    <div class="status-container">
                         <?php 
                         // Xác định class cho badge trạng thái
                         $status_class = '';
@@ -2151,79 +3100,179 @@ try {
                                 $status_icon = 'question-circle';
                         }
                         ?>
-                        <div class="status-badge status-<?php echo $status_class; ?> animate-pulse">
-                            <i class="fas fa-<?php echo $status_icon; ?> mr-2"></i>
-                            <?php echo htmlspecialchars($project['DT_TRANGTHAI']); ?>
+                        <div class="status-badge status-<?php echo $status_class; ?>">
+                            <i class="fas fa-<?php echo $status_icon; ?>"></i>
+                            <span><?php echo htmlspecialchars($project['DT_TRANGTHAI']); ?></span>
                         </div>
                     </div>
                     
-                    <?php if ($has_access): ?>
-                        <div class="action-buttons mt-3">
-                            <?php if ($project['DT_TRANGTHAI'] === 'Đã hoàn thành'): ?>
-                                <div class="alert alert-success-custom mb-2">
-                                    <i class="fas fa-check-circle mr-2"></i>
-                                    <strong>Đề tài đã hoàn thành!</strong><br>
-                                    <small>Tất cả các file yêu cầu đã được nộp đầy đủ. Không thể chỉnh sửa trong trạng thái này.</small>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-secondary-custom" disabled>
-                                    <i class="fas fa-lock mr-1"></i> Không thể cập nhật
-                                </button>
-                            <?php elseif (canEditProject($project, $user_role)): ?>
-                                <?php if ($user_role === 'Chủ nhiệm'): ?>
-                                    <button type="button" class="btn btn-sm btn-primary-custom" data-toggle="modal" data-target="#addProgressModal">
-                                        <i class="fas fa-tasks mr-1"></i> Cập nhật tiến độ
-                                    </button>
-                                    
-                                    <!-- Hiển thị thông tin về file cần nộp -->
-                                    <div class="mt-2 file-status-section">
-                                        <small class="text-light-custom">
-                                            <i class="fas fa-info-circle mr-1"></i>Trạng thái file yêu cầu:
-                                        </small>
-                                        <div class="file-status-indicators mt-1">
-                                            <span class="badge badge-file-<?php echo $file_completeness['proposal'] ? 'success' : 'warning'; ?> mr-1">
-                                                <i class="fas fa-<?php echo $file_completeness['proposal'] ? 'check' : 'exclamation-triangle'; ?> mr-1"></i>
-                                                Thuyết minh
-                                            </span>
-                                            <span class="badge badge-file-<?php echo $file_completeness['contract'] ? 'success' : 'warning'; ?> mr-1">
-                                                <i class="fas fa-<?php echo $file_completeness['contract'] ? 'check' : 'exclamation-triangle'; ?> mr-1"></i>
-                                                Hợp đồng
-                                            </span>
-                                            <span class="badge badge-file-<?php echo $file_completeness['decision'] ? 'success' : 'warning'; ?> mr-1">
-                                                <i class="fas fa-<?php echo $file_completeness['decision'] ? 'check' : 'exclamation-triangle'; ?> mr-1"></i>
-                                                Quyết định
-                                            </span>
-                                            <span class="badge badge-file-<?php echo $file_completeness['evaluation'] ? 'success' : 'warning'; ?>">
-                                                <i class="fas fa-<?php echo $file_completeness['evaluation'] ? 'check' : 'exclamation-triangle'; ?> mr-1"></i>
-                                                Đánh giá
-                                            </span>
-                                        </div>
-                                        <?php if (!$file_completeness['proposal'] || !$file_completeness['contract'] || 
-                                                  !$file_completeness['decision'] || !$file_completeness['evaluation']): ?>
-                                            <small class="text-warning-custom d-block mt-1">
-                                                <i class="fas fa-lightbulb mr-1"></i>
-                                                Khi nộp đủ tất cả file, đề tài sẽ tự động chuyển sang trạng thái "Đã hoàn thành"
-                                            </small>
-                                        <?php endif; ?>
-                                    </div>
-                                <?php else: ?>
-                                    <button type="button" class="btn btn-sm btn-secondary-custom" disabled title="Chỉ chủ nhiệm đề tài mới có thể cập nhật tiến độ">
-                                        <i class="fas fa-lock mr-1"></i> Cập nhật tiến độ
-                                    </button>
-                                    <small class="text-light-custom d-block mt-1">
-                                        <i class="fas fa-info-circle mr-1"></i> Chỉ chủ nhiệm đề tài mới có thể cập nhật tiến độ và tải file
-                                    </small>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                <button type="button" class="btn btn-sm btn-secondary-custom" disabled title="Chỉ có thể cập nhật khi đề tài đang thực hiện">
-                                    <i class="fas fa-ban mr-1"></i> Cập nhật tiến độ
-                                </button>
-                            <?php endif; ?>
-                            
-                            <button class="btn btn-sm btn-outline-light-custom no-print" id="printProjectBtn">
-                                <i class="fas fa-print mr-1"></i> In báo cáo
-                            </button>
+                
+                    <?php
+                    // Refresh file completeness để đảm bảo dữ liệu mới nhất và thêm timestamp
+                    $file_completeness = checkProjectCompleteness($project_id, $conn);
+                    $check_time = date('H:i:s');
+
+                    // Chuẩn bị nguồn (source) cho từng mục
+                    $proposal_source_label = $file_completeness['proposal'] ? 'DT_FILEBTM' : 'Chưa có';
+
+                    // Hợp đồng: chỉ kiểm tra HD_FILEHD (theo cấu trúc bảng thực tế)
+                    $contract_source_label = 'Chưa có';
+                    $contract_notes = [];
+                    if (!empty($project['DT_MADT'])) {
+                        $madetai_esc = mysqli_real_escape_string($conn, $project['DT_MADT']);
+                        $sql_contract = "SELECT TRIM(COALESCE(HD_FILEHD,'')) AS HD_FILEHD FROM hop_dong WHERE DT_MADT='$madetai_esc' LIMIT 1";
+                        if ($res_c = mysqli_query($conn, $sql_contract)) {
+                            $row_c = mysqli_fetch_assoc($res_c);
+                            $has_hd_filehd = !empty($row_c['HD_FILEHD']);
+                            if ($has_hd_filehd) {
+                                $contract_source_label = 'HD_FILEHD';
+                                $contract_notes[] = 'Có HD_FILEHD: ' . $row_c['HD_FILEHD'];
+                            } else {
+                                $contract_notes[] = 'Thiếu HD_FILEHD';
+                            }
+                        }
+                    }
+
+                    // Quyết định & Biên bản: cần QD_FILE + BB_SOBB
+                    $decision_source_label = 'Chưa có';
+                    $decision_notes = [];
+                    $qd_file_ok = false; $bb_ok = false; $bb_sobb_val = '';
+                    if (!empty($project['QD_SO'])) {
+                        $qdso_esc = mysqli_real_escape_string($conn, $project['QD_SO']);
+                        $sql_qd = "SELECT TRIM(COALESCE(QD_FILE,'')) AS QD_FILE FROM quyet_dinh_nghiem_thu WHERE QD_SO='$qdso_esc' LIMIT 1";
+                        if ($res_qd = mysqli_query($conn, $sql_qd)) {
+                            $row_qd = mysqli_fetch_assoc($res_qd);
+                            $qd_file_ok = !empty($row_qd['QD_FILE']);
+                        }
+                        $sql_bb = "SELECT TRIM(COALESCE(BB_SOBB,'')) AS BB_SOBB FROM bien_ban WHERE QD_SO='$qdso_esc' LIMIT 1";
+                        if ($res_bb = mysqli_query($conn, $sql_bb)) {
+                            $row_bb = mysqli_fetch_assoc($res_bb);
+                            $bb_sobb_val = $row_bb['BB_SOBB'];
+                            $bb_ok = !empty($bb_sobb_val);
+                        }
+                        if ($qd_file_ok && $bb_ok) { $decision_source_label = 'QD_FILE + BB_SOBB'; }
+                        $decision_notes[] = $qd_file_ok ? 'Có QD_FILE' : 'Thiếu QD_FILE';
+                        $decision_notes[] = $bb_ok ? ("Có BB_SOBB: $bb_sobb_val") : 'Thiếu BB_SOBB';
+                    }
+
+                    // Đánh giá: ưu tiên qua Biên bản (BB_SOBB) rồi fallback theo DT_MADT
+                    $evaluation_source_label = 'Chưa có';
+                    $evaluation_notes = [];
+                    $eval_chain_cnt = 0; $eval_direct_cnt = 0;
+                    if (!empty($bb_sobb_val)) {
+                        $bb_sobb_esc = mysqli_real_escape_string($conn, $bb_sobb_val);
+                        $sql_eval_chain = "SELECT COUNT(*) AS n FROM file_danh_gia WHERE BB_SOBB='$bb_sobb_esc' AND (TRIM(COALESCE(FDG_FILE,''))<>'' OR TRIM(COALESCE(FDG_DUONGDAN,''))<>'')";
+                        if ($res_ec = mysqli_query($conn, $sql_eval_chain)) { $eval_chain_cnt = (int)mysqli_fetch_assoc($res_ec)['n']; }
+                    }
+                    if (!empty($project['DT_MADT'])) {
+                        $madetai_esc = mysqli_real_escape_string($conn, $project['DT_MADT']);
+                        $sql_eval_direct = "SELECT COUNT(*) AS n FROM file_danh_gia WHERE DT_MADT='$madetai_esc' AND (TRIM(COALESCE(FDG_FILE,''))<>'' OR TRIM(COALESCE(FDG_DUONGDAN,''))<>'')";
+                        if ($res_ed = mysqli_query($conn, $sql_eval_direct)) { $eval_direct_cnt = (int)mysqli_fetch_assoc($res_ed)['n']; }
+                    }
+                    if ($eval_chain_cnt > 0) {
+                        $evaluation_source_label = 'Qua Biên bản';
+                        $evaluation_notes[] = "Số file theo BB_SOBB: $eval_chain_cnt";
+                    } elseif ($eval_direct_cnt > 0) {
+                        $evaluation_source_label = 'Theo DT_MADT';
+                        $evaluation_notes[] = "Số file theo DT_MADT: $eval_direct_cnt";
+                    } else {
+                        $evaluation_notes[] = 'Chưa tìm thấy file đánh giá';
+                    }
+
+                    $total_files = 4;
+                    $completed_files = array_sum($file_completeness);
+                    $completion_percentage = round(($completed_files / $total_files) * 100);
+                    ?>
+
+                    <!-- Trạng thái tài liệu -->
+                    <div class="document-status-card no-print" style="background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border: 1px solid #dee2e6; border-radius: 10px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h6 class="mb-0" style="color: #495057; font-weight: 600;">
+                                <i class="fas fa-folder-open text-primary mr-2"></i>Trạng thái tài liệu
+                            </h6>
+                            <small class="text-muted" style="font-size: 0.75rem;">
+                                <i class="far fa-clock mr-1"></i><?php echo $check_time; ?>
+                            </small>
                         </div>
-                    <?php endif; ?>
+                        
+                        <div class="row g-2 mb-3">
+                            <!-- Thuyết minh -->
+                            <div class="col-6">
+                                <div class="d-flex align-items-center p-2 rounded" style="background: <?php echo !empty($file_completeness['proposal']) ? '#e8f5e8' : '#fff3cd'; ?>; border: 1px solid <?php echo !empty($file_completeness['proposal']) ? '#c3e6cb' : '#ffeaa7'; ?>;">
+                                    <i class="fas fa-file-alt <?php echo !empty($file_completeness['proposal']) ? 'text-success' : 'text-warning'; ?> mr-2" style="font-size: 0.9rem;"></i>
+                                    <div style="font-size: 0.8rem;">
+                                        <div style="font-weight: 500; color: #495057;">Thuyết minh</div>
+                                        <div style="color: <?php echo !empty($file_completeness['proposal']) ? '#28a745' : '#856404'; ?>; font-weight: 600;">
+                                            <?php echo !empty($file_completeness['proposal']) ? 'Đã có' : 'Thiếu'; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Hợp đồng -->
+                            <div class="col-6">
+                                <div class="d-flex align-items-center p-2 rounded" style="background: <?php echo !empty($file_completeness['contract']) ? '#e8f5e8' : '#fff3cd'; ?>; border: 1px solid <?php echo !empty($file_completeness['contract']) ? '#c3e6cb' : '#ffeaa7'; ?>;">
+                                    <i class="fas fa-file-signature <?php echo !empty($file_completeness['contract']) ? 'text-success' : 'text-warning'; ?> mr-2" style="font-size: 0.9rem;"></i>
+                                    <div style="font-size: 0.8rem;">
+                                        <div style="font-weight: 500; color: #495057;">Hợp đồng</div>
+                                        <div style="color: <?php echo !empty($file_completeness['contract']) ? '#28a745' : '#856404'; ?>; font-weight: 600;">
+                                            <?php echo !empty($file_completeness['contract']) ? 'Đã có' : 'Thiếu'; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Quyết định & Biên bản -->
+                            <div class="col-6">
+                                <div class="d-flex align-items-center p-2 rounded" style="background: <?php echo !empty($file_completeness['decision']) ? '#e8f5e8' : '#fff3cd'; ?>; border: 1px solid <?php echo !empty($file_completeness['decision']) ? '#c3e6cb' : '#ffeaa7'; ?>;">
+                                    <i class="fas fa-stamp <?php echo !empty($file_completeness['decision']) ? 'text-success' : 'text-warning'; ?> mr-2" style="font-size: 0.9rem;"></i>
+                                    <div style="font-size: 0.8rem;">
+                                        <div style="font-weight: 500; color: #495057;">QĐ & BB</div>
+                                        <div style="color: <?php echo !empty($file_completeness['decision']) ? '#28a745' : '#856404'; ?>; font-weight: 600;">
+                                            <?php echo !empty($file_completeness['decision']) ? 'Đã có' : 'Thiếu'; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Đánh giá -->
+                            <div class="col-6">
+                                <div class="d-flex align-items-center p-2 rounded" style="background: <?php echo !empty($file_completeness['evaluation']) ? '#e8f5e8' : '#fff3cd'; ?>; border: 1px solid <?php echo !empty($file_completeness['evaluation']) ? '#c3e6cb' : '#ffeaa7'; ?>;">
+                                    <i class="fas fa-clipboard-check <?php echo !empty($file_completeness['evaluation']) ? 'text-success' : 'text-warning'; ?> mr-2" style="font-size: 0.9rem;"></i>
+                                    <div style="font-size: 0.8rem;">
+                                        <div style="font-weight: 500; color: #495057;">Đánh giá</div>
+                                        <div style="color: <?php echo !empty($file_completeness['evaluation']) ? '#28a745' : '#856404'; ?>; font-weight: 600;">
+                                            <?php echo !empty($file_completeness['evaluation']) ? 'Đã có' : 'Thiếu'; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Thanh tiến độ tổng quan -->
+                        <div class="d-flex align-items-center justify-content-between">
+                            <span style="font-size: 0.8rem; color: #6c757d; font-weight: 500;">
+                                Hoàn thành: <?php echo $completed_files; ?>/<?php echo $total_files; ?>
+                            </span>
+                            <span style="font-size: 0.85rem; font-weight: 600; color: <?php echo $completion_percentage >= 75 ? '#28a745' : ($completion_percentage >= 50 ? '#ffc107' : '#dc3545'); ?>;">
+                                <?php echo $completion_percentage; ?>%
+                            </span>
+                        </div>
+                        <div class="progress mt-2" style="height: 4px; background-color: #e9ecef;">
+                            <div class="progress-bar" style="background: linear-gradient(90deg, <?php echo $completion_percentage >= 75 ? '#28a745' : ($completion_percentage >= 50 ? '#ffc107' : '#dc3545'); ?>, <?php echo $completion_percentage >= 75 ? '#20c997' : ($completion_percentage >= 50 ? '#ffca2c' : '#e74c3c'); ?>); width: <?php echo $completion_percentage; ?>%;" 
+                                 role="progressbar" aria-valuenow="<?php echo $completion_percentage; ?>" aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+                 
+                    
+                    <!-- Action button -->
+                    <div class="header-actions">
+                        <button class="btn btn-outline-primary no-print" id="printProjectBtn">
+                            <i class="fas fa-print"></i>
+                            <span>In báo cáo</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2345,7 +3394,19 @@ try {
                             <hr>
                             <div class="mt-3">
                                 <h5 class="section-title"><i class="fas fa-file-alt"></i> File thuyết minh</h5>
-                                <a href="/NLNganh/uploads/project_files/<?php echo htmlspecialchars($project['DT_FILEBTM']); ?>"
+                                <?php 
+                                    $dtFile = $project['DT_FILEBTM'] ?? '';
+                                    $proposalHref = '';
+                                    if ($dtFile) {
+                                        if (strpos($dtFile, '/') !== false || strpos($dtFile, '\\') !== false) {
+                                            $webPath = preg_replace('#^\.\./\.\./#', '', str_replace('\\\\','/',$dtFile));
+                                            $proposalHref = '/NLNganh/' . ltrim($webPath, '/');
+                                        } else {
+                                            $proposalHref = '/NLNganh/uploads/project_files/' . $dtFile;
+                                        }
+                                    }
+                                ?>
+                                <a href="<?php echo htmlspecialchars($proposalHref); ?>"
                                     class="btn btn-outline-primary" download>
                                     <i class="fas fa-file-download mr-2"></i> Tải xuống file thuyết minh
                                 </a>
@@ -2358,7 +3419,7 @@ try {
                 <div class="card info-card animate-slide-up" style="animation-delay: 0.2s">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="fas fa-tasks mr-2"></i>Tiến độ đề tài</h5>
-                        <?php if ($has_access && canEditProject($project, $user_role)): ?>
+                        <?php if ($has_access && canEditProject($project['DT_TRANGTHAI'], $user_role)): ?>
                             <button type="button" class="btn btn-sm btn-primary no-print" data-toggle="modal"
                                 data-target="#addProgressModal">
                                 <i class="fas fa-plus-circle mr-1"></i> Cập nhật tiến độ
@@ -2562,7 +3623,19 @@ try {
                                                 <i class="far fa-file-pdf file-icon text-danger mr-2"></i>
                                                 <span class="font-weight-medium"><?php echo htmlspecialchars($project['DT_FILEBTM']); ?></span>
                                             </div>
-                                            <a href="/NLNganh/uploads/project_files/<?php echo htmlspecialchars($project['DT_FILEBTM']); ?>"
+                                            <?php 
+                                                $dtFile2 = $project['DT_FILEBTM'] ?? '';
+                                                $proposalHref2 = '';
+                                                if ($dtFile2) {
+                                                    if (strpos($dtFile2, '/') !== false || strpos($dtFile2, '\\') !== false) {
+                                                        $webPath2 = preg_replace('#^\.\./\.\./#', '', str_replace('\\\\','/',$dtFile2));
+                                                        $proposalHref2 = '/NLNganh/' . ltrim($webPath2, '/');
+                                                    } else {
+                                                        $proposalHref2 = '/NLNganh/uploads/project_files/' . $dtFile2;
+                                                    }
+                                                }
+                                            ?>
+                                            <a href="<?php echo htmlspecialchars($proposalHref2); ?>"
                                                 class="btn btn-sm btn-outline-primary" download>
                                                 <i class="fas fa-download mr-1"></i> Tải xuống
                                             </a>
@@ -2621,6 +3694,184 @@ try {
                                                 </button>
                                             </div>
                                         </form>
+                                        
+                                        <hr>
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <h6 class="mt-4 mb-2"><i class="fas fa-history mr-2"></i>Lịch sử file thuyết minh</h6>
+                                            <button type="button" id="btnExpandProposalHistory" class="btn btn-sm btn-outline-secondary mt-4 mb-2">
+                                                <i class="fas fa-expand mr-1"></i> Phóng to
+                                            </button>
+                                        </div>
+                                        <?php
+                                            $hist = [];
+                                            $hstmt = $conn->prepare("SELECT * FROM lich_su_thuyet_minh WHERE DT_MADT = ? ORDER BY NGAY_TAI DESC, ID DESC");
+                                            if ($hstmt) {
+                                                $hstmt->bind_param("s", $project_id);
+                                                if ($hstmt->execute()) {
+                                                    $hres = $hstmt->get_result();
+                                                    while ($row = $hres->fetch_assoc()) { $hist[] = $row; }
+                                                }
+                                            }
+                                            // Nếu chưa có lịch sử nhưng đã có file hiện tại từ khi đăng ký, hiển thị như một bản ghi lịch sử
+                                            if (empty($hist) && !empty($project['DT_FILEBTM'])) {
+                                                $hist[] = [
+                                                    'FILE_TEN' => $project['DT_FILEBTM'],
+                                                    'FILE_KICHTHUOC' => null,
+                                                    'FILE_LOAI' => null,
+                                                    'LY_DO' => 'File thuyết minh khi đăng ký đề tài',
+                                                    'NGUOI_TAI' => null,
+                                                    'NGAY_TAI' => $project['DT_NGAYTAO'] ?? date('Y-m-d H:i:s'),
+                                                    'LA_HIEN_TAI' => 1
+                                                ];
+                                            }
+                                        ?>
+                                        <?php if (!empty($hist)): ?>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-bordered mb-0">
+                                                    <thead class="thead-light">
+                                                        <tr>
+                                                            <th>#</th>
+                                                            <th>Tên file</th>
+                                                            <th>Kích thước</th>
+                                                            <th>Loại</th>
+                                                            <th>Lý do</th>
+                                                            <th>Người tải</th>
+                                                            <th>Thời gian</th>
+                                                            <th>Trạng thái</th>
+                                                            <th>Tải</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php foreach ($hist as $index => $h): ?>
+                                                            <tr>
+                                                                <td><?php echo $index + 1; ?></td>
+                                                                <td><?php echo htmlspecialchars($h['FILE_TEN']); ?></td>
+                                                                <td><?php echo isset($h['FILE_KICHTHUOC']) && is_numeric($h['FILE_KICHTHUOC']) ? number_format((float)$h['FILE_KICHTHUOC']) . ' bytes' : '—'; ?></td>
+                                                                <td><?php echo htmlspecialchars($h['FILE_LOAI'] ?? '—'); ?></td>
+                                                                <td style="max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?php echo htmlspecialchars($h['LY_DO'] ?? ''); ?>"><?php echo htmlspecialchars($h['LY_DO'] ?? ''); ?></td>
+                                                                <td><?php echo htmlspecialchars($h['NGUOI_TAI'] ?? ''); ?></td>
+                                                                <td><?php echo date('d/m/Y H:i', strtotime($h['NGAY_TAI'])); ?></td>
+                                                                <td><?php echo $h['LA_HIEN_TAI'] ? '<span class="badge badge-success">Hiện tại</span>' : '<span class="badge badge-secondary">Lịch sử</span>'; ?></td>
+                                                                <td>
+                                                                    <?php 
+                                                                        $histFile = $h['FILE_TEN'] ?? '';
+                                                                        $histHref = '';
+                                                                        if ($histFile) {
+                                                                            if (strpos($histFile, '/') !== false || strpos($histFile, '\\') !== false) {
+                                                                                $histWeb = preg_replace('#^\.\./\.\./#', '', str_replace('\\\\','/',$histFile));
+                                                                                $histHref = '/NLNganh/' . ltrim($histWeb, '/');
+                                                                            } else {
+                                                                                $histHref = '/NLNganh/uploads/project_files/' . $histFile;
+                                                                            }
+                                                                        }
+                                                                    ?>
+                                                                    <a class="btn btn-sm btn-outline-primary" href="<?php echo htmlspecialchars($histHref); ?>" download>
+                                                                        <i class="fas fa-download"></i>
+                                                                    </a>
+                                                                </td>
+                                                            </tr>
+                                                        <?php endforeach; ?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="alert alert-light border">Chưa có lịch sử file thuyết minh.</div>
+                                        <?php endif; ?>
+                                        
+                                        <!-- Overlay phóng to lịch sử (không dùng Bootstrap modal) -->
+                                        <div id="proposalHistoryOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:20000;align-items:center;justify-content:center;padding:2vh 2.5vw;">
+                                            <div id="proposalHistoryPanel" style="width:95vw;height:92vh;background:#fff;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.2);display:flex;flex-direction:column;">
+                                                <div style="padding:12px 16px;border-bottom:1px solid #e9ecef;display:flex;justify-content:space-between;align-items:center;">
+                                                    <h5 class="m-0"><i class="fas fa-history mr-2"></i>Lịch sử file thuyết minh</h5>
+                                                    <button type="button" id="btnCloseProposalHistory" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times mr-1"></i> Đóng</button>
+                                                </div>
+                                                <div style="padding:12px 16px;overflow:auto;flex:1;">
+                                                    <?php if (!empty($hist)): ?>
+                                                        <div class="table-responsive">
+                                                            <table class="table table-bordered table-hover">
+                                                                <thead class="thead-light">
+                                                                    <tr>
+                                                                        <th>#</th>
+                                                                        <th>Tên file</th>
+                                                                        <th>Kích thước</th>
+                                                                        <th>Loại</th>
+                                                                        <th>Lý do</th>
+                                                                        <th>Người tải</th>
+                                                                        <th>Thời gian</th>
+                                                                        <th>Trạng thái</th>
+                                                                        <th>Tải</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    <?php foreach ($hist as $index => $h): ?>
+                                                                        <tr>
+                                                                            <td><?php echo $index + 1; ?></td>
+                                                                            <td><?php echo htmlspecialchars($h['FILE_TEN']); ?></td>
+                                                                            <td><?php echo isset($h['FILE_KICHTHUOC']) && is_numeric($h['FILE_KICHTHUOC']) ? number_format((float)$h['FILE_KICHTHUOC']) . ' bytes' : '—'; ?></td>
+                                                                            <td><?php echo htmlspecialchars($h['FILE_LOAI'] ?? '—'); ?></td>
+                                                                            <td style="max-width:420px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?php echo htmlspecialchars($h['LY_DO'] ?? ''); ?>"><?php echo htmlspecialchars($h['LY_DO'] ?? ''); ?></td>
+                                                                            <td><?php echo htmlspecialchars($h['NGUOI_TAI'] ?? ''); ?></td>
+                                                                            <td><?php echo date('d/m/Y H:i', strtotime($h['NGAY_TAI'])); ?></td>
+                                                                            <td><?php echo $h['LA_HIEN_TAI'] ? '<span class="badge badge-success">Hiện tại</span>' : '<span class="badge badge-secondary">Lịch sử</span>'; ?></td>
+                                                                            <td>
+                                                                                <?php 
+                                                                                    $histFileM = $h['FILE_TEN'] ?? '';
+                                                                                    $histHrefM = '';
+                                                                                    if ($histFileM) {
+                                                                                        if (strpos($histFileM, '/') !== false || strpos($histFileM, '\\') !== false) {
+                                                                                            $histWebM = preg_replace('#^\.\./\.\./#', '', str_replace('\\\\','/',$histFileM));
+                                                                                            $histHrefM = '/NLNganh/' . ltrim($histWebM, '/');
+                                                                                        } else {
+                                                                                            $histHrefM = '/NLNganh/uploads/project_files/' . $histFileM;
+                                                                                        }
+                                                                                    }
+                                                                                ?>
+                                                                                <a class="btn btn-sm btn-outline-primary" href="<?php echo htmlspecialchars($histHrefM); ?>" download>
+                                                                                    <i class="fas fa-download"></i>
+                                                                                </a>
+                                                                            </td>
+                                                                        </tr>
+                                                                    <?php endforeach; ?>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    <?php else: ?>
+                                                        <div class="alert alert-light border">Chưa có lịch sử file thuyết minh.</div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <script>
+                                            (function(){
+                                                var overlay = document.getElementById('proposalHistoryOverlay');
+                                                // Di chuyển overlay ra cuối body để tránh bị giới hạn trong card-body
+                                                if (overlay && overlay.parentNode !== document.body) {
+                                                    document.body.appendChild(overlay);
+                                                }
+                                                var panel = document.getElementById('proposalHistoryPanel');
+                                                var btnOpen = document.getElementById('btnExpandProposalHistory');
+                                                var btnClose = document.getElementById('btnCloseProposalHistory');
+                                                function openOverlay(){
+                                                    overlay.style.display = 'block';
+                                                    overlay.style.display = 'flex';
+                                                    document.body.style.overflow = 'hidden';
+                                                }
+                                                function closeOverlay(){
+                                                    overlay.style.display = 'none';
+                                                    document.body.style.overflow = '';
+                                                }
+                                                if (btnOpen) btnOpen.addEventListener('click', function(e){ e.preventDefault(); openOverlay(); });
+                                                if (btnClose) btnClose.addEventListener('click', function(e){ e.preventDefault(); closeOverlay(); });
+                                                if (overlay) overlay.addEventListener('click', function(e){
+                                                    if (!panel.contains(e.target)) {
+                                                        closeOverlay();
+                                                    }
+                                                });
+                                                // Đảm bảo overlay không tự mở khi các form khác submit hoặc DOM thay đổi
+                                                // Chỉ mở khi click đúng vào nút #btnExpandProposalHistory
+                                            })();
+                                        </script>
+
                                     </div>
                                 <?php elseif ($has_access && $user_role !== 'Chủ nhiệm'): ?>
                                     <div class="alert alert-warning">
@@ -2721,6 +3972,7 @@ try {
                                                         </label>
                                                         <input type="date" class="form-control" id="start_date" name="start_date" 
                                                             value="<?php echo isset($contract['HD_NGAYBD']) ? date('Y-m-d', strtotime($contract['HD_NGAYBD'])) : ''; ?>" required>
+                                                        <small class="form-text text-muted">Thời hạn dự kiến: <?php echo (int)$duration_months; ?> tháng</small>
                                                     </div>
                                                 </div>
                                                 
@@ -2731,6 +3983,7 @@ try {
                                                         </label>
                                                         <input type="date" class="form-control" id="end_date" name="end_date" 
                                                             value="<?php echo isset($contract['HD_NGAYKT']) ? date('Y-m-d', strtotime($contract['HD_NGAYKT'])) : ''; ?>" required>
+                                                        <small class="form-text text-muted">Tự động tính dựa trên ngày bắt đầu và thời hạn</small>
                                                     </div>
                                                 </div>
                                             </div>
@@ -2986,6 +4239,117 @@ try {
                                             } else {
                                                 $actual_classification = 'Không đạt';
                                             }
+                                            
+                                            // Đồng bộ về CSDL: cập nhật BB_TONGDIEM và BB_XEPLOAI nếu khác
+                                            if (!empty($decision['BB_SOBB'])) {
+                                                $bb_sobb = $decision['BB_SOBB'];
+                                                $rounded_score = round($actual_total_score, 2);
+                                                // Lấy hiện trạng
+                                                if ($stmt_sync = $conn->prepare("SELECT BB_TONGDIEM, BB_XEPLOAI FROM bien_ban WHERE BB_SOBB = ? LIMIT 1")) {
+                                                    $stmt_sync->bind_param("s", $bb_sobb);
+                                                    if ($stmt_sync->execute()) {
+                                                        $res_sync = $stmt_sync->get_result();
+                                                        if ($res_sync && $res_sync->num_rows > 0) {
+                                                            $row_sync = $res_sync->fetch_assoc();
+                                                            $db_score = isset($row_sync['BB_TONGDIEM']) ? (float)$row_sync['BB_TONGDIEM'] : null;
+                                                            $db_class = $row_sync['BB_XEPLOAI'] ?? '';
+                                                            if ($db_score !== $rounded_score || $db_class !== $actual_classification) {
+                                                                if ($stmt_upd = $conn->prepare("UPDATE bien_ban SET BB_TONGDIEM = ?, BB_XEPLOAI = ? WHERE BB_SOBB = ?")) {
+                                                                    $stmt_upd->bind_param("dss", $rounded_score, $actual_classification, $bb_sobb);
+                                                                    $stmt_upd->execute();
+                                                                    $stmt_upd->close();
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    $stmt_sync->close();
+                                                }
+                                                
+                                                // Ghi tiến độ: Cập nhật điểm thành viên hội đồng (nếu chưa có bản ghi mới)
+                                                // Lấy thời điểm đánh giá mới nhất
+                                                $latest_eval_time = null;
+                                                if ($stmt_max = $conn->prepare("SELECT MAX(TV_NGAYDANHGIA) AS latest_time FROM thanh_vien_hoi_dong WHERE QD_SO = ? AND TV_DIEM IS NOT NULL")) {
+                                                    $stmt_max->bind_param("s", $decision['QD_SO']);
+                                                    if ($stmt_max->execute()) {
+                                                        $res_max = $stmt_max->get_result();
+                                                        if ($res_max && $row_max = $res_max->fetch_assoc()) {
+                                                            $latest_eval_time = $row_max['latest_time'];
+                                                        }
+                                                    }
+                                                    $stmt_max->close();
+                                                }
+                                                if (!empty($latest_eval_time)) {
+                                                    // Kiểm tra đã có log sau thời điểm này chưa
+                                                    $exists_log = false;
+                                                    if ($stmt_chk = $conn->prepare("SELECT 1 FROM tien_do_de_tai WHERE DT_MADT = ? AND TDDT_TIEUDE = 'Cập nhật điểm thành viên hội đồng' AND TDDT_NGAYCAPNHAT >= ? LIMIT 1")) {
+                                                        $stmt_chk->bind_param("ss", $project_id, $latest_eval_time);
+                                                        if ($stmt_chk->execute()) {
+                                                            $res_chk = $stmt_chk->get_result();
+                                                            $exists_log = ($res_chk && $res_chk->num_rows > 0);
+                                                        }
+                                                        $stmt_chk->close();
+                                                    }
+                                                    if (!$exists_log) {
+                                                        // Xây nội dung chi tiết các thành viên
+                                                        $lines = [];
+                                                        if ($stmt_list = $conn->prepare("SELECT tv.TV_VAITRO, tv.TV_DIEM, tv.GV_MAGV, CONCAT(gv.GV_HOGV,' ',gv.GV_TENGV) AS GV_HOTEN FROM thanh_vien_hoi_dong tv LEFT JOIN giang_vien gv ON gv.GV_MAGV = tv.GV_MAGV WHERE tv.QD_SO = ? AND tv.TV_DIEM IS NOT NULL ORDER BY tv.TV_VAITRO")) {
+                                                            $stmt_list->bind_param("s", $decision['QD_SO']);
+                                                            if ($stmt_list->execute()) {
+                                                                $res_list = $stmt_list->get_result();
+                                                                while ($r = $res_list->fetch_assoc()) {
+                                                                    $name = $r['GV_HOTEN'] ?: $r['GV_MAGV'];
+                                                                    $role = $r['TV_VAITRO'];
+                                                                    $score = (float)$r['TV_DIEM'];
+                                                                    $lines[] = "- {$name} ({$role}): " . number_format($score, 1) . " → " . number_format($score, 0) . "/100";
+                                                                }
+                                                            }
+                                                            $stmt_list->close();
+                                                        }
+                                                        // Thống kê nhanh
+                                                        $cnt = 0; $avg = 0; $min = 0; $max = 0;
+                                                        if ($stmt_stat = $conn->prepare("SELECT COUNT(*) c, ROUND(AVG(TV_DIEM),0) a, MIN(TV_DIEM) mn, MAX(TV_DIEM) mx FROM thanh_vien_hoi_dong WHERE QD_SO = ? AND TV_DIEM IS NOT NULL")) {
+                                                            $stmt_stat->bind_param("s", $decision['QD_SO']);
+                                                            if ($stmt_stat->execute()) {
+                                                                $res_stat = $stmt_stat->get_result();
+                                                                if ($res_stat && $row_stat = $res_stat->fetch_assoc()) {
+                                                                    $cnt = (int)$row_stat['c'];
+                                                                    $avg = (int)$row_stat['a'];
+                                                                    $min = (float)$row_stat['mn'];
+                                                                    $max = (float)$row_stat['mx'];
+                                                                }
+                                                            }
+                                                            $stmt_stat->close();
+                                                        }
+                                                        $body = "Đã cập nhật điểm đánh giá thành viên hội đồng:\n\n" . implode("\n", $lines) . "\n\n" .
+                                                                "📊 THỐNG KÊ:\n" .
+                                                                "- Số thành viên được cập nhật: {$cnt}\n" .
+                                                                "- Tổng số thành viên có điểm: {$cnt}\n" .
+                                                                "- Điểm trung bình: {$avg}/100\n" .
+                                                                "- Điểm thấp nhất: " . number_format($min,1) . "/100\n" .
+                                                                "- Điểm cao nhất: " . number_format($max,1) . "/100\n";
+                                                        // Lấy chủ nhiệm
+                                                        $leader = null;
+                                                        if ($stmt_lead = $conn->prepare("SELECT SV_MASV FROM chi_tiet_tham_gia WHERE DT_MADT = ? AND CTTG_VAITRO = 'Chủ nhiệm' LIMIT 1")) {
+                                                            $stmt_lead->bind_param("s", $project_id);
+                                                            if ($stmt_lead->execute()) {
+                                                                $res_lead = $stmt_lead->get_result();
+                                                                if ($res_lead && $row_lead = $res_lead->fetch_assoc()) {
+                                                                    $leader = $row_lead['SV_MASV'];
+                                                                }
+                                                            }
+                                                            $stmt_lead->close();
+                                                        }
+                                                        // Tạo mã tiến độ
+                                                        $progress_id = 'TD' . date('ymd') . sprintf('%02d', rand(10, 99));
+                                                        // Chèn tiến độ
+                                                        if ($stmt_ins = $conn->prepare("INSERT INTO tien_do_de_tai (TDDT_MA, DT_MADT, SV_MASV, TDDT_TIEUDE, TDDT_NOIDUNG, TDDT_NGAYCAPNHAT, TDDT_PHANTRAMHOANTHANH) VALUES (?, ?, ?, 'Cập nhật điểm thành viên hội đồng', ?, NOW(), 0)")) {
+                                                            $stmt_ins->bind_param("ssss", $progress_id, $project_id, $leader, $body);
+                                                            $stmt_ins->execute();
+                                                            $stmt_ins->close();
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                     ?>
@@ -3013,12 +4377,12 @@ try {
                                                         ?>">
                                                         <?php echo htmlspecialchars($display_xeploai ?: 'Chưa xác định'); ?>
                                                     </span>
-                                                    <?php if ($actual_classification && isset($decision['BB_XEPLOAI']) && $actual_classification !== $decision['BB_XEPLOAI']): ?>
+                                                    <!-- <?php if ($actual_classification && isset($decision['BB_XEPLOAI']) && $actual_classification !== $decision['BB_XEPLOAI']): ?>
                                                         <small class="text-muted ml-2">
                                                             <i class="fas fa-info-circle" title="Xếp loại được tính toán từ điểm thành viên hội đồng"></i>
                                                             (DB: <?php echo htmlspecialchars($decision['BB_XEPLOAI']); ?>)
                                                         </small>
-                                                    <?php endif; ?>
+                                                    <?php endif; ?> -->
                                                 </p>
                                                 <p class="mb-2"><strong>Tổng điểm:</strong>
                                                     <span class="badge badge-info">
@@ -3048,7 +4412,7 @@ try {
                                     </div>
                                 <?php endif; ?>
 
-                                <?php if ($has_access && $user_role === 'Chủ nhiệm' && canEditProject($project, $user_role) && $decision): ?>
+                                <?php if ($has_access && $user_role === 'Chủ nhiệm' && canEditProject($project['DT_TRANGTHAI'], $user_role) && $decision): ?>
                                     <div class="report-update-form">
                                         <h6 class="mb-3 text-center">
                                             <i class="fas fa-file-invoice mr-2"></i>
@@ -3077,7 +4441,7 @@ try {
                                                     <?php if (isset($decision['BB_SOBB']) && !empty($decision['BB_SOBB'])): ?>
                                                         <input type="hidden" name="report_id"
                                                             value="<?php echo htmlspecialchars($decision['BB_SOBB']); ?>">
-                                                    <?php endif; ?>>
+                                                    <?php endif; ?>
                                                     
                                                     <div class="row">
                                                         <div class="col-md-6">
@@ -3196,10 +4560,28 @@ try {
                                                         <input type="hidden" id="council_members" name="council_members" value="<?php echo htmlspecialchars(str_replace(array("\r", "\n"), ' ', $decision['HD_THANHVIEN'] ?? '')); ?>">
                                                         <input type="hidden" id="council_members_json" name="council_members_json" value="">
                                                         
-                                                        <small class="form-text text-muted">
-                                                            <i class="fas fa-info-circle mr-1"></i>
-                                                            Chọn giảng viên từ danh sách và chỉ định vai trò (Chủ tịch, Thành viên, Thư ký)
-                                                        </small>
+                                                        <div class="alert alert-info mt-3">
+                                                            <h6><i class="fas fa-users mr-2"></i>Cấu trúc hội đồng nghiệm thu bắt buộc:</h6>
+                                                            <div class="row">
+                                                                <div class="col-md-6">
+                                                                    <ul class="mb-0 small">
+                                                                        <li><strong>1 Chủ tịch hội đồng</strong> <span class="badge badge-danger badge-sm">Bắt buộc</span></li>
+                                                                        <li><strong>2 Phản biện</strong> <span class="badge badge-success badge-sm">Bắt buộc</span></li>
+                                                                    </ul>
+                                                                </div>
+                                                                <div class="col-md-6">
+                                                                    <ul class="mb-0 small">
+                                                                        <li><strong>1 Thành viên</strong> <span class="badge badge-primary badge-sm">Bắt buộc</span></li>
+                                                                        <li><strong>1 Thư ký</strong> <span class="badge badge-info badge-sm">Bắt buộc</span></li>
+                                                                    </ul>
+                                                                </div>
+                                                            </div>
+                                                            <hr class="my-2">
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-info-circle mr-1"></i>
+                                                                Tổng cộng: <strong>5 thành viên</strong> theo quy định
+                                                            </small>
+                                                        </div>
                                                     </div>
                                                     
                                                     <div class="text-center">
@@ -3214,7 +4596,7 @@ try {
                                         
                                         <!-- Form 3: Cập nhật điểm thành viên hội đồng -->
                                         <?php if (!empty($council_members)): ?>
-                                        <div class="card mt-3">
+                                        <div class="card mt-3" style="display: none;">
                                             <div class="card-header bg-warning text-dark">
                                                 <h6 class="mb-0">
                                                     <i class="fas fa-star mr-2"></i>Cập nhật điểm đánh giá thành viên hội đồng
@@ -3341,7 +4723,7 @@ try {
                             <div class="tab-pane fade" id="evaluation" role="tabpanel" aria-labelledby="evaluation-tab">
                                 <!-- Thông tin kết quả đánh giá -->
                                 <?php if ($decision): ?>
-                                    <div class="evaluation-result-section mb-4">
+                                    <div class="evaluation-result-section mb-4" style="display: none;">
                                         <h6 class="text-success mb-3">
                                             <i class="fas fa-award mr-2"></i>Kết quả đánh giá nghiệm thu
                                         </h6>
@@ -3476,7 +4858,7 @@ try {
                                                                         class="btn btn-sm btn-outline-success" download title="Tải xuống">
                                                                         <i class="fas fa-download"></i> Tải
                                                                     </a>
-                                                                    <?php if ($has_access && $user_role === 'Chủ nhiệm' && canEditProject($project, $user_role)): ?>
+                                                                    <?php if ($has_access && $user_role === 'Chủ nhiệm' && canEditProject($project['DT_TRANGTHAI'], $user_role)): ?>
                                                                         <button type="button" class="btn btn-sm btn-outline-danger delete-evaluation-file" 
                                                                             data-file-id="<?php echo htmlspecialchars($file['FDG_MA']); ?>"
                                                                             data-file-name="<?php echo htmlspecialchars($file['FDG_TEN']); ?>"
@@ -3497,7 +4879,7 @@ try {
                                         <?php endforeach; ?>
                                     </div>
 
-                                    <?php if ($has_access && $user_role === 'Chủ nhiệm' && canEditProject($project, $user_role)): ?>
+                                    <?php if ($has_access && $user_role === 'Chủ nhiệm' && canEditProject($project['DT_TRANGTHAI'], $user_role)): ?>
                                         <hr>
                                         <div class="upload-section">
                                             <h6 class="mb-3"><i class="fas fa-upload mr-2"></i>Thêm file đánh giá mới</h6>
@@ -3546,7 +4928,7 @@ try {
                                         </div>
                                     <?php endif; ?>
 
-                                <?php elseif (false && $decision && $has_access && $user_role === 'Chủ nhiệm' && canEditProject($project, $user_role)): // Tạm thời ẩn ?>
+                                <?php elseif (false && $decision && $has_access && $user_role === 'Chủ nhiệm' && canEditProject($project['DT_TRANGTHAI'], $user_role)): // Tạm thời ẩn ?>
                                     <div class="alert alert-info">
                                         <i class="fas fa-info-circle mr-2"></i> Chưa có file đánh giá. Bạn có thể tải lên file đánh giá mới.
                                     </div>
@@ -3686,9 +5068,84 @@ try {
                                 <?php if ($decision && count($council_members) > 0): ?>
                                     <hr>
                                     <div class="council-members-section mb-4">
+                                        <?php
+                                        // Thống kê vai trò hiện tại
+                                        $role_counts = [
+                                            'Chủ tịch' => 0,
+                                            'Phản biện' => 0, 
+                                            'Thành viên' => 0,
+                                            'Thư ký' => 0,
+                                            'Khác' => 0
+                                        ];
+                                        
+                                        foreach ($council_members as $member) {
+                                            $role = $member['TV_VAITRO'];
+                                            $role_normalized = strtolower($role);
+                                            
+                                            if (strpos($role_normalized, 'chủ tịch') !== false && strpos($role_normalized, 'phó') === false) {
+                                                $role_counts['Chủ tịch']++;
+                                            } elseif (strpos($role_normalized, 'phản biện') !== false || strpos($role_normalized, 'phan bien') !== false) {
+                                                $role_counts['Phản biện']++;
+                                            } elseif (strpos($role_normalized, 'thư ký') !== false || strpos($role_normalized, 'thu ky') !== false) {
+                                                $role_counts['Thư ký']++;
+                                            } elseif ($role === 'Thành viên' || strpos($role_normalized, 'thành viên') !== false) {
+                                                $role_counts['Thành viên']++;
+                                            } else {
+                                                $role_counts['Khác']++;
+                                            }
+                                        }
+                                        
+                                        $total_members = count($council_members);
+                                        $is_valid_structure = ($role_counts['Chủ tịch'] == 1 && $role_counts['Phản biện'] == 2 && 
+                                                              $role_counts['Thành viên'] == 1 && $role_counts['Thư ký'] == 1);
+                                        ?>
+                                        
+                                        <!-- Thống kê cấu trúc hội đồng hiện tại -->
+                                        <div class="card mb-3 <?php echo $is_valid_structure ? 'border-success' : 'border-warning'; ?>">
+                                            <div class="card-header <?php echo $is_valid_structure ? 'bg-light-success' : 'bg-light-warning'; ?> py-2">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <h6 class="mb-0">
+                                                        <i class="fas fa-chart-pie mr-2"></i>Cấu trúc hội đồng hiện tại
+                                                    </h6>
+                                                    <span class="badge <?php echo $is_valid_structure ? 'badge-success' : 'badge-warning'; ?>">
+                                                        <?php echo $is_valid_structure ? 'Đạt chuẩn' : 'Chưa đạt chuẩn'; ?>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="card-body py-2">
+                                                <div class="row text-center">
+                                                    <div class="col">
+                                                        <span class="badge <?php echo $role_counts['Chủ tịch'] == 1 ? 'badge-success' : 'badge-danger'; ?>">
+                                                            Chủ tịch: <?php echo $role_counts['Chủ tịch']; ?>/1
+                                                        </span>
+                                                    </div>
+                                                    <div class="col">
+                                                        <span class="badge <?php echo $role_counts['Phản biện'] == 2 ? 'badge-success' : 'badge-warning'; ?>">
+                                                            Phản biện: <?php echo $role_counts['Phản biện']; ?>/2
+                                                        </span>
+                                                    </div>
+                                                    <div class="col">
+                                                        <span class="badge <?php echo $role_counts['Thành viên'] == 1 ? 'badge-success' : 'badge-warning'; ?>">
+                                                            Thành viên: <?php echo $role_counts['Thành viên']; ?>/1
+                                                        </span>
+                                                    </div>
+                                                    <div class="col">
+                                                        <span class="badge <?php echo $role_counts['Thư ký'] == 1 ? 'badge-success' : 'badge-warning'; ?>">
+                                                            Thư ký: <?php echo $role_counts['Thư ký']; ?>/1
+                                                        </span>
+                                                    </div>
+                                                    <div class="col">
+                                                        <span class="badge <?php echo $total_members == 5 ? 'badge-success' : 'badge-secondary'; ?>">
+                                                            Tổng: <?php echo $total_members; ?>/5
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
                                         <div class="d-flex justify-content-between align-items-center mb-3">
                                             <h6 class="text-primary mb-0">
-                                                <i class="fas fa-users mr-2"></i>Thành viên hội đồng nghiệm thu
+                                                <i class="fas fa-users mr-2"></i>Danh sách thành viên hội đồng nghiệm thu
                                                 <span class="badge badge-primary ml-2"><?php echo count($council_members); ?> thành viên</span>
                                             </h6>
                                             <div class="btn-group">
@@ -3712,7 +5169,7 @@ try {
                                                         <th class="text-center">Trạng thái</th>
                                                         <th class="text-center">File đánh giá</th>
                                                         <th class="text-center">Hành động</th>
-                                                        <?php if ($has_access && $user_role === 'Chủ nhiệm' && canEditProject($project, $user_role)): ?>
+                                                        <?php if ($has_access && $user_role === 'Chủ nhiệm' && canEditProject($project['DT_TRANGTHAI'], $user_role)): ?>
                                                             <th class="text-center d-none">Hành động (có quyền)</th>
                                                         <?php endif; ?>
                                                     </tr>
@@ -3768,7 +5225,7 @@ try {
                                                                     $role = 'Thư ký';
                                                                 } elseif (strpos($role_normalized, 'phản biện') !== false || 
                                                                          strpos($role_normalized, 'phan bien') !== false) {
-                                                                    $badge_class = 'badge-secondary';
+                                                                    $badge_class = 'badge-success';
                                                                     $role = 'Phản biện';
                                                                 } else {
                                                                     $badge_class = 'badge-primary';
@@ -3800,25 +5257,71 @@ try {
                                                             </td>
                                                             <td class="text-center">
                                                                 <?php 
-                                                                // Kiểm tra xem có file đánh giá nào của thành viên này không
+                                                                // Lấy file đánh giá của thành viên này CHỈ CỦA ĐỀ TÀI HIỆN TẠI
                                                                 $member_files = [];
-                                                                if (isset($member_evaluation_files) && is_array($member_evaluation_files)) {
-                                                                    $member_id = $member['GV_MAGV'] ?? $member['MAGV'] ?? $member['TV_MAGV'] ?? '';
-                                                                    $member_files = array_filter($member_evaluation_files, function($file) use ($member_id) {
-                                                                        return $file['FDK_MEMBER_ID'] === $member_id;
-                                                                    });
+                                                                $member_id = $member['GV_MAGV'] ?? $member['MAGV'] ?? $member['TV_MAGV'] ?? '';
+                                                                
+                                                                if (!empty($member_id) && !empty($project['QD_SO'])) {
+                                                                    try {
+                                                                        // Query để lấy file đánh giá của thành viên này CHỈ CỦA ĐỀ TÀI HIỆN TẠI
+                                                                        // Sử dụng REGEX để lọc file theo mã đề tài trong filename
+                                                                        $member_files_sql = "SELECT fd.FDG_TENFILE as FDK_TEN, fd.FDG_FILE as FDK_DUONGDAN, 
+                                                                                                   fd.FDG_MOTA as FDK_MOTA, fd.FDG_NGAYTAO as FDK_NGAYTAO,
+                                                                                                   fd.FDG_KICHTHUC as FDK_KICHTHUC
+                                                                                            FROM file_dinh_kem fd
+                                                                                            WHERE fd.FDG_LOAI = 'member_evaluation' 
+                                                                                            AND fd.GV_MAGV = ?
+                                                                                            AND fd.FDG_FILE REGEXP ?
+                                                                                            AND fd.FDG_FILE IS NOT NULL 
+                                                                                            AND TRIM(fd.FDG_FILE) != ''
+                                                                                            ORDER BY fd.FDG_NGAYTAO DESC";
+                                                                        
+                                                                        $stmt = $conn->prepare($member_files_sql);
+                                                                        if ($stmt) {
+                                                                            // Tạo regex pattern để tìm mã đề tài trong filename
+                                                                            $regex_pattern = $project_id . '_[0-9]+\\.(docx?|pdf|txt)$';
+                                                                            $stmt->bind_param("ss", $member_id, $regex_pattern);
+                                                                            $stmt->execute();
+                                                                            $result = $stmt->get_result();
+                                                                            while ($file = $result->fetch_assoc()) {
+                                                                                $member_files[] = $file;
+                                                                            }
+                                                                            $stmt->close();
+                                                                        }
+                                                                    } catch (Exception $e) {
+                                                                        error_log("Error loading member files: " . $e->getMessage());
+                                                                    }
                                                                 }
                                                                 
                                                                 if (count($member_files) > 0): ?>
                                                                     <div class="btn-group">
-                                                                        <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown" title="Có <?php echo count($member_files); ?> file">
+                                                                        <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown" title="Có <?php echo count($member_files); ?> file đánh giá của đề tài này">
                                                                             <i class="fas fa-file-check mr-1"></i><?php echo count($member_files); ?> file
                                                                         </button>
-                                                                        <div class="dropdown-menu">
-                                                                            <?php foreach ($member_files as $file): ?>
+                                                                        <div class="dropdown-menu dropdown-menu-right">
+                                                                            <h6 class="dropdown-header">
+                                                                                <i class="fas fa-user mr-1"></i><?php echo htmlspecialchars($member['GV_HOTEN'] ?? $member['TV_HOTEN'] ?? 'N/A'); ?>
+                                                                            </h6>
+                                                                            <div class="dropdown-divider"></div>
+                                                                            <?php foreach ($member_files as $index => $file): ?>
                                                                                 <a class="dropdown-item" href="/NLNganh/uploads/member_evaluations/<?php echo htmlspecialchars($file['FDK_DUONGDAN']); ?>" target="_blank">
-                                                                                    <i class="fas fa-download mr-1"></i><?php echo htmlspecialchars($file['FDK_TEN']); ?>
+                                                                                    <div class="d-flex justify-content-between align-items-start">
+                                                                                        <div class="flex-grow-1">
+                                                                                            <i class="fas fa-download mr-1 text-primary"></i>
+                                                                                            <span class="font-weight-medium"><?php echo htmlspecialchars($file['FDK_TEN']); ?></span>
+                                                                                            <br>
+                                                                                            <small class="text-muted">
+                                                                                                <i class="fas fa-calendar-alt mr-1"></i><?php echo date('d/m/Y H:i', strtotime($file['FDK_NGAYTAO'])); ?>
+                                                                                                <?php if (!empty($file['FDK_KICHTHUC'])): ?>
+                                                                                                    | <i class="fas fa-file-alt mr-1"></i><?php echo number_format($file['FDK_KICHTHUC'] / 1024, 1); ?> KB
+                                                                                                <?php endif; ?>
+                                                                                            </small>
+                                                                                        </div>
+                                                                                    </div>
                                                                                 </a>
+                                                                                <?php if ($index < count($member_files) - 1): ?>
+                                                                                    <div class="dropdown-divider"></div>
+                                                                                <?php endif; ?>
                                                                             <?php endforeach; ?>
                                                                         </div>
                                                                     </div>
@@ -3850,7 +5353,7 @@ try {
                                                             </td>
                                                             
                                                             <!-- Cột hành động có điều kiện -->
-                                                            <?php if ($has_access && $user_role === 'Chủ nhiệm' && canEditProject($project, $user_role)): ?>
+                                                            <?php if ($has_access && $user_role === 'Chủ nhiệm' && canEditProject($project['DT_TRANGTHAI'], $user_role)): ?>
                                                                 <td class="text-center d-none">
                                                                     <div class="btn-group-vertical" role="group">
                                                                         <button type="button" class="btn btn-sm btn-outline-primary evaluate-member-btn mb-1" 
@@ -4052,7 +5555,7 @@ try {
     </div> <!-- End container-fluid content -->
 
     <!-- Modal Cập nhật tiến độ -->
-    <?php if ($has_access && $user_role === 'Chủ nhiệm' && canEditProject($project, $user_role)): ?>
+    <?php if ($has_access && $user_role === 'Chủ nhiệm' && canEditProject($project['DT_TRANGTHAI'], $user_role)): ?>
         <div class="modal fade" id="addProgressModal" tabindex="-1" role="dialog" aria-labelledby="addProgressModalLabel"
             aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
@@ -4127,6 +5630,419 @@ try {
 
     <!-- Application Scripts - Load after core libraries -->
     <script src="/NLNganh/assets/js/student/unified_tab_system.js" defer></script>
+    
+    <!-- Council Members Management Script -->
+    <script>
+    $(document).ready(function() {
+        // Biến lưu danh sách thành viên hội đồng
+        let projectCouncilMembers = [];
+        let allTeachers = [];
+        
+        // Mở modal thêm thành viên hội đồng
+        $('#addCouncilMemberBtn').click(function() {
+            $('#councilMemberModal').modal('show');
+            loadTeachers();
+            updateRoleDropdown(); // Cập nhật dropdown khi mở modal
+        });
+        
+        // Load danh sách giảng viên
+        function loadTeachers() {
+            $.ajax({
+                url: '/NLNganh/api/get_teachers.php',
+                method: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        allTeachers = response.teachers;
+                        updateTeacherSelect(allTeachers);
+                    } else {
+                        // Fallback với dữ liệu mẫu
+                        allTeachers = [
+                            {id: 'GV000001', name: 'Nguyễn Văn A', department: 'KH011', department_name: 'Trường Công nghệ thông tin và truyền thông'},
+                            {id: 'GV000002', name: 'Trần Thị B', department: 'KH012', department_name: 'Trường Kinh tế'},
+                            {id: 'GV000003', name: 'Lê Văn C', department: 'KH012', department_name: 'Trường Kinh tế'},
+                            {id: 'GV000004', name: 'Phạm Thị D', department: 'KH007', department_name: 'Khoa Ngoại ngữ'}
+                        ];
+                        updateTeacherSelect(allTeachers);
+                    }
+                },
+                error: function() {
+                    // Fallback với dữ liệu mẫu
+                    allTeachers = [
+                        {id: 'GV000001', name: 'Nguyễn Văn A', department: 'KH011', department_name: 'Trường Công nghệ thông tin và truyền thông'},
+                        {id: 'GV000002', name: 'Trần Thị B', department: 'KH012', department_name: 'Trường Kinh tế'},
+                        {id: 'GV000003', name: 'Lê Văn C', department: 'KH012', department_name: 'Trường Kinh tế'},
+                        {id: 'GV000004', name: 'Phạm Thị D', department: 'KH007', department_name: 'Khoa Ngoại ngữ'}
+                    ];
+                    updateTeacherSelect(allTeachers);
+                }
+            });
+        }
+        
+        // Cập nhật danh sách giảng viên trong select
+        function updateTeacherSelect(teachers) {
+            const $select = $('#teacherSelect');
+            $select.empty();
+            
+            if (teachers.length === 0) {
+                $select.append('<option value="">Không có giảng viên nào</option>');
+                return;
+            }
+            
+            $select.append('<option value="">-- Chọn giảng viên --</option>');
+            teachers.forEach(function(teacher) {
+                const displayDept = teacher.department_name || teacher.department;
+                $select.append(
+                    `<option value="${teacher.id}" data-name="${teacher.name}" data-department="${displayDept}" data-department-code="${teacher.department}">
+                        ${teacher.id} - ${teacher.name} (${displayDept})
+                    </option>`
+                );
+            });
+        }
+        
+        // Lọc theo khoa
+        $('#departmentFilter').change(function() {
+            const selectedDept = $(this).val();
+            let filteredTeachers = allTeachers;
+            
+            if (selectedDept) {
+                filteredTeachers = allTeachers.filter(teacher => teacher.department === selectedDept);
+            }
+            
+            updateTeacherSelect(filteredTeachers);
+        });
+        
+        // Tìm kiếm giảng viên
+        $('#searchTeacher').on('input', function() {
+            const searchTerm = $(this).val().toLowerCase();
+            const selectedDept = $('#departmentFilter').val();
+            
+            let filteredTeachers = allTeachers;
+            
+            // Lọc theo khoa trước
+            if (selectedDept) {
+                filteredTeachers = filteredTeachers.filter(teacher => teacher.department === selectedDept);
+            }
+            
+            // Sau đó lọc theo từ khóa tìm kiếm
+            if (searchTerm) {
+                filteredTeachers = filteredTeachers.filter(teacher => 
+                    teacher.name.toLowerCase().includes(searchTerm) || 
+                    teacher.id.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            updateTeacherSelect(filteredTeachers);
+        });
+        
+        // Hiển thị thông tin giảng viên được chọn
+        $('#teacherSelect').change(function() {
+            const $selected = $(this).find('option:selected');
+            if ($selected.val()) {
+                const info = `${$selected.data('name')} - ${$selected.data('department')}`;
+                $('#selectedInfo').text(info);
+                $('#currentSelection').show();
+            } else {
+                $('#currentSelection').hide();
+            }
+        });
+        
+        // Thêm thành viên được chọn
+        $('#addSelectedMember').click(function() {
+            const $selectedTeacher = $('#teacherSelect option:selected');
+            const role = $('#memberRole').val();
+            
+            if (!$selectedTeacher.val() || !role) {
+                alert('Vui lòng chọn giảng viên và vai trò.');
+                return;
+            }
+            
+            // Kiểm tra giới hạn số lượng thành viên (tối đa 5)
+            if (projectCouncilMembers.length >= 5) {
+                alert('Hội đồng chỉ được có tối đa 5 thành viên!');
+                return;
+            }
+            
+            const teacherId = $selectedTeacher.val();
+            const teacherName = $selectedTeacher.data('name');
+            const department = $selectedTeacher.data('department'); // Tên khoa để hiển thị
+            
+            // Kiểm tra xem giảng viên đã được thêm chưa
+            const existingMember = projectCouncilMembers.find(member => member.id === teacherId);
+            if (existingMember) {
+                alert('Giảng viên này đã được thêm vào hội đồng.');
+                return;
+            }
+            
+            // Kiểm tra ràng buộc vai trò
+            const roleValidation = validateRoleConstraints(role);
+            if (!roleValidation.valid) {
+                alert(roleValidation.message);
+                return;
+            }
+            
+            // Thêm thành viên mới
+            const newMember = {
+                id: teacherId,
+                name: teacherName,
+                role: role,
+                department: department
+            };
+            
+            projectCouncilMembers.push(newMember);
+            updateCouncilMembersDisplay();
+            updateCouncilMembersInput();
+            updateRoleDropdown(); // Cập nhật dropdown theo ràng buộc
+            
+            // Reset form và đóng modal
+            $('#memberRole').val('');
+            $('#teacherSelect').val('');
+            $('#currentSelection').hide();
+            $('#councilMemberModal').modal('hide');
+        });
+        
+        // Cập nhật hiển thị danh sách thành viên
+        function updateCouncilMembersDisplay() {
+            const $container = $('#selectedCouncilMembers');
+            
+            if (projectCouncilMembers.length === 0) {
+                $container.removeClass('has-members');
+                $container.addClass('empty-state');
+                $container.html('<div>Chưa có thành viên nào được chọn</div>');
+                return;
+            }
+            
+            $container.removeClass('empty-state');
+            $container.addClass('has-members');
+            
+            let html = `
+                <div class="members-header">
+                    <h6><i class="fas fa-users"></i>Danh sách thành viên đã chọn</h6>
+                    <span class="members-count">${projectCouncilMembers.length} thành viên</span>
+                </div>
+            `;
+            
+            projectCouncilMembers.forEach(function(member, index) {
+                // Xác định màu sắc role
+                let roleClass = 'member-role';
+                if (member.role === 'Chủ tịch') {
+                    roleClass += ' role-chairman';
+                } else if (member.role === 'Thư ký') {
+                    roleClass += ' role-secretary';
+                } else if (member.role === 'Thành viên') {
+                    roleClass += ' role-member';
+                } else if (member.role === 'Phản biện') {
+                    roleClass += ' role-reviewer';
+                }
+                
+                html += `
+                    <div class="member-card">
+                        <div class="member-info">
+                            <div class="member-details">
+                                <div class="member-name">${member.name}</div>
+                                <div>
+                                    <span class="${roleClass}">${member.role}</span>
+                                </div>
+                                <div class="member-department">${member.department}</div>
+                            </div>
+                            <button type="button" class="remove-member-btn" onclick="removeMember(${index})" title="Xóa thành viên">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            $container.html(html);
+        }
+        
+        // Cập nhật input ẩn
+        function updateCouncilMembersInput() {
+            $('#council_members_json').val(JSON.stringify(projectCouncilMembers));
+            
+            // Cập nhật text format cho input cũ
+            let textFormat = '';
+            projectCouncilMembers.forEach(function(member) {
+                textFormat += `${member.name} (${member.role})\n`;
+            });
+            $('#council_members').val(textFormat.trim());
+        }
+        
+        // Kiểm tra ràng buộc vai trò
+        function validateRoleConstraints(newRole) {
+            const roleCounts = {
+                'Chủ tịch': 0,
+                'Phản biện': 0,
+                'Thành viên': 0,
+                'Thư ký': 0
+            };
+            
+            // Đếm số lượng vai trò hiện tại
+            projectCouncilMembers.forEach(member => {
+                if (roleCounts.hasOwnProperty(member.role)) {
+                    roleCounts[member.role]++;
+                }
+            });
+            
+            // Kiểm tra ràng buộc cho vai trò mới
+            switch(newRole) {
+                case 'Chủ tịch':
+                    if (roleCounts['Chủ tịch'] >= 1) {
+                        return {
+                            valid: false,
+                            message: 'Hội đồng chỉ được có 1 Chủ tịch!'
+                        };
+                    }
+                    break;
+                    
+                case 'Phản biện':
+                    if (roleCounts['Phản biện'] >= 2) {
+                        return {
+                            valid: false,
+                            message: 'Hội đồng chỉ được có tối đa 2 Phản biện!'
+                        };
+                    }
+                    break;
+                    
+                case 'Thành viên':
+                    if (roleCounts['Thành viên'] >= 1) {
+                        return {
+                            valid: false,
+                            message: 'Hội đồng chỉ được có 1 Thành viên!'
+                        };
+                    }
+                    break;
+                    
+                case 'Thư ký':
+                    if (roleCounts['Thư ký'] >= 1) {
+                        return {
+                            valid: false,
+                            message: 'Hội đồng chỉ được có 1 Thư ký!'
+                        };
+                    }
+                    break;
+            }
+            
+            return { valid: true };
+        }
+        
+        // Cập nhật dropdown vai trò theo ràng buộc
+        function updateRoleDropdown() {
+            const roleCounts = {
+                'Chủ tịch': 0,
+                'Phản biện': 0,
+                'Thành viên': 0,
+                'Thư ký': 0
+            };
+            
+            // Đếm số lượng vai trò hiện tại
+            projectCouncilMembers.forEach(member => {
+                if (roleCounts.hasOwnProperty(member.role)) {
+                    roleCounts[member.role]++;
+                }
+            });
+            
+            // Vô hiệu hóa/kích hoạt các option
+            $('#memberRole option').each(function() {
+                const role = $(this).val();
+                const $option = $(this);
+                
+                // Reset style
+                $option.prop('disabled', false);
+                $option.removeClass('role-full');
+                
+                switch(role) {
+                    case 'Chủ tịch':
+                        if (roleCounts['Chủ tịch'] >= 1) {
+                            $option.prop('disabled', true);
+                            $option.addClass('role-full');
+                            $option.text('Chủ tịch hội đồng (Đã đủ)');
+                        } else {
+                            $option.text('Chủ tịch hội đồng');
+                        }
+                        break;
+                        
+                    case 'Phản biện':
+                        if (roleCounts['Phản biện'] >= 2) {
+                            $option.prop('disabled', true);
+                            $option.addClass('role-full');
+                            $option.text('Phản biện (Đã đủ 2/2)');
+                        } else {
+                            $option.text(`Phản biện (${roleCounts['Phản biện']}/2)`);
+                        }
+                        break;
+                        
+                    case 'Thành viên':
+                        if (roleCounts['Thành viên'] >= 1) {
+                            $option.prop('disabled', true);
+                            $option.addClass('role-full');
+                            $option.text('Thành viên (Đã đủ)');
+                        } else {
+                            $option.text('Thành viên');
+                        }
+                        break;
+                        
+                    case 'Thư ký':
+                        if (roleCounts['Thư ký'] >= 1) {
+                            $option.prop('disabled', true);
+                            $option.addClass('role-full');
+                            $option.text('Thư ký (Đã đủ)');
+                        } else {
+                            $option.text('Thư ký');
+                        }
+                        break;
+                }
+            });
+            
+            // Cập nhật thông tin thống kê
+            updateRoleStatistics(roleCounts);
+        }
+        
+        // Cập nhật thống kê vai trò
+        function updateRoleStatistics(roleCounts) {
+            const totalMembers = projectCouncilMembers.length;
+            const maxMembers = 5;
+            
+            // Tạo thông tin thống kê
+            let statsHtml = `
+                <div class="role-statistics">
+                    <div class="stats-header">
+                        <small class="text-muted">Thống kê hội đồng: ${totalMembers}/${maxMembers} thành viên</small>
+                    </div>
+                    <div class="stats-content">
+                        <div class="role-stat ${roleCounts['Chủ tịch'] >= 1 ? 'complete' : 'incomplete'}">
+                            <span class="role-name">Chủ tịch:</span>
+                            <span class="role-count">${roleCounts['Chủ tịch']}/1</span>
+                        </div>
+                        <div class="role-stat ${roleCounts['Phản biện'] >= 2 ? 'complete' : 'incomplete'}">
+                            <span class="role-name">Phản biện:</span>
+                            <span class="role-count">${roleCounts['Phản biện']}/2</span>
+                        </div>
+                        <div class="role-stat ${roleCounts['Thành viên'] >= 1 ? 'complete' : 'incomplete'}">
+                            <span class="role-name">Thành viên:</span>
+                            <span class="role-count">${roleCounts['Thành viên']}/1</span>
+                        </div>
+                        <div class="role-stat ${roleCounts['Thư ký'] >= 1 ? 'complete' : 'incomplete'}">
+                            <span class="role-name">Thư ký:</span>
+                            <span class="role-count">${roleCounts['Thư ký']}/1</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Thêm vào modal nếu có
+            $('#roleStatistics').html(statsHtml);
+        }
+        
+        // Xóa thành viên (global function)
+        window.removeMember = function(index) {
+            projectCouncilMembers.splice(index, 1);
+            updateCouncilMembersDisplay();
+            updateCouncilMembersInput();
+            updateRoleDropdown(); // Cập nhật dropdown sau khi xóa
+        };
+    });
+    </script>
     
     <!-- Remove debug script for production -->
     <!-- <script src="/NLNganh/assets/js/student/url_debug.js"></script> -->
@@ -4342,6 +6258,40 @@ try {
                 }
             });
 
+            // Tự động tính ngày kết thúc theo thời hạn đăng ký khi chọn ngày bắt đầu
+            (function() {
+                const startInput = document.getElementById('start_date');
+                const endInput = document.getElementById('end_date');
+                const durationMonths = <?php echo (int)$duration_months; ?>;
+
+                function addMonths(date, months) {
+                    const d = new Date(date);
+                    const day = d.getDate();
+                    d.setMonth(d.getMonth() + months);
+                    // Xử lý cuối tháng: nếu ngày bị nhảy sang tháng sau, lùi lại cuối tháng
+                    if (d.getDate() < day) {
+                        d.setDate(0);
+                    }
+                    return d;
+                }
+
+                function formatYMD(date) {
+                    const y = date.getFullYear();
+                    const m = ('0' + (date.getMonth() + 1)).slice(-2);
+                    const da = ('0' + date.getDate()).slice(-2);
+                    return `${y}-${m}-${da}`;
+                }
+
+                if (startInput && endInput) {
+                    startInput.addEventListener('change', function() {
+                        if (this.value) {
+                            const end = addMonths(this.value, durationMonths);
+                            endInput.value = formatYMD(end);
+                        }
+                    });
+                }
+            })();
+
             // Decision form validation  
             $('form[action="/NLNganh/view/student/update_decision_info.php"]').on('submit', function(e) {
                 e.preventDefault();
@@ -4351,6 +6301,7 @@ try {
                 const decisionDate = form.find('#decision_date').val();
                 const updateReason = form.find('#decision_update_reason').val().trim();
                 const isUpdate = form.find('input[name="decision_id"]').length > 0;
+                const contractEndDate = <?php echo isset($contract['HD_NGAYKT']) ? json_encode(date('Y-m-d', strtotime($contract['HD_NGAYKT']))) : 'null'; ?>;
                 
                 const requiredFields = [
                     { selector: '#decision_number', message: 'Vui lòng nhập số quyết định.' },
@@ -4359,6 +6310,18 @@ try {
                 ];
                 
                 if (!validateRequiredFields(requiredFields)) {
+                    return false;
+                }
+                
+                // Ràng buộc: Ngày quyết định phải trước hoặc bằng hạn cuối hợp đồng
+                if (contractEndDate) {
+                    if (new Date(decisionDate) > new Date(contractEndDate)) {
+                        alert(`Ngày quyết định phải trước hoặc bằng ngày kết thúc hợp đồng (${contractEndDate}).`);
+                        $('#decision_date').focus();
+                        return false;
+                    }
+                } else {
+                    alert('Chưa có hợp đồng hoặc thiếu ngày kết thúc hợp đồng. Vui lòng nhập hợp đồng trước.');
                     return false;
                 }
                 
@@ -5024,6 +6987,105 @@ try {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal thêm thành viên hội đồng -->
+    <div class="modal fade" id="councilMemberModal" tabindex="-1" role="dialog" aria-labelledby="councilMemberModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="councilMemberModalLabel">
+                        <i class="fas fa-user-plus mr-2"></i>Thêm thành viên hội đồng nghiệm thu
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Cột bộ lọc -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="departmentFilter">Lọc theo khoa:</label>
+                                <select class="form-control" id="departmentFilter">
+                                    <option value="">-- Tất cả khoa --</option>
+                                    <?php
+                                    // Lấy danh sách khoa từ database
+                                    $khoa_sql = "SELECT DV_MADV, DV_TENDV FROM khoa ORDER BY DV_TENDV";
+                                    $khoa_result = $conn->query($khoa_sql);
+                                    if ($khoa_result && $khoa_result->num_rows > 0) {
+                                        while ($khoa_row = $khoa_result->fetch_assoc()) {
+                                            echo "<option value='" . htmlspecialchars($khoa_row['DV_MADV']) . "'>" . 
+                                                 htmlspecialchars($khoa_row['DV_TENDV']) . "</option>";
+                                        }
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="searchTeacher">Tìm kiếm giảng viên:</label>
+                                <input type="text" class="form-control" id="searchTeacher" placeholder="Nhập tên hoặc mã giảng viên...">
+                            </div>
+                        </div>
+                        
+                        <!-- Cột chọn giảng viên và vai trò -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="teacherSelect">Chọn giảng viên:</label>
+                                <select class="form-control" id="teacherSelect" size="8">
+                                    <option value="">-- Đang tải danh sách giảng viên --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="memberRole">Vai trò trong hội đồng:</label>
+                                <select class="form-control" id="memberRole" required>
+                                    <option value="">-- Chọn vai trò --</option>
+                                    <option value="Chủ tịch">Chủ tịch hội đồng</option>
+                                    <option value="Phản biện">Phản biện</option>
+                                    <option value="Thành viên">Thành viên</option>
+                                    <option value="Thư ký">Thư ký</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-lightbulb mr-1"></i>Cấu trúc bắt buộc:</h6>
+                                <ul class="mb-0 small">
+                                    <li>1 Chủ tịch</li>
+                                    <li>2 Phản biện</li>
+                                    <li>1 Thành viên</li>
+                                    <li>1 Thư ký</li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Thống kê thời gian thực -->
+                            <div id="roleStatistics"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <div class="current-selection mb-3" id="currentSelection" style="display: none;">
+                            <strong>Đã chọn:</strong>
+                            <div id="selectedInfo" class="text-primary"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i>Hủy
+                    </button>
+                    <button type="button" class="btn btn-primary" id="addSelectedMember">
+                        <i class="fas fa-plus mr-1"></i>Thêm thành viên
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -97,12 +97,12 @@ if ($stmt) {
 }
 
 // Lấy danh sách biên bản
-$sql_minutes = "SELECT bb.*, hd.HD_NGAYHOP, sv.SV_HOSV, sv.SV_TENSV 
-                FROM bien_ban bb
-                LEFT JOIN hoi_dong hd ON bb.HD_MA = hd.HD_MA
-                LEFT JOIN sinh_vien sv ON bb.SV_MASV = sv.SV_MASV
-                WHERE bb.DT_MADT = ?
-                ORDER BY bb.BB_NGAYTAO DESC";
+$sql_minutes = "SELECT bb.*
+                FROM de_tai_nghien_cuu dt
+                INNER JOIN quyet_dinh_nghiem_thu qd ON dt.QD_SO = qd.QD_SO
+                INNER JOIN bien_ban bb ON bb.BB_SOBB = qd.BB_SOBB
+                WHERE dt.DT_MADT = ?
+                ORDER BY bb.BB_NGAYNGHIEMTHU DESC";
 $stmt = $conn->prepare($sql_minutes);
 $minutes = [];
 if ($stmt) {
@@ -116,15 +116,16 @@ if ($stmt) {
 }
 
 // Lấy danh sách đánh giá
-$sql_evaluations = "SELECT dg.*, gv.GV_HOGV, gv.GV_TENGV
-                    FROM danh_gia dg
-                    LEFT JOIN giang_vien gv ON dg.GV_MAGV = gv.GV_MAGV
-                    WHERE dg.DT_MADT = ?
-                    ORDER BY dg.DG_NGAYDANHGIA DESC";
+$sql_evaluations = "SELECT tv.*, gv.GV_HOGV, gv.GV_TENGV
+                    FROM thanh_vien_hoi_dong tv
+                    LEFT JOIN giang_vien gv ON tv.GV_MAGV = gv.GV_MAGV
+                    WHERE tv.QD_SO = ?
+                    ORDER BY tv.TV_NGAYDANHGIA DESC";
 $stmt = $conn->prepare($sql_evaluations);
 $evaluations = [];
 if ($stmt) {
-    $stmt->bind_param("s", $project_id);
+    $qd_so = $project['QD_SO'] ?? '';
+    $stmt->bind_param("s", $qd_so);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -882,7 +883,19 @@ function timeAgo($datetime) {
                                                         <div class="info-content">
                                                             <?php if ($project['DT_FILEBTM']): ?>
                                                                 <div class="mb-2">
-                                                                    <a href="../../uploads/proposals/<?php echo $project['DT_FILEBTM']; ?>" target="_blank" class="btn btn-sm btn-outline-primary btn-enhanced">
+                                                                    <?php
+                                                                        $dtFile = $project['DT_FILEBTM'] ?? '';
+                                                                        $proposalHref = '';
+                                                                        if ($dtFile) {
+                                                                            if (strpos($dtFile, '/') !== false || strpos($dtFile, '\\') !== false) {
+                                                                                $webPath = preg_replace('#^\.\./\.\./#', '', str_replace('\\\\','/',$dtFile));
+                                                                                $proposalHref = '/NLNganh/' . ltrim($webPath, '/');
+                                                                            } else {
+                                                                                $proposalHref = '/NLNganh/uploads/project_files/' . $dtFile;
+                                                                            }
+                                                                        }
+                                                                    ?>
+                                                                    <a href="<?php echo htmlspecialchars($proposalHref); ?>" target="_blank" class="btn btn-sm btn-outline-primary btn-enhanced">
                                                                         <i class="fas fa-file-pdf mr-2"></i>Xem thuyết minh
                                                                     </a>
                                                                 </div>
@@ -1027,13 +1040,25 @@ function timeAgo($datetime) {
                                                             </div>
                                                             <div class="card-body">
                                                                 <div class="mb-3">
-                                                                    <strong>Tên file:</strong> <?php echo $project['DT_FILEBTM']; ?>
+                                                                    <strong>Tên file:</strong> <?php echo htmlspecialchars($project['DT_FILEBTM']); ?>
                                                                 </div>
                                                                 <div class="text-center">
-                                                                    <a href="../../uploads/proposals/<?php echo $project['DT_FILEBTM']; ?>" target="_blank" class="btn btn-primary">
+                                                                    <?php
+                                                                        $dtFileTab = $project['DT_FILEBTM'] ?? '';
+                                                                        $proposalHrefTab = '';
+                                                                        if ($dtFileTab) {
+                                                                            if (strpos($dtFileTab, '/') !== false || strpos($dtFileTab, '\\') !== false) {
+                                                                                $webPath = preg_replace('#^\.\./\.\./#', '', str_replace('\\\\','/',$dtFileTab));
+                                                                                $proposalHrefTab = '/NLNganh/' . ltrim($webPath, '/');
+                                                                            } else {
+                                                                                $proposalHrefTab = '/NLNganh/uploads/project_files/' . $dtFileTab;
+                                                                            }
+                                                                        }
+                                                                    ?>
+                                                                    <a href="<?php echo htmlspecialchars($proposalHrefTab); ?>" target="_blank" class="btn btn-primary">
                                                                         <i class="fas fa-eye mr-1"></i>Xem thuyết minh
                                                                     </a>
-                                                                    <a href="../../uploads/proposals/<?php echo $project['DT_FILEBTM']; ?>" download class="btn btn-outline-primary ml-2">
+                                                                    <a href="<?php echo htmlspecialchars($proposalHrefTab); ?>" download class="btn btn-outline-primary ml-2">
                                                                         <i class="fas fa-download mr-1"></i>Tải xuống
                                                                     </a>
                                                                 </div>
@@ -1051,6 +1076,169 @@ function timeAgo($datetime) {
                                                         </div>
                                                     <?php endif; ?>
                                                 </div>
+                                                
+                                                <?php
+                                                    // Lịch sử thuyết minh tương tự student
+                                                    $hist = [];
+                                                    $hstmt = $conn->prepare("SELECT * FROM lich_su_thuyet_minh WHERE DT_MADT = ? ORDER BY NGAY_TAI DESC, ID DESC");
+                                                    if ($hstmt) {
+                                                        $hstmt->bind_param("s", $project_id);
+                                                        if ($hstmt->execute()) {
+                                                            $hres = $hstmt->get_result();
+                                                            while ($row = $hres->fetch_assoc()) { $hist[] = $row; }
+                                                        }
+                                                    }
+                                                    if (empty($hist) && !empty($project['DT_FILEBTM'])) {
+                                                        $hist[] = [
+                                                            'FILE_TEN' => $project['DT_FILEBTM'],
+                                                            'FILE_KICHTHUOC' => null,
+                                                            'FILE_LOAI' => null,
+                                                            'LY_DO' => 'File thuyết minh khi đăng ký đề tài',
+                                                            'NGUOI_TAI' => null,
+                                                            'NGAY_TAI' => $project['DT_NGAYTAO'] ?? date('Y-m-d H:i:s'),
+                                                            'LA_HIEN_TAI' => 1
+                                                        ];
+                                                    }
+                                                ?>
+                                                <hr>
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <h6 class="mt-2 mb-2"><i class="fas fa-history mr-2"></i>Lịch sử file thuyết minh</h6>
+                                                    <button type="button" id="btnExpandProposalHistoryTeacher" class="btn btn-sm btn-outline-secondary mt-2 mb-2">
+                                                        <i class="fas fa-expand mr-1"></i> Phóng to
+                                                    </button>
+                                                </div>
+                                                <?php if (!empty($hist)): ?>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm table-bordered mb-0">
+                                                            <thead class="thead-light">
+                                                                <tr>
+                                                                    <th>#</th>
+                                                                    <th>Tên file</th>
+                                                                    <th>Kích thước</th>
+                                                                    <th>Loại</th>
+                                                                    <th>Lý do</th>
+                                                                    <th>Người tải</th>
+                                                                    <th>Thời gian</th>
+                                                                    <th>Trạng thái</th>
+                                                                    <th>Tải</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <?php foreach ($hist as $index => $h): ?>
+                                                                    <tr>
+                                                                        <td><?php echo $index + 1; ?></td>
+                                                                        <td><?php echo htmlspecialchars($h['FILE_TEN']); ?></td>
+                                                                        <td><?php echo isset($h['FILE_KICHTHUOC']) && is_numeric($h['FILE_KICHTHUOC']) ? number_format((float)$h['FILE_KICHTHUOC']) . ' bytes' : '—'; ?></td>
+                                                                        <td><?php echo htmlspecialchars($h['FILE_LOAI'] ?? '—'); ?></td>
+                                                                        <td style="max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?php echo htmlspecialchars($h['LY_DO'] ?? ''); ?>"><?php echo htmlspecialchars($h['LY_DO'] ?? ''); ?></td>
+                                                                        <td><?php echo htmlspecialchars($h['NGUOI_TAI'] ?? ''); ?></td>
+                                                                        <td><?php echo date('d/m/Y H:i', strtotime($h['NGAY_TAI'])); ?></td>
+                                                                        <td><?php echo $h['LA_HIEN_TAI'] ? '<span class="badge badge-success">Hiện tại</span>' : '<span class="badge badge-secondary">Lịch sử</span>'; ?></td>
+                                                                        <td>
+                                                                            <?php 
+                                                                                $histFile = $h['FILE_TEN'] ?? '';
+                                                                                $histHref = '';
+                                                                                if ($histFile) {
+                                                                                    if (strpos($histFile, '/') !== false || strpos($histFile, '\\') !== false) {
+                                                                                        $histWeb = preg_replace('#^\.\./\.\./#', '', str_replace('\\\\','/',$histFile));
+                                                                                        $histHref = '/NLNganh/' . ltrim($histWeb, '/');
+                                                                                    } else {
+                                                                                        $histHref = '/NLNganh/uploads/project_files/' . $histFile;
+                                                                                    }
+                                                                                }
+                                                                            ?>
+                                                                            <a class="btn btn-sm btn-outline-primary" href="<?php echo htmlspecialchars($histHref); ?>" download>
+                                                                                <i class="fas fa-download"></i>
+                                                                            </a>
+                                                                        </td>
+                                                                    </tr>
+                                                                <?php endforeach; ?>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="alert alert-light border">Chưa có lịch sử file thuyết minh.</div>
+                                                <?php endif; ?>
+                                                
+                                                <!-- Overlay phóng to lịch sử (không dùng Bootstrap modal) -->
+                                                <div id="proposalHistoryOverlayTeacher" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:20000;align-items:center;justify-content:center;padding:2vh 2.5vw;">
+                                                    <div id="proposalHistoryPanelTeacher" style="width:95vw;height:92vh;background:#fff;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.2);display:flex;flex-direction:column;">
+                                                        <div style="padding:12px 16px;border-bottom:1px solid #e9ecef;display:flex;justify-content:space-between;align-items:center;">
+                                                            <h5 class="m-0"><i class="fas fa-history mr-2"></i>Lịch sử file thuyết minh</h5>
+                                                            <button type="button" id="btnCloseProposalHistoryTeacher" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times mr-1"></i> Đóng</button>
+                                                        </div>
+                                                        <div style="padding:12px 16px;overflow:auto;flex:1;">
+                                                            <?php if (!empty($hist)): ?>
+                                                                <div class="table-responsive">
+                                                                    <table class="table table-bordered table-hover">
+                                                                        <thead class="thead-light">
+                                                                            <tr>
+                                                                                <th>#</th>
+                                                                                <th>Tên file</th>
+                                                                                <th>Kích thước</th>
+                                                                                <th>Loại</th>
+                                                                                <th>Lý do</th>
+                                                                                <th>Người tải</th>
+                                                                                <th>Thời gian</th>
+                                                                                <th>Trạng thái</th>
+                                                                                <th>Tải</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            <?php foreach ($hist as $index => $h): ?>
+                                                                                <tr>
+                                                                                    <td><?php echo $index + 1; ?></td>
+                                                                                    <td><?php echo htmlspecialchars($h['FILE_TEN']); ?></td>
+                                                                                    <td><?php echo isset($h['FILE_KICHTHUOC']) && is_numeric($h['FILE_KICHTHUOC']) ? number_format((float)$h['FILE_KICHTHUOC']) . ' bytes' : '—'; ?></td>
+                                                                                    <td><?php echo htmlspecialchars($h['FILE_LOAI'] ?? '—'); ?></td>
+                                                                                    <td style="max-width:420px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?php echo htmlspecialchars($h['LY_DO'] ?? ''); ?>"><?php echo htmlspecialchars($h['LY_DO'] ?? ''); ?></td>
+                                                                                    <td><?php echo htmlspecialchars($h['NGUOI_TAI'] ?? ''); ?></td>
+                                                                                    <td><?php echo date('d/m/Y H:i', strtotime($h['NGAY_TAI'])); ?></td>
+                                                                                    <td><?php echo $h['LA_HIEN_TAI'] ? '<span class="badge badge-success">Hiện tại</span>' : '<span class="badge badge-secondary">Lịch sử</span>'; ?></td>
+                                                                                    <td>
+                                                                                        <?php 
+                                                                                            $histFileM = $h['FILE_TEN'] ?? '';
+                                                                                            $histHrefM = '';
+                                                                                            if ($histFileM) {
+                                                                                                if (strpos($histFileM, '/') !== false || strpos($histFileM, '\\') !== false) {
+                                                                                                    $histWebM = preg_replace('#^\.\./\.\./#', '', str_replace('\\\\','/',$histFileM));
+                                                                                                    $histHrefM = '/NLNganh/' . ltrim($histWebM, '/');
+                                                                                                } else {
+                                                                                                    $histHrefM = '/NLNganh/uploads/project_files/' . $histFileM;
+                                                                                                }
+                                                                                            }
+                                                                                        ?>
+                                                                                        <a class="btn btn-sm btn-outline-primary" href="<?php echo htmlspecialchars($histHrefM); ?>" download>
+                                                                                            <i class="fas fa-download"></i>
+                                                                                        </a>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            <?php endforeach; ?>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            <?php else: ?>
+                                                                <div class="alert alert-light border">Chưa có lịch sử file thuyết minh.</div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <script>
+                                                    (function(){
+                                                        var overlay = document.getElementById('proposalHistoryOverlayTeacher');
+                                                        var panel = document.getElementById('proposalHistoryPanelTeacher');
+                                                        var btnOpen = document.getElementById('btnExpandProposalHistoryTeacher');
+                                                        var btnClose = document.getElementById('btnCloseProposalHistoryTeacher');
+                                                        if (overlay && overlay.parentNode !== document.body) {
+                                                            document.body.appendChild(overlay);
+                                                        }
+                                                        function openOverlay(){ overlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+                                                        function closeOverlay(){ overlay.style.display = 'none'; document.body.style.overflow = ''; }
+                                                        if (btnOpen) btnOpen.addEventListener('click', function(e){ e.preventDefault(); openOverlay(); });
+                                                        if (btnClose) btnClose.addEventListener('click', function(e){ e.preventDefault(); closeOverlay(); });
+                                                        if (overlay) overlay.addEventListener('click', function(e){ if (!panel.contains(e.target)) { closeOverlay(); } });
+                                                    })();
+                                                </script>
                                             </div>
                                         </div>
                                         
@@ -1125,34 +1313,26 @@ function timeAgo($datetime) {
                                                             <table class="table table-bordered table-hover">
                                                                 <thead class="thead-light">
                                                                     <tr>
-                                                                        <th>Mã biên bản</th>
-                                                                        <th>Nội dung</th>
-                                                                        <th>Ngày họp</th>
-                                                                        <th>Ngày tạo</th>
+                                                                        <th>Số biên bản</th>
+                                                                        <th>Ngày nghiệm thu</th>
+                                                                        <th>Xếp loại</th>
+                                                                        <th>Tổng điểm</th>
                                                                         <th>Thao tác</th>
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody>
                                                                     <?php foreach ($minutes as $minute): ?>
                                                                         <tr>
-                                                                            <td><?php echo $minute['BB_MA']; ?></td>
+                                                                            <td><?php echo htmlspecialchars($minute['BB_SOBB'] ?? ''); ?></td>
+                                                                            <td><?php echo isset($minute['BB_NGAYNGHIEMTHU']) ? date('d/m/Y', strtotime($minute['BB_NGAYNGHIEMTHU'])) : '-'; ?></td>
+                                                                            <td><?php echo htmlspecialchars($minute['BB_XEPLOAI'] ?? ''); ?></td>
+                                                                            <td><?php echo isset($minute['BB_TONGDIEM']) ? number_format((float)$minute['BB_TONGDIEM'], 2) : '—'; ?></td>
                                                                             <td>
-                                                                                <strong><?php echo $minute['BB_NOIDUNG'] ?: 'Biên bản họp hội đồng'; ?></strong>
-                                                                                <?php if ($minute['SV_HOSV']): ?>
-                                                                                    <br><small class="text-muted">Sinh viên: <?php echo $minute['SV_HOSV'] . ' ' . $minute['SV_TENSV']; ?></small>
-                                                                                <?php endif; ?>
-                                                                            </td>
-                                                                            <td><?php echo $minute['HD_NGAYHOP'] ? date('d/m/Y', strtotime($minute['HD_NGAYHOP'])) : '-'; ?></td>
-                                                                            <td><?php echo date('d/m/Y', strtotime($minute['BB_NGAYTAO'])); ?></td>
-                                                                            <td>
-                                                                                <?php if ($minute['BB_FILE']): ?>
-                                                                                    <a href="../../uploads/minutes/<?php echo $minute['BB_FILE']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                                                <?php if (!empty($minute['BB_FILE'])): ?>
+                                                                                    <a href="/NLNganh/uploads/minutes/<?php echo htmlspecialchars($minute['BB_FILE']); ?>" target="_blank" class="btn btn-sm btn-outline-primary" title="Xem biên bản">
                                                                                         <i class="fas fa-eye"></i>
                                                                                     </a>
                                                                                 <?php endif; ?>
-                                                                                <a href="view_minute.php?id=<?php echo $minute['BB_MA']; ?>" class="btn btn-sm btn-outline-info ml-1">
-                                                                                    <i class="fas fa-info-circle"></i>
-                                                                                </a>
                                                                             </td>
                                                                         </tr>
                                                                     <?php endforeach; ?>
@@ -1189,11 +1369,11 @@ function timeAgo($datetime) {
                                                             <div class="card mb-3">
                                                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                                                     <h6 class="mb-0 font-weight-bold">
-                                                                        <i class="fas fa-star text-warning mr-2"></i>
-                                                                        Đánh giá của <?php echo $evaluation['GV_HOGV'] . ' ' . $evaluation['GV_TENGV']; ?>
+                                                                        <i class="fas fa-user-check text-warning mr-2"></i>
+                                                                        Thành viên: <?php echo htmlspecialchars(($evaluation['GV_HOGV'] ?? '') . ' ' . ($evaluation['GV_TENGV'] ?? $evaluation['GV_MAGV'])); ?>
                                                                     </h6>
                                                                     <span class="badge badge-primary">
-                                                                        <?php echo $evaluation['DG_DIEM']; ?>/10 điểm
+                                                                        <?php echo isset($evaluation['TV_DIEM']) ? number_format((float)$evaluation['TV_DIEM'], 2) : '—'; ?>/100
                                                                     </span>
                                                                 </div>
                                                                 <div class="card-body">
@@ -1201,18 +1381,18 @@ function timeAgo($datetime) {
                                                                         <div class="col-md-8">
                                                                             <div class="mb-3">
                                                                                 <strong>Nhận xét:</strong>
-                                                                                <p class="mt-2"><?php echo nl2br($evaluation['DG_NHANXET']); ?></p>
+                                                                                <p class="mt-2"><?php echo nl2br(htmlspecialchars($evaluation['TV_DANHGIA'] ?? '')); ?></p>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-md-4">
                                                                             <div class="mb-2">
                                                                                 <strong>Ngày đánh giá:</strong>
-                                                                                <br><?php echo date('d/m/Y H:i', strtotime($evaluation['DG_NGAYDANHGIA'])); ?>
+                                                                                <br><?php echo isset($evaluation['TV_NGAYDANHGIA']) ? date('d/m/Y H:i', strtotime($evaluation['TV_NGAYDANHGIA'])) : '—'; ?>
                                                                             </div>
-                                                                            <?php if ($evaluation['DG_FILE']): ?>
+                                                                            <?php if (!empty($evaluation['TV_FILEDANHGIA'])): ?>
                                                                                 <div class="mt-3">
-                                                                                    <a href="../../uploads/evaluations/<?php echo $evaluation['DG_FILE']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                                                        <i class="fas fa-file mr-1"></i>Xem file đánh giá
+                                                                                    <a href="/NLNganh/uploads/evaluation_files/<?php echo htmlspecialchars($evaluation['TV_FILEDANHGIA']); ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                                                        <i class="fas fa-file mr-1"></i> Xem file đánh giá
                                                                                     </a>
                                                                                 </div>
                                                                             <?php endif; ?>

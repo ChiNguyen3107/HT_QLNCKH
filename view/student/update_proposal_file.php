@@ -112,6 +112,21 @@ try {
     // Bắt đầu transaction
     $conn->begin_transaction();
 
+    // Đảm bảo có bảng lưu lịch sử thuyết minh
+    $conn->query("CREATE TABLE IF NOT EXISTS `lich_su_thuyet_minh` (
+        `ID` int(11) NOT NULL AUTO_INCREMENT,
+        `DT_MADT` char(10) NOT NULL,
+        `FILE_TEN` varchar(255) NOT NULL,
+        `FILE_KICHTHUOC` bigint(20) DEFAULT NULL,
+        `FILE_LOAI` varchar(100) DEFAULT NULL,
+        `LY_DO` text DEFAULT NULL,
+        `NGUOI_TAI` varchar(20) DEFAULT NULL,
+        `NGAY_TAI` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `LA_HIEN_TAI` tinyint(1) NOT NULL DEFAULT 0,
+        PRIMARY KEY (`ID`),
+        KEY `IDX_LSTM_DTMADT` (`DT_MADT`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
     // Kiểm tra quyền truy cập đề tài
     $check_access_sql = "SELECT dt.DT_MADT, dt.DT_FILEBTM, ct.CTTG_VAITRO 
                         FROM de_tai_nghien_cuu dt 
@@ -155,6 +170,22 @@ try {
     }
     error_log("File uploaded successfully to: " . $upload_path);
 
+    // Lưu lịch sử cho file cũ (nếu có và chưa lưu)
+    if (!empty($old_file)) {
+        $exists_sql = "SELECT 1 FROM lich_su_thuyet_minh WHERE DT_MADT = ? AND FILE_TEN = ? LIMIT 1";
+        $stmt = $conn->prepare($exists_sql);
+        $stmt->bind_param("ss", $project_id, $old_file);
+        $stmt->execute();
+        $exists = $stmt->get_result()->num_rows > 0;
+        if (!$exists) {
+            $insert_old_sql = "INSERT INTO lich_su_thuyet_minh (DT_MADT, FILE_TEN, FILE_KICHTHUOC, FILE_LOAI, LY_DO, NGUOI_TAI, NGAY_TAI, LA_HIEN_TAI) 
+                                VALUES (?, ?, NULL, NULL, 'File hiện tại trước khi cập nhật', ?, NOW(), 0)";
+            $stmt = $conn->prepare($insert_old_sql);
+            $stmt->bind_param("sss", $project_id, $old_file, $user_id);
+            $stmt->execute();
+        }
+    }
+
     // Cập nhật đường dẫn file trong database
     $update_sql = "UPDATE de_tai_nghien_cuu SET DT_FILEBTM = ? WHERE DT_MADT = ?";
     $stmt = $conn->prepare($update_sql);
@@ -171,6 +202,18 @@ try {
     }
     
     error_log("Database updated successfully - affected rows: " . $stmt->affected_rows);
+
+    // Ghi nhận lịch sử cho file mới: đặt tất cả bản hiện tại về 0, sau đó thêm bản mới là hiện tại
+    $conn->query("UPDATE lich_su_thuyet_minh SET LA_HIEN_TAI = 0 WHERE DT_MADT = '" . $conn->real_escape_string($project_id) . "'");
+    $insert_new_sql = "INSERT INTO lich_su_thuyet_minh (DT_MADT, FILE_TEN, FILE_KICHTHUOC, FILE_LOAI, LY_DO, NGUOI_TAI, NGAY_TAI, LA_HIEN_TAI) 
+                       VALUES (?, ?, ?, ?, ?, ?, NOW(), 1)";
+    $stmt = $conn->prepare($insert_new_sql);
+    $file_size = isset($file['size']) ? (int)$file['size'] : null;
+    $file_mime = isset($file['type']) ? $file['type'] : null;
+    $stmt->bind_param("ssisss", $project_id, $new_filename, $file_size, $file_mime, $update_reason, $user_id);
+    if (!$stmt->execute()) {
+        throw new Exception("Không thể lưu lịch sử file thuyết minh.");
+    }
 
     // Lấy thông tin sinh viên
     $student_sql = "SELECT CONCAT(SV_HOSV, ' ', SV_TENSV) AS SV_HOTEN FROM sinh_vien WHERE SV_MASV = ?";

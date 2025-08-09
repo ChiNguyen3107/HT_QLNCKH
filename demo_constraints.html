@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo - Ràng buộc thành viên hội đồng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 0;
+        }
+
+        .demo-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .demo-title {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .demo-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Role Statistics Styles */
+        .role-statistics {
+            background: linear-gradient(135deg, rgba(0, 123, 255, 0.05) 0%, rgba(102, 126, 234, 0.08) 100%);
+            border: 1px solid rgba(0, 123, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+        }
+        
+        .stats-header {
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(0, 123, 255, 0.1);
+        }
+        
+        .stats-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        
+        .role-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+        
+        .role-stat.complete {
+            background-color: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.2);
+        }
+        
+        .role-stat.incomplete {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.2);
+        }
+        
+        .role-name {
+            font-weight: 600;
+        }
+        
+        .role-count {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .member-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.8) 100%);
+            border: 1px solid rgba(0, 123, 255, 0.2);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 12px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .member-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, #007bff, #0056b3);
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .member-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .member-details {
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        .member-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 4px;
+            font-size: 1.05rem;
+        }
+        
+        .member-role {
+            color: white;
+            padding: 3px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-right: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .member-role.role-chairman {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+        }
+        
+        .member-role.role-secretary {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+        
+        .member-role.role-member {
+            background: linear-gradient(135deg, #6f42c1, #5a32a3);
+            box-shadow: 0 2px 8px rgba(111, 66, 193, 0.3);
+        }
+        
+        .member-role.role-reviewer {
+            background: linear-gradient(135deg, #fd7e14, #e85d04);
+            box-shadow: 0 2px 8px rgba(253, 126, 20, 0.3);
+        }
+        
+        .member-department {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .member-department::before {
+            content: "\f19c";
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            margin-right: 6px;
+            opacity: 0.7;
+        }
+
+        .role-dropdown option:disabled {
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .constraint-info {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .add-member-section {
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            background: linear-gradient(135deg, rgba(248, 249, 250, 0.8) 0%, rgba(233, 236, 239, 0.5) 100%);
+        }
+
+        .btn-demo {
+            margin: 5px;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .message-area {
+            min-height: 40px;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(248, 249, 250, 0.8);
+            border: 1px solid #dee2e6;
+        }
+
+        .validation-message {
+            color: #dc3545;
+            font-weight: 600;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1 class="demo-title">
+            <i class="fas fa-shield-alt"></i> Demo - Ràng buộc thành viên hội đồng
+        </h1>
+
+        <div class="demo-section">
+            <h5 class="mb-3">
+                <i class="fas fa-info-circle text-primary"></i> Quy tắc ràng buộc:
+            </h5>
+            <div class="constraint-info">
+                <ul class="mb-0">
+                    <li><strong>Tối đa 5 thành viên</strong> trong hội đồng</li>
+                    <li><strong>1 Chủ tịch</strong> - Dẫn dắt hội đồng</li>
+                    <li><strong>2 Phản biện</strong> - Đánh giá chuyên môn</li>
+                    <li><strong>1 Thành viên</strong> - Tham gia đánh giá</li>
+                    <li><strong>1 Thư ký</strong> - Ghi chép biên bản</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h5 class="mb-3">
+                <i class="fas fa-chart-bar text-success"></i> Thống kê thời gian thực:
+            </h5>
+            <div id="roleStatistics">
+                <div class="role-statistics">
+                    <div class="stats-header">
+                        <small class="text-muted">Thống kê hội đồng: <span id="memberCount">0</span>/5 thành viên</small>
+                    </div>
+                    <div class="stats-content">
+                        <div class="role-stat incomplete" id="stat-chairman">
+                            <span class="role-name">Chủ tịch:</span>
+                            <span class="role-count">0/1</span>
+                        </div>
+                        <div class="role-stat incomplete" id="stat-reviewer">
+                            <span class="role-name">Phản biện:</span>
+                            <span class="role-count">0/2</span>
+                        </div>
+                        <div class="role-stat incomplete" id="stat-member">
+                            <span class="role-name">Thành viên:</span>
+                            <span class="role-count">0/1</span>
+                        </div>
+                        <div class="role-stat incomplete" id="stat-secretary">
+                            <span class="role-name">Thư ký:</span>
+                            <span class="role-count">0/1</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h5 class="mb-3">
+                <i class="fas fa-user-plus text-primary"></i> Thêm thành viên (Demo):
+            </h5>
+            <div class="add-member-section">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label>Chọn vai trò:</label>
+                        <select class="form-control role-dropdown" id="roleSelect">
+                            <option value="">-- Chọn vai trò --</option>
+                            <option value="Chủ tịch">Chủ tịch hội đồng</option>
+                            <option value="Phản biện">Phản biện</option>
+                            <option value="Thành viên">Thành viên</option>
+                            <option value="Thư ký">Thư ký</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label>Hành động demo:</label><br>
+                        <button class="btn btn-primary btn-demo" onclick="addMember()">
+                            <i class="fas fa-plus"></i> Thêm thành viên
+                        </button>
+                        <button class="btn btn-warning btn-demo" onclick="resetDemo()">
+                            <i class="fas fa-redo"></i> Reset
+                        </button>
+                    </div>
+                </div>
+                <div class="message-area" id="messageArea">
+                    <small class="text-muted">Chọn vai trò và nhấn "Thêm thành viên" để test ràng buộc</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h5 class="mb-3">
+                <i class="fas fa-users text-info"></i> Danh sách thành viên hiện tại:
+            </h5>
+            <div id="membersList">
+                <div class="text-muted text-center py-3">
+                    <i class="fas fa-users fa-2x opacity-50"></i><br>
+                    Chưa có thành viên nào
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        let members = [];
+        const demoNames = [
+            'PGS.TS. Nguyễn Văn Nam', 'TS. Trần Thị Hương', 'Huỳnh Thanh Phong', 
+            'ThS. Lê Văn Minh', 'TS. Phạm Thị Mai', 'GS. Võ Văn Thành'
+        ];
+        let nameIndex = 0;
+
+        function addMember() {
+            const role = document.getElementById('roleSelect').value;
+            const messageArea = document.getElementById('messageArea');
+
+            if (!role) {
+                showMessage('Vui lòng chọn vai trò!', 'warning');
+                return;
+            }
+
+            // Kiểm tra giới hạn số lượng
+            if (members.length >= 5) {
+                showMessage('Hội đồng chỉ được có tối đa 5 thành viên!', 'error');
+                return;
+            }
+
+            // Kiểm tra ràng buộc vai trò
+            const validation = validateRole(role);
+            if (!validation.valid) {
+                showMessage(validation.message, 'error');
+                return;
+            }
+
+            // Thêm thành viên mới
+            const newMember = {
+                id: Date.now(),
+                name: demoNames[nameIndex % demoNames.length],
+                role: role,
+                department: 'Trường Công nghệ thông tin và truyền thông'
+            };
+
+            members.push(newMember);
+            nameIndex++;
+
+            updateDisplay();
+            updateRoleDropdown();
+            showMessage(`Đã thêm ${role}: ${newMember.name}`, 'success');
+            
+            // Reset select
+            document.getElementById('roleSelect').value = '';
+        }
+
+        function validateRole(newRole) {
+            const roleCounts = {
+                'Chủ tịch': 0,
+                'Phản biện': 0,
+                'Thành viên': 0,
+                'Thư ký': 0
+            };
+
+            members.forEach(member => {
+                if (roleCounts.hasOwnProperty(member.role)) {
+                    roleCounts[member.role]++;
+                }
+            });
+
+            switch(newRole) {
+                case 'Chủ tịch':
+                    if (roleCounts['Chủ tịch'] >= 1) {
+                        return { valid: false, message: 'Hội đồng chỉ được có 1 Chủ tịch!' };
+                    }
+                    break;
+                case 'Phản biện':
+                    if (roleCounts['Phản biện'] >= 2) {
+                        return { valid: false, message: 'Hội đồng chỉ được có tối đa 2 Phản biện!' };
+                    }
+                    break;
+                case 'Thành viên':
+                    if (roleCounts['Thành viên'] >= 1) {
+                        return { valid: false, message: 'Hội đồng chỉ được có 1 Thành viên!' };
+                    }
+                    break;
+                case 'Thư ký':
+                    if (roleCounts['Thư ký'] >= 1) {
+                        return { valid: false, message: 'Hội đồng chỉ được có 1 Thư ký!' };
+                    }
+                    break;
+            }
+
+            return { valid: true };
+        }
+
+        function updateRoleDropdown() {
+            const roleCounts = {
+                'Chủ tịch': 0,
+                'Phản biện': 0,
+                'Thành viên': 0,
+                'Thư ký': 0
+            };
+
+            members.forEach(member => {
+                if (roleCounts.hasOwnProperty(member.role)) {
+                    roleCounts[member.role]++;
+                }
+            });
+
+            const select = document.getElementById('roleSelect');
+            const options = select.querySelectorAll('option');
+
+            options.forEach(option => {
+                const role = option.value;
+                option.disabled = false;
+                option.style.color = '';
+
+                switch(role) {
+                    case 'Chủ tịch':
+                        if (roleCounts['Chủ tịch'] >= 1) {
+                            option.disabled = true;
+                            option.textContent = 'Chủ tịch hội đồng (Đã đủ)';
+                            option.style.color = '#6c757d';
+                        } else {
+                            option.textContent = 'Chủ tịch hội đồng';
+                        }
+                        break;
+                    case 'Phản biện':
+                        if (roleCounts['Phản biện'] >= 2) {
+                            option.disabled = true;
+                            option.textContent = 'Phản biện (Đã đủ 2/2)';
+                            option.style.color = '#6c757d';
+                        } else {
+                            option.textContent = `Phản biện (${roleCounts['Phản biện']}/2)`;
+                        }
+                        break;
+                    case 'Thành viên':
+                        if (roleCounts['Thành viên'] >= 1) {
+                            option.disabled = true;
+                            option.textContent = 'Thành viên (Đã đủ)';
+                            option.style.color = '#6c757d';
+                        } else {
+                            option.textContent = 'Thành viên';
+                        }
+                        break;
+                    case 'Thư ký':
+                        if (roleCounts['Thư ký'] >= 1) {
+                            option.disabled = true;
+                            option.textContent = 'Thư ký (Đã đủ)';
+                            option.style.color = '#6c757d';
+                        } else {
+                            option.textContent = 'Thư ký';
+                        }
+                        break;
+                }
+            });
+        }
+
+        function updateDisplay() {
+            updateMembersList();
+            updateStatistics();
+        }
+
+        function updateMembersList() {
+            const container = document.getElementById('membersList');
+            
+            if (members.length === 0) {
+                container.innerHTML = `
+                    <div class="text-muted text-center py-3">
+                        <i class="fas fa-users fa-2x opacity-50"></i><br>
+                        Chưa có thành viên nào
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            members.forEach((member, index) => {
+                let roleClass = 'member-role';
+                if (member.role === 'Chủ tịch') roleClass += ' role-chairman';
+                else if (member.role === 'Thư ký') roleClass += ' role-secretary';
+                else if (member.role === 'Thành viên') roleClass += ' role-member';
+                else if (member.role === 'Phản biện') roleClass += ' role-reviewer';
+
+                html += `
+                    <div class="member-card">
+                        <div class="member-info">
+                            <div class="member-details">
+                                <div class="member-name">${member.name}</div>
+                                <div>
+                                    <span class="${roleClass}">${member.role}</span>
+                                </div>
+                                <div class="member-department">${member.department}</div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeMember(${index})">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function updateStatistics() {
+            const roleCounts = {
+                'Chủ tịch': 0,
+                'Phản biện': 0,
+                'Thành viên': 0,
+                'Thư ký': 0
+            };
+
+            members.forEach(member => {
+                if (roleCounts.hasOwnProperty(member.role)) {
+                    roleCounts[member.role]++;
+                }
+            });
+
+            document.getElementById('memberCount').textContent = members.length;
+
+            // Cập nhật từng vai trò
+            updateRoleStat('chairman', roleCounts['Chủ tịch'], 1);
+            updateRoleStat('reviewer', roleCounts['Phản biện'], 2);
+            updateRoleStat('member', roleCounts['Thành viên'], 1);
+            updateRoleStat('secretary', roleCounts['Thư ký'], 1);
+        }
+
+        function updateRoleStat(roleId, current, max) {
+            const element = document.getElementById(`stat-${roleId}`);
+            const countElement = element.querySelector('.role-count');
+            countElement.textContent = `${current}/${max}`;
+
+            if (current >= max) {
+                element.className = 'role-stat complete';
+            } else {
+                element.className = 'role-stat incomplete';
+            }
+        }
+
+        function removeMember(index) {
+            members.splice(index, 1);
+            updateDisplay();
+            updateRoleDropdown();
+            showMessage('Đã xóa thành viên', 'info');
+        }
+
+        function resetDemo() {
+            members = [];
+            nameIndex = 0;
+            updateDisplay();
+            updateRoleDropdown();
+            document.getElementById('roleSelect').value = '';
+            showMessage('Đã reset demo', 'info');
+        }
+
+        function showMessage(message, type) {
+            const messageArea = document.getElementById('messageArea');
+            let className = 'text-muted';
+            let icon = 'fas fa-info-circle';
+
+            switch(type) {
+                case 'success':
+                    className = 'text-success';
+                    icon = 'fas fa-check-circle';
+                    break;
+                case 'error':
+                    className = 'validation-message';
+                    icon = 'fas fa-exclamation-triangle';
+                    break;
+                case 'warning':
+                    className = 'text-warning';
+                    icon = 'fas fa-exclamation-circle';
+                    break;
+                case 'info':
+                    className = 'text-info';
+                    icon = 'fas fa-info-circle';
+                    break;
+            }
+
+            messageArea.innerHTML = `<i class="${icon}"></i> ${message}`;
+            messageArea.className = `message-area ${className}`;
+
+            // Clear message after 3 seconds
+            setTimeout(() => {
+                messageArea.innerHTML = '<small class="text-muted">Chọn vai trò và nhấn "Thêm thành viên" để test ràng buộc</small>';
+                messageArea.className = 'message-area';
+            }, 3000);
+        }
+
+        // Initialize
+        updateDisplay();
+        updateRoleDropdown();
+    </script>
+</body>
+</html>

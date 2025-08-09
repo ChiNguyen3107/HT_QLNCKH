@@ -75,12 +75,13 @@
         <select class="form-control" id="editDepartment" name="editDepartment">
             <option value="">-- Chọn khoa --</option>
             <?php
-            // Sửa lại query để lấy đúng danh sách khoa từ bảng don_vi
-            $sql = "SELECT DV_MADV, DV_TENDV FROM don_vi WHERE DV_LOAIDV = 'Khoa'";
+            // Lấy danh sách khoa từ bảng khoa
+            $sql = "SELECT DV_MADV, DV_TENDV FROM khoa ORDER BY DV_TENDV";
             $result = $conn->query($sql);
             if ($result && $result->num_rows > 0) {
                 while ($row = $result->fetch_assoc()) {
-                    echo "<option value='{$row['DV_MADV']}'>{$row['DV_MADV']} - {$row['DV_TENDV']}</option>";
+                    echo "<option value='" . htmlspecialchars($row['DV_MADV']) . "'>" . 
+                         htmlspecialchars($row['DV_TENDV']) . "</option>";
                 }
             }
             ?>

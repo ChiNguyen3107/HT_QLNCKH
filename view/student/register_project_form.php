@@ -627,18 +627,16 @@ if ($priority_fields_result) {
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="implementationTime" class="required-field">Thời gian thực
-                                    hiện</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" value="6 tháng" disabled>
-                                    <div class="input-group-append">
-                                        <span class="input-group-text"><i
-                                                class="fas fa-calendar"></i></span>
-                                    </div>
-                                </div>
-                                <small class="text-muted">Thời gian thực hiện là 6 tháng kể từ ngày đề tài
-                                    được phê duyệt</small>
-                                <input type="hidden" name="implementation_time" value="6">
+                                <label for="implementationTime" class="required-field">Thời gian thực hiện</label>
+                                <select class="form-control" id="implementationTime" name="implementation_time" required>
+                                    <option value="">-- Chọn thời gian --</option>
+                                    <option value="3">3 tháng</option>
+                                    <option value="6" selected>6 tháng</option>
+                                    <option value="9">9 tháng</option>
+                                    <option value="12">12 tháng</option>
+                                </select>
+                                <div class="invalid-feedback">Vui lòng chọn thời gian thực hiện</div>
+                                <small class="text-muted">Tính từ ngày đề tài được phê duyệt</small>
                             </div>
                         </div>
 
@@ -894,8 +892,7 @@ if ($priority_fields_result) {
                                                 class="text-dark"></span></p>
                                         <p><strong>Khoa chủ trì:</strong> <span id="summary-faculty"
                                                 class="text-dark"></span></p>
-                                        <p><strong>Thời gian thực hiện:</strong> <span class="text-dark">6
-                                                tháng</span></p>
+                                        <p><strong>Thời gian thực hiện:</strong> <span id="summary-implementation-time" class="text-dark"></span></p>
                                         <p><strong>Số thành viên:</strong> <span id="summary-member-count"
                                                 class="text-dark"></span> người</p>
                                     </div>
@@ -1373,6 +1370,11 @@ if ($priority_fields_result) {
                             $('#projectCategory').addClass('is-invalid');
                             isValid = false;
                         }
+                        
+                        if (!$('#implementationTime').val()) {
+                            $('#implementationTime').addClass('is-invalid');
+                            isValid = false;
+                        }
                         break;
 
                     case 2:
@@ -1512,6 +1514,9 @@ if ($priority_fields_result) {
                 $('#summary-advisor-department').text($('#advisorDepartment').val());
                 $('#summary-advisor-expertise').text($('#advisorExpertise').val());
                 $('#summary-advisor-role').text($('#advisorRole').val());
+                
+                // Thời gian thực hiện
+                $('#summary-implementation-time').text($('#implementationTime option:selected').text());
 
                 // Mô tả và kết quả dự kiến
                 $('#summary-project-description').text($('#projectDescription').val());
