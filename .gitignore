@@ -1,74 +1,54 @@
-# Database configuration
-include/config.php
-
-# Uploaded files (có thể chứa thông tin nhạy cảm)
-uploads/*.jpg
-uploads/*.jpeg
-uploads/*.png
-uploads/*.gif
-uploads/*.pdf
-uploads/*.doc
-uploads/*.docx
-uploads/*.xls
-uploads/*.xlsx
-uploads/*.zip
-uploads/*.rar
-
-# Log files
+# XAMPP specific files
+/xampp/
 *.log
-error_log
-
-# Temporary files
 *.tmp
-*.temp
-*.swp
-*.swo
-*~
+
+# Database files
+*.sql
+*.db
+*.sqlite
+
+# Configuration files with sensitive data
+config.php
+database.php
+*.env
+
+# Uploaded files
+uploads/
+temp/
+cache/
 
 # IDE files
 .vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
+*.swp
+*.swo
 
-# OS generated files
+# OS files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-
-# Cache files
-cache/
-tmp/
-
-# Environment variables
-.env
-.env.local
-.env.production
+desktop.ini
 
 # Backup files
 *.bak
 *.backup
+*~
 
 # Session files
-session/
 sessions/
 
-# Vendor (nếu sử dụng Composer)
-vendor/
+# Error logs
+error_log
+access_log
 
-# Node modules (nếu có)
+# Test files (optional - remove if you want to include test files)
+test_*.html
+test_*.php
+HUONG_DAN_TEST.md
+
+# Node modules (if any)
 node_modules/
 
-# Build files
-build/
-dist/
-
-# Coverage reports
-coverage/
-
-# Test files
-tests/temp/
+# Composer (if any)
+vendor/
+composer.lock

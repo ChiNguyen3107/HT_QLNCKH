@@ -261,7 +261,7 @@ include '../../include/research_header.php';
     </div>
 
     <!-- Filter and Search Section -->
-    <div class="card mb-4">
+    <div class="card mb-4 filter-search-section">
         <div class="card-header">
             <h5 class="mb-0">
                 <i class="fas fa-filter me-2"></i>
@@ -270,17 +270,17 @@ include '../../include/research_header.php';
         </div>
         <div class="card-body">
             <form method="GET" action="">
-                <div class="row g-3 align-items-end">
-                    <div class="col-lg-3 col-md-6">
-                        <label for="role" class="form-label fw-bold"><i class="fas fa-user-tag me-1"></i>Vai trò</label>
-                        <select class="form-select" id="role" name="role" onchange="this.form.submit()">
+                <div class="filter-form-row">
+                    <div class="filter-form-col">
+                        <label for="role" class="filter-form-label"><i class="fas fa-user-tag"></i>Vai trò</label>
+                        <select class="form-select filter-form-control" id="role" name="role" onchange="this.form.submit()">
                             <option value="teacher" <?php echo $role_filter == 'teacher' ? 'selected' : ''; ?>>Giảng viên</option>
                             <option value="student" <?php echo $role_filter == 'student' ? 'selected' : ''; ?>>Sinh viên</option>
                         </select>
                     </div>
-                    <div class="col-lg-3 col-md-6">
-                        <label for="faculty" class="form-label fw-bold"><i class="fas fa-university me-1"></i>Khoa/Đơn vị</label>
-                        <select class="form-select" id="faculty" name="faculty">
+                    <div class="filter-form-col">
+                        <label for="faculty" class="filter-form-label"><i class="fas fa-university"></i>Khoa/Đơn vị</label>
+                        <select class="form-select filter-form-control" id="faculty" name="faculty">
                             <option value="">Tất cả khoa</option>
                             <?php foreach ($faculties as $faculty): ?>
                             <option value="<?php echo htmlspecialchars($faculty['DV_MADV']); ?>" <?php echo $faculty_filter == $faculty['DV_MADV'] ? 'selected' : ''; ?>>
@@ -289,13 +289,13 @@ include '../../include/research_header.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-lg-4 col-md-12">
-                        <label for="search" class="form-label fw-bold"><i class="fas fa-search me-1"></i>Tìm kiếm</label>
-                        <input type="text" class="form-control" id="search" name="search" placeholder="Mã, tên, email..." value="<?php echo htmlspecialchars($search_term); ?>">
+                    <div class="filter-form-col search-col">
+                        <label for="search" class="filter-form-label"><i class="fas fa-search"></i>Tìm kiếm</label>
+                        <input type="text" class="form-control filter-form-control" id="search" name="search" placeholder="Mã, tên, email..." value="<?php echo htmlspecialchars($search_term); ?>">
                     </div>
-                    <div class="col-lg-2 col-md-12 d-flex">
-                        <button type="submit" class="btn btn-primary w-100 me-2"><i class="fas fa-search"></i></button>
-                        <a href="manage_researchers.php" class="btn btn-secondary w-100"><i class="fas fa-sync-alt"></i></a>
+                    <div class="filter-form-col button-col">
+                        <button type="submit" class="btn btn-primary filter-form-btn"><i class="fas fa-search"></i></button>
+                        <a href="manage_researchers.php" class="btn btn-secondary filter-form-btn"><i class="fas fa-sync-alt"></i></a>
                     </div>
                 </div>
             </form>
@@ -307,21 +307,21 @@ include '../../include/research_header.php';
         <li class="nav-item">
             <a class="nav-link <?php echo $role_filter == 'teacher' ? 'active' : ''; ?>" href="?role=teacher&faculty=<?php echo urlencode($faculty_filter); ?>&search=<?php echo urlencode($search_term); ?>">
                 <i class="fas fa-chalkboard-teacher me-2"></i>Giảng viên
-            </a>
-        </li>
+                    </a>
+                </li>
         <li class="nav-item">
             <a class="nav-link <?php echo $role_filter == 'student' ? 'active' : ''; ?>" href="?role=student&faculty=<?php echo urlencode($faculty_filter); ?>&search=<?php echo urlencode($search_term); ?>">
                 <i class="fas fa-user-graduate me-2"></i>Sinh viên
-            </a>
-        </li>
-    </ul>
+                    </a>
+                </li>
+            </ul>
 
     <!-- Researchers List -->
     <div class="card">
         <div class="card-header">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
-                    <i class="fas fa-list me-2"></i>
+                    <i class="fas fa-table me-2"></i>
                     Danh sách <?php echo $role_filter == 'teacher' ? 'giảng viên' : 'sinh viên'; ?>
                     <span class="badge bg-light text-dark ms-2"><?php echo $total_items; ?> kết quả</span>
                 </h5>
@@ -336,53 +336,96 @@ include '../../include/research_header.php';
             </div>
         </div>
         <div class="card-body">
-            <div class="row">
-                <?php if (count($researchers) > 0): ?>
-                    <?php foreach ($researchers as $researcher): ?>
-                        <div class="col-xl-4 col-md-6 mb-4">
-                            <div class="researcher-card">
-                                <div class="card-body text-center">
-                                    <div class="researcher-avatar mb-3">
-                                        <i class="fas fa-user"></i>
-                                    </div>
-                                    <h5 class="researcher-name">
-                                        <?php echo htmlspecialchars($role_filter == 'teacher' ? ($researcher['GV_HOGV'] . ' ' . $researcher['GV_TENGV']) : ($researcher['SV_HOSV'] . ' ' . $researcher['SV_TENSV'])); ?>
-                                    </h5>
-                                    <p class="researcher-meta">
-                                        <?php echo htmlspecialchars($role_filter == 'teacher' ? $researcher['GV_MAGV'] : $researcher['SV_MASV']); ?>
-                                    </p>
-                                    <p class="researcher-meta">
-                                        <i class="fas fa-university me-1"></i>
-                                        <?php echo htmlspecialchars($researcher['DV_TENDV'] ?? 'Chưa có khoa'); ?>
-                                    </p>
-                                    <span class="role-badge <?php echo $role_filter == 'teacher' ? 'role-teacher' : 'role-student'; ?>">
-                                        <?php echo $role_filter == 'teacher' ? 'Giảng viên' : 'Sinh viên'; ?>
-                                    </span>
-                                </div>
-                                <div class="researcher-stats text-center">
-                                    <div class="row">
-                                        <div class="col">
-                                            <div class="fw-bold"><?php echo $researcher['project_count']; ?></div>
-                                            <div class="small text-muted">Đề tài</div>
+            <?php if (count($researchers) > 0): ?>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" width="5%">#</th>
+                                <th scope="col" width="15%">Mã</th>
+                                <th scope="col" width="25%">Họ và tên</th>
+                                <th scope="col" width="20%">Email</th>
+                                <th scope="col" width="20%">Khoa/Đơn vị</th>
+                                <th scope="col" width="10%">Số đề tài</th>
+                                <th scope="col" width="5%">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                            $start_number = ($page - 1) * $items_per_page + 1;
+                            foreach ($researchers as $index => $researcher): 
+                            ?>
+                                <tr>
+                                    <td class="text-center"><?php echo $start_number + $index; ?></td>
+                                    <td>
+                                        <span class="fw-bold text-primary">
+                                            <?php echo htmlspecialchars($role_filter == 'teacher' ? $researcher['GV_MAGV'] : $researcher['SV_MASV']); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm me-3">
+                                                <i class="fas fa-user-circle fa-2x text-secondary"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">
+                                                    <?php echo htmlspecialchars($role_filter == 'teacher' ? ($researcher['GV_HOGV'] . ' ' . $researcher['GV_TENGV']) : ($researcher['SV_HOSV'] . ' ' . $researcher['SV_TENSV'])); ?>
+                                                </div>
+                                                <small class="text-muted">
+                                                    <?php if ($role_filter == 'student' && isset($researcher['LOP_TEN'])): ?>
+                                                        Lớp: <?php echo htmlspecialchars($researcher['LOP_TEN']); ?>
+                                                    <?php endif; ?>
+                                                </small>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
-                                <div class="card-footer text-center bg-light">
-                                    <a href="#" class="btn btn-sm btn-outline-primary">Xem chi tiết</a>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <div class="col-12 text-center">
-                        <div class="empty-state py-5">
-                            <i class="fas fa-search-minus fa-3x text-muted mb-3"></i>
-                            <h5 class="text-muted">Không tìm thấy kết quả</h5>
-                            <p>Vui lòng thử lại với bộ lọc khác.</p>
-                        </div>
+                                    </td>
+                                    <td>
+                                        <a href="mailto:<?php echo htmlspecialchars($role_filter == 'teacher' ? $researcher['GV_EMAIL'] : $researcher['SV_EMAIL']); ?>" class="text-decoration-none">
+                                            <i class="fas fa-envelope me-1"></i>
+                                            <?php echo htmlspecialchars($role_filter == 'teacher' ? $researcher['GV_EMAIL'] : $researcher['SV_EMAIL']); ?>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-university me-1"></i>
+                                            <?php echo htmlspecialchars($researcher['DV_TENDV'] ?? 'Chưa có khoa'); ?>
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success fs-6">
+                                            <?php echo $researcher['project_count']; ?>
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" title="Xem chi tiết">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-warning" title="Chỉnh sửa">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Xóa">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="text-center py-5">
+                    <div class="empty-state">
+                        <i class="fas fa-search-minus fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Không tìm thấy kết quả</h5>
+                        <p>Vui lòng thử lại với bộ lọc khác.</p>
+                        <a href="manage_researchers.php" class="btn btn-primary">
+                            <i class="fas fa-sync-alt me-1"></i>Làm mới
+                        </a>
                     </div>
-                <?php endif; ?>
-            </div>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 

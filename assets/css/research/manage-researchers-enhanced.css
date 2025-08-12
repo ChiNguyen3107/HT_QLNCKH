@@ -1,15 +1,155 @@
 /* CSS for Manage Researchers Page */
 
-.filter-form {
-    background-color: #f8f9fc;
-    padding: 15px;
-    border-radius: 5px;
-    margin-bottom: 20px;
+/* Enhanced Filter and Search Section */
+.filter-search-section {
+    background: linear-gradient(135deg, #f8f9fc 0%, #e9ecef 100%);
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
 }
 
-.filter-form label {
+.filter-search-section .card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-bottom: none;
+    padding: 20px 25px;
+    border-radius: 12px 12px 0 0;
+}
+
+.filter-search-section .card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.filter-search-section .card-body {
+    padding: 25px;
+}
+
+/* Improved form layout with consistent spacing */
+.filter-form-row {
+    display: flex;
+    align-items: end;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-form-col {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-form-col.search-col {
+    flex: 1.5;
+    min-width: 250px;
+}
+
+.filter-form-col.button-col {
+    flex: 0 0 auto;
+    min-width: 120px;
+    display: flex;
+    gap: 10px;
+}
+
+/* Enhanced form labels */
+.filter-form-label {
     font-weight: 600;
     color: #4e73df;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    display: block;
+}
+
+.filter-form-label i {
+    margin-right: 6px;
+    width: 16px;
+    text-align: center;
+}
+
+/* Enhanced form controls with consistent sizing */
+.filter-form-control {
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    padding: 12px 15px;
+    transition: all 0.3s ease;
+    font-size: 0.95em;
+    height: 45px;
+    width: 100%;
+}
+
+.filter-form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    transform: translateY(-1px);
+}
+
+/* Enhanced buttons with consistent sizing */
+.filter-form-btn {
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.85em;
+    height: 45px;
+    min-width: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.filter-form-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.filter-form-btn.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.filter-form-btn.btn-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .filter-form-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .filter-form-col {
+        min-width: 100%;
+    }
+    
+    .filter-form-col.button-col {
+        flex-direction: row;
+        justify-content: stretch;
+    }
+    
+    .filter-form-btn {
+        flex: 1;
+    }
+}
+
+@media (max-width: 576px) {
+    .filter-search-section .card-body {
+        padding: 20px 15px;
+    }
+    
+    .filter-form-control {
+        height: 40px;
+        padding: 10px 12px;
+    }
+    
+    .filter-form-btn {
+        height: 40px;
+        padding: 10px 15px;
+    }
 }
 
 .pagination-container {

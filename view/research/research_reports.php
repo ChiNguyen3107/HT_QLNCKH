@@ -23,9 +23,9 @@ try {
 $year_filter = isset($_GET['year']) ? intval($_GET['year']) : date('Y');
 $faculty_filter = isset($_GET['faculty']) ? $_GET['faculty'] : '';
 
-// Lấy danh sách khóa học từ cơ sở dữ liệu
+// Lấy danh sách khóa học từ bảng lop để đảm bảo tính nhất quán
 $years = [];
-$year_sql = "SELECT DISTINCT KH_NAM FROM khoa_hoc ORDER BY KH_NAM ASC";
+$year_sql = "SELECT DISTINCT KH_NAM FROM lop WHERE KH_NAM IS NOT NULL AND KH_NAM != '' ORDER BY KH_NAM ASC";
 $year_result = $conn->query($year_sql);
 if ($year_result) {
     while ($year = $year_result->fetch_assoc()) {
@@ -865,7 +865,7 @@ include '../../include/research_header.php';
                                             <label for="research_status">Trạng thái nghiên cứu</label>
                                             <select class="form-control" id="research_status" name="research_status">
                                                 <option value="">Tất cả</option>
-                                                <option value="active">Đang làm nghiên cứu</option>
+                                                <option value="active">Đang tham gia nghiên cứu</option>
                                                 <option value="completed">Đã hoàn thành nghiên cứu</option>
                                                 <option value="none">Chưa tham gia nghiên cứu</option>
                                             </select>
@@ -1138,11 +1138,18 @@ include '../../include/research_header.php';
             let totalStudents = 0;
             
             // Khởi tạo chức năng lọc sinh viên
+            console.log('Bắt đầu khởi tạo danh sách sinh viên...');
             initializeStudentList();
             
-            // Xử lý sự kiện thay đổi khoa để tải danh sách lớp
-            $('#department').on('change', function() {
+            // Xử lý sự kiện thay đổi khoa hoặc khóa học để tải danh sách lớp
+            $('#department, #school_year').on('change', function() {
                 loadClassesByDepartment();
+            });
+            
+            // Xử lý sự kiện thay đổi lớp hoặc trạng thái nghiên cứu để lọc sinh viên
+            $('#class, #research_status').on('change', function() {
+                currentPage = 1;
+                loadStudentList();
             });
             
             // Xử lý sự kiện lọc sinh viên
@@ -1176,11 +1183,70 @@ include '../../include/research_header.php';
             
             // Hàm khởi tạo danh sách sinh viên
             function initializeStudentList() {
-                // Tải danh sách lớp khi trang được load
-                loadClassesByDepartment();
+                // Tải danh sách khoa bằng AJAX
+                loadFaculties();
                 
-                // Tải danh sách sinh viên mặc định
-                loadStudentList();
+                // Tải danh sách khóa học từ bảng lop
+                loadSchoolYears();
+                
+                // Đợi một chút để đảm bảo khóa học được tải xong
+                setTimeout(function() {
+                    // Tải danh sách lớp khi trang được load
+                    loadClassesByDepartment();
+                    
+                    // Tải danh sách sinh viên mặc định
+                    loadStudentList();
+                }, 500);
+            }
+            
+            // Hàm tải danh sách khoa
+            function loadFaculties() {
+                $.ajax({
+                    url: '../../api/get_faculties.php',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success && response.faculties) {
+                            let options = '<option value="">Tất cả khoa</option>';
+                            response.faculties.forEach(function(faculty) {
+                                options += `<option value="${faculty.DV_MADV}">${faculty.DV_TENDV}</option>`;
+                            });
+                            $('#department').html(options);
+                            console.log('Đã tải danh sách khoa:', response.faculties);
+                        } else {
+                            console.log('API trả về không thành công:', response);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.log('Lỗi khi tải danh sách khoa:', error);
+                        console.log('Response:', xhr.responseText);
+                    }
+                });
+            }
+            
+            // Hàm tải danh sách khóa học từ bảng lop
+            function loadSchoolYears() {
+                $.ajax({
+                    url: '../../api/get_distinct_lop_years.php',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success && response.years) {
+                            let options = '<option value="">Tất cả</option>';
+                            response.years.forEach(function(yearItem) {
+                                options += `<option value="${yearItem.school_year}">${yearItem.school_year}</option>`;
+                            });
+                            $('#school_year').html(options);
+                            console.log('Đã tải danh sách khóa học:', response.years);
+                        } else {
+                            console.log('API trả về không thành công:', response);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.log('Lỗi khi tải danh sách khóa học:', error);
+                        console.log('Response:', xhr.responseText);
+                    }
+                });
             }
             
             // Hàm tải danh sách lớp theo khoa
@@ -1188,8 +1254,11 @@ include '../../include/research_header.php';
                 const department = $('#department').val();
                 const schoolYear = $('#school_year').val();
                 
+                console.log('loadClassesByDepartment - Department:', department, 'School Year:', schoolYear);
+                
                 if (!department || !schoolYear) {
                     $('#class').html('<option value="">Tất cả lớp</option>');
+                    console.log('Thiếu thông tin khoa hoặc khóa học');
                     return;
                 }
                 
@@ -1202,18 +1271,23 @@ include '../../include/research_header.php';
                     },
                     dataType: 'json',
                     success: function(response) {
+                        console.log('API response:', response);
                         if (response.success && response.classes) {
                             let options = '<option value="">Tất cả lớp</option>';
                             response.classes.forEach(function(classItem) {
                                 options += `<option value="${classItem.class_id}">${classItem.class_name} (${classItem.student_count} SV)</option>`;
                             });
                             $('#class').html(options);
+                            console.log('Đã tải danh sách lớp:', response.classes);
                         } else {
                             $('#class').html('<option value="">Tất cả lớp</option>');
+                            console.log('Không có dữ liệu lớp hoặc API lỗi');
                         }
                     },
-                    error: function() {
+                    error: function(xhr, status, error) {
                         $('#class').html('<option value="">Tất cả lớp</option>');
+                        console.log('Lỗi khi tải danh sách lớp:', error);
+                        console.log('Response:', xhr.responseText);
                     }
                 });
             }
@@ -1270,8 +1344,8 @@ include '../../include/research_header.php';
                 } else {
                     students.forEach(function(student, index) {
                         const stt = (currentPage - 1) * 20 + index + 1;
-                        const researchStatus = getResearchStatusText(student.project_count);
-                        const statusClass = getResearchStatusClass(student.project_count);
+                        const researchStatus = getResearchStatusText(student.project_count, student.completed_project_count);
+                        const statusClass = getResearchStatusClass(student.project_count, student.completed_project_count);
                         
                         html += `
                             <tr>
@@ -1293,24 +1367,28 @@ include '../../include/research_header.php';
             }
             
             // Hàm lấy trạng thái nghiên cứu
-            function getResearchStatusText(projectCount) {
+            function getResearchStatusText(projectCount, completedCount) {
                 if (projectCount === 0) {
                     return 'Chưa tham gia';
-                } else if (projectCount === 1) {
+                } else if (completedCount > 0) {
+                    return 'Đã hoàn thành';
+                } else if (projectCount > 0) {
                     return 'Đang tham gia';
                 } else {
-                    return 'Tham gia nhiều';
+                    return 'Chưa tham gia';
                 }
             }
             
             // Hàm lấy class CSS cho trạng thái
-            function getResearchStatusClass(projectCount) {
+            function getResearchStatusClass(projectCount, completedCount) {
                 if (projectCount === 0) {
                     return 'badge-secondary';
-                } else if (projectCount === 1) {
+                } else if (completedCount > 0) {
+                    return 'badge-success';
+                } else if (projectCount > 0) {
                     return 'badge-primary';
                 } else {
-                    return 'badge-success';
+                    return 'badge-secondary';
                 }
             }
             
@@ -1361,7 +1439,8 @@ include '../../include/research_header.php';
             
             // Hàm cập nhật số lượng sinh viên
             function updateStudentCount(count) {
-                $('#studentCount').text(`Hiển thị ${count} sinh viên`);
+                const currentDisplay = Math.min(count, 20); // Số sinh viên hiển thị trên trang hiện tại
+                $('#studentCount').text(`Hiển thị ${currentDisplay} trong tổng số ${count} sinh viên`);
             }
             
             // Hàm xuất danh sách sinh viên
