@@ -59,8 +59,8 @@ if (!empty($department)) {
 
 // Lọc theo khóa học
 if (!empty($school_year)) {
-    $where_clauses[] = "l.LOP_NIENKHOA LIKE ?";
-    $params[] = $school_year . "%";
+    $where_clauses[] = "l.KH_NAM = ?";
+    $params[] = $school_year;
     $types .= "s";
 }
 
@@ -154,63 +154,24 @@ try {
     $result = $stmt->get_result();
     
     $students = [];
-    $index = $offset + 1;
     
     while ($row = $result->fetch_assoc()) {
-        // Xác định trạng thái nghiên cứu
-        $status = "Chưa tham gia";
-        $status_class = "text-secondary";
-        
-        if ($row['project_count'] > 0) {
-            // Kiểm tra trạng thái đề tài
-            $project_status_query = "SELECT dt.DT_TRANGTHAI 
-                                     FROM chi_tiet_tham_gia ct 
-                                     JOIN de_tai_nghien_cuu dt ON ct.DT_MADT = dt.DT_MADT 
-                                     WHERE ct.SV_MASV = ? 
-                                     ORDER BY dt.DT_NGAYTAO DESC 
-                                     LIMIT 1";
-            $project_stmt = $conn->prepare($project_status_query);
-            $project_stmt->bind_param("s", $row['SV_MASV']);
-            $project_stmt->execute();
-            $project_result = $project_stmt->get_result();
-            
-            if ($project_row = $project_result->fetch_assoc()) {
-                if ($project_row['DT_TRANGTHAI'] == 'Đã hoàn thành') {
-                    $status = "Đã hoàn thành";
-                    $status_class = "text-success";
-                } else {
-                    $status = "Đang tham gia";
-                    $status_class = "text-primary";
-                }
-            }
-            $project_stmt->close();
-        }
-        
-        // Định dạng dữ liệu sinh viên
         $students[] = [
-            'index' => $index++,
-            'id' => $row['SV_MASV'],
-            'name' => $row['SV_HOTEN'],
-            'class' => $row['LOP_TEN'] ?? 'Chưa có thông tin',
-            'department' => $row['DV_TENDV'] ?? 'Chưa có thông tin',
-            'status' => $status,
-            'status_class' => $status_class,
-            'project_count' => $row['project_count']
+            'SV_MASV' => $row['SV_MASV'],
+            'SV_HOTEN' => $row['SV_HOTEN'],
+            'LOP_TEN' => $row['LOP_TEN'] ?? 'N/A',
+            'DV_TENDV' => $row['DV_TENDV'] ?? 'N/A',
+            'project_count' => intval($row['project_count'])
         ];
     }
-    
-    $total_pages = ceil($total / $limit);
     
     // Trả về dữ liệu
     echo json_encode([
         'success' => true,
         'data' => $students,
-        'pagination' => [
-            'total' => $total,
-            'per_page' => $limit,
-            'current_page' => $page,
-            'total_pages' => $total_pages
-        ]
+        'total' => $total,
+        'page' => $page,
+        'limit' => $limit
     ]);
     
 } catch (Exception $e) {

@@ -1,11 +1,11 @@
 <?php
-// filepath: d:\xampp\htdocs\NLNganh\view\admin\get_department_classes.php
+// filepath: d:\xampp\htdocs\NLNganh\api\get_department_classes.php
 
 // Bao gồm file session.php để kiểm tra phiên đăng nhập
-include '../../include/session.php';
+include '../include/session.php';
 checkResearchManagerRole();
 // Kết nối database
-include '../../include/connect.php';
+include '../include/connect.php';
 
 header('Content-Type: application/json');
 

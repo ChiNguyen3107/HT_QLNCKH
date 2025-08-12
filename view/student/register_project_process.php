@@ -148,12 +148,9 @@ try {
     $decision_id = null; // Luôn để NULL cho đề tài mới
 
     // 2. Thêm đề tài nghiên cứu (không cần QD_SO cho đề tài mới)
-    // Lưu thời lượng thực hiện (tháng) vào DT_GHICHU để dùng cho hợp đồng
-    $duration_note = 'duration_months=' . $implementation_time;
-
     $project_query = "INSERT INTO de_tai_nghien_cuu 
-                     (DT_MADT, LDT_MA, GV_MAGV, LVNC_MA, LVUT_MA, DT_TENDT, DT_MOTA, DT_TRANGTHAI, DT_FILEBTM, QD_SO, DT_NGAYTAO, DT_SLSV, HD_MA, DT_GHICHU) 
-                     VALUES (?, ?, ?, ?, ?, ?, ?, 'Chờ duyệt', ?, NULL, NOW(), ?, 'HD001', ?)";
+                     (DT_MADT, LDT_MA, GV_MAGV, LVNC_MA, LVUT_MA, DT_TENDT, DT_MOTA, DT_TRANGTHAI, DT_FILEBTM, QD_SO, DT_NGAYTAO, DT_SLSV, HD_MA) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 'Chờ duyệt', ?, NULL, NOW(), ?, 'HD001')";
     $project_stmt = $conn->prepare($project_query);
 
     if ($project_stmt === false) {
@@ -161,7 +158,7 @@ try {
     }
 
     $project_stmt->bind_param(
-        "ssssssssis",
+        "ssssssssi",
         $project_id,
         $project_category,
         $advisor_id,
@@ -170,8 +167,7 @@ try {
         $project_title,
         $project_description,
         $project_outline_path,
-        $member_count,
-        $duration_note
+        $member_count
     );
 
     if (!$project_stmt->execute()) {

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: 127.0.0.1
--- Thời gian đã tạo: Th8 08, 2025 lúc 08:44 AM
+-- Thời gian đã tạo: Th8 06, 2025 lúc 08:39 PM
 -- Phiên bản máy phục vụ: 10.4.32-MariaDB
 -- Phiên bản PHP: 8.0.30
 
@@ -75,7 +75,7 @@ CREATE TABLE `bao_cao` (
 --
 
 CREATE TABLE `bien_ban` (
-  `BB_SOBB` char(11) NOT NULL,
+  `BB_SOBB` char(10) NOT NULL,
   `QD_SO` varchar(11) DEFAULT NULL,
   `BB_NGAYNGHIEMTHU` date NOT NULL,
   `BB_XEPLOAI` varchar(255) NOT NULL,
@@ -87,9 +87,9 @@ CREATE TABLE `bien_ban` (
 --
 
 INSERT INTO `bien_ban` (`BB_SOBB`, `QD_SO`, `BB_NGAYNGHIEMTHU`, `BB_XEPLOAI`, `BB_TONGDIEM`) VALUES
-('BB00000004', 'QDDT0', '2024-12-15', 'Xuất sắc', 100.00),
+('BB00000004', 'QDDT0', '2024-12-15', 'Xuất sắc', 90.50),
 ('BB00000005', '123ab', '2026-01-04', 'Xuất sắc', 100.00),
-('BBDT0000003', 'QDDT0000003', '2026-01-30', 'Xuất sắc', 100.00);
+('BBDT000000', 'QDDT0000003', '2026-01-30', 'Xuất sắc', 100.00);
 
 --
 -- Bẫy `bien_ban`
@@ -112,23 +112,6 @@ CREATE TRIGGER `tr_validate_bb_tongdiem_before_update` BEFORE UPDATE ON `bien_ba
 END
 $$
 DELIMITER ;
-
--- --------------------------------------------------------
-
---
--- Cấu trúc bảng cho bảng `chi_tiet_danh_gia_tieu_chi`
---
-
-CREATE TABLE `chi_tiet_danh_gia_tieu_chi` (
-  `CDGTC_MA` int(11) NOT NULL,
-  `CDGTC_MAGV` varchar(20) NOT NULL,
-  `CDGTC_MADT` varchar(20) NOT NULL,
-  `CDGTC_MATC` varchar(10) NOT NULL,
-  `CDGTC_DIEM` decimal(5,2) DEFAULT NULL,
-  `CDGTC_NHANXET` text DEFAULT NULL,
-  `CDGTC_NGAYTAO` datetime DEFAULT current_timestamp(),
-  `CDGTC_NGAYCAPNHAT` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -230,7 +213,7 @@ DELIMITER ;
 
 CREATE TABLE `file_danh_gia` (
   `FDG_MA` varchar(10) NOT NULL,
-  `BB_SOBB` varchar(11) NOT NULL,
+  `BB_SOBB` varchar(10) NOT NULL,
   `FDG_TEN` varchar(255) NOT NULL,
   `FDG_DUONGDAN` varchar(500) DEFAULT NULL,
   `FDG_NGAYCAP` date DEFAULT NULL
@@ -244,7 +227,7 @@ CREATE TABLE `file_danh_gia` (
 
 CREATE TABLE `file_dinh_kem` (
   `FDG_MA` char(10) NOT NULL,
-  `BB_SOBB` char(11) NOT NULL,
+  `BB_SOBB` char(10) NOT NULL,
   `GV_MAGV` char(8) DEFAULT NULL COMMENT 'Mã giảng viên (thành viên hội đồng)',
   `FDG_LOAI` varchar(50) NOT NULL COMMENT 'Loại file đánh giá',
   `FDG_TENFILE` varchar(200) DEFAULT NULL COMMENT 'Tên hiển thị của file',
@@ -253,17 +236,6 @@ CREATE TABLE `file_dinh_kem` (
   `FDG_KICHTHUC` bigint(20) DEFAULT NULL COMMENT 'Kích thước file (bytes)',
   `FDG_MOTA` text DEFAULT NULL COMMENT 'Mô tả file đánh giá'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Đang đổ dữ liệu cho bảng `file_dinh_kem`
---
-
-INSERT INTO `file_dinh_kem` (`FDG_MA`, `BB_SOBB`, `GV_MAGV`, `FDG_LOAI`, `FDG_TENFILE`, `FDG_FILE`, `FDG_NGAYTAO`, `FDG_KICHTHUC`, `FDG_MOTA`) VALUES
-('FDG038148', 'BB00000004', 'GV000002', 'member_evaluation', 'Test Upload Debug', 'eval_GV000002_DT0000001_1754579178.docx', '2025-08-07 22:06:18', 13389, 'File test upload khÃ´ng cáº§n session'),
-('FDG143310', 'BB00000004', 'GV000003', 'member_evaluation', 'File đánh giá thành viên 3.docx', 'eval_GV000003_DT0000003_1754582303.docx', '2025-08-07 22:58:23', 13389, ''),
-('FDG795009', 'BB00000004', 'GV000002', 'member_evaluation', 'File đánh giá thành viên 1.docx', 'eval_GV000002_DT0000003_1754621320.docx', '2025-08-08 09:48:40', 13345, ''),
-('FDG947868', 'BB00000004', 'GV000004', 'member_evaluation', 'File đánh giá thành viên 3.docx', 'eval_GV000004_DT0000003_1754621338.docx', '2025-08-08 09:48:58', 13389, ''),
-('FDG970866', 'BB00000004', 'GV000005', 'member_evaluation', 'File đánh giá thành viên 1.docx', 'eval_GV000005_DT0000003_1754581147.docx', '2025-08-07 22:39:07', 13345, '');
 
 -- --------------------------------------------------------
 
@@ -939,7 +911,7 @@ INSERT INTO `quan_ly_nghien_cuu` (`QL_MA`, `DV_MADV`, `QL_HO`, `QL_TEN`, `QL_EMA
 
 CREATE TABLE `quyet_dinh_nghiem_thu` (
   `QD_SO` varchar(11) NOT NULL,
-  `BB_SOBB` char(11) NOT NULL,
+  `BB_SOBB` char(10) NOT NULL,
   `QD_NGAY` date NOT NULL,
   `QD_FILE` varchar(255) NOT NULL,
   `QD_NOIDUNG` text DEFAULT NULL COMMENT 'Nội dung chi tiết của quyết định',
@@ -953,7 +925,7 @@ CREATE TABLE `quyet_dinh_nghiem_thu` (
 INSERT INTO `quyet_dinh_nghiem_thu` (`QD_SO`, `BB_SOBB`, `QD_NGAY`, `QD_FILE`, `QD_NOIDUNG`, `HD_THANHVIEN`) VALUES
 ('123ab', 'BB00000005', '2026-01-04', 'decision_123abc_1754324602.docx', NULL, 'Huỳnh Thanh Phong (Chủ tịch)'),
 ('QDDT0', 'BB00000004', '2026-01-04', 'decision_QDDT0000001_1754301665.docx', NULL, 'Huỳnh Thanh Phong (Chủ tịch)'),
-('QDDT0000003', 'BBDT0000003', '2026-01-06', 'decision_QDDT0000003_1754493397.docx', NULL, 'Huỳnh Thanh Phong (Chủ tịch)\nLê Minh Tuấn (Phó chủ tịch)\nNguyễn Thị Hoa (Thư ký)\nTrần Văn Bình (Thành viên)');
+('QDDT0000003', 'BBDT000000', '2026-01-06', 'decision_QDDT0000003_1754493397.docx', NULL, 'Huỳnh Thanh Phong (Chủ tịch)\nLê Minh Tuấn (Phó chủ tịch)\nNguyễn Thị Hoa (Thư ký)\nTrần Văn Bình (Thành viên)');
 
 -- --------------------------------------------------------
 
@@ -1030,22 +1002,20 @@ CREATE TABLE `thanh_vien_hoi_dong` (
   `TV_TRANGTHAI` enum('Chưa đánh giá','Đang đánh giá','Đã hoàn thành') DEFAULT 'Chưa đánh giá' COMMENT 'Trạng thái đánh giá',
   `TV_NGAYDANHGIA` datetime DEFAULT NULL COMMENT 'Ngày cập nhật đánh giá cuối cùng',
   `TV_FILEDANHGIA` varchar(255) DEFAULT NULL COMMENT 'File đánh giá của thành viên',
-  `TV_DANHGIA` text DEFAULT NULL COMMENT 'Nhận xét đánh giá của thành viên',
-  `TV_CHITIET_TIEUCHI` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Chi tiß║┐t ─æiß╗âm theo tß╗½ng ti├¬u ch├¡ (JSON)' CHECK (json_valid(`TV_CHITIET_TIEUCHI`)),
-  `TV_HOAN_THANH` tinyint(1) DEFAULT 0 COMMENT 'Trß║íng th├íi ho├án th├ánh ─æ├ính gi├í'
+  `TV_DANHGIA` text DEFAULT NULL COMMENT 'Nhận xét đánh giá của thành viên'
 ) ;
 
 --
 -- Đang đổ dữ liệu cho bảng `thanh_vien_hoi_dong`
 --
 
-INSERT INTO `thanh_vien_hoi_dong` (`QD_SO`, `GV_MAGV`, `TV_HOTEN`, `TC_MATC`, `TV_VAITRO`, `TV_DIEM`, `TV_DIEMCHITIET`, `TV_TRANGTHAI`, `TV_NGAYDANHGIA`, `TV_FILEDANHGIA`, `TV_DANHGIA`, `TV_CHITIET_TIEUCHI`, `TV_HOAN_THANH`) VALUES
-('123ab', 'GV000002', NULL, 'TC001', 'Chủ tịch', 0.00, NULL, 'Chưa đánh giá', NULL, NULL, 'Chưa đánh giá', NULL, 0),
-('QDDT0', 'GV000002', 'Huỳnh Thanh Phong', 'TC001', 'Chủ tịch', NULL, NULL, 'Chưa đánh giá', NULL, NULL, NULL, NULL, 0),
-('QDDT0000003', 'GV000002', NULL, 'TC001', 'Chủ tịch', 100.00, '{\"TC001\":{\"score\":10,\"comment\":\"\"},\"TC002\":{\"score\":15,\"comment\":\"\"},\"TC003\":{\"score\":15,\"comment\":\"\"},\"TC004\":{\"score\":30,\"comment\":\"\"},\"TC005\":{\"score\":15,\"comment\":\"\"},\"TC006\":{\"score\":5,\"comment\":\"\"},\"TC007\":{\"score\":5,\"comment\":\"\"},\"TC008\":{\"score\":5,\"comment\":\"\"}}', 'Đã hoàn thành', '2025-08-07 21:39:47', NULL, 'Chưa đánh giá', NULL, 0),
-('QDDT0000003', 'GV000003', NULL, 'TC001', 'Thành viên', 90.00, '{\"TC001\":{\"score\":10,\"comment\":\"\"},\"TC002\":{\"score\":15,\"comment\":\"\"},\"TC003\":{\"score\":15,\"comment\":\"\"},\"TC004\":{\"score\":25,\"comment\":\"\"},\"TC005\":{\"score\":10,\"comment\":\"\"},\"TC006\":{\"score\":5,\"comment\":\"\"},\"TC007\":{\"score\":5,\"comment\":\"\"},\"TC008\":{\"score\":5,\"comment\":\"\"}}', 'Đã hoàn thành', '2025-08-07 21:42:06', NULL, 'Chưa đánh giá', NULL, 0),
-('QDDT0000003', 'GV000004', NULL, 'TC001', 'Thư ký', 100.00, '{\"TC001\":{\"score\":10,\"comment\":\"\"},\"TC002\":{\"score\":15,\"comment\":\"\"},\"TC003\":{\"score\":15,\"comment\":\"\"},\"TC004\":{\"score\":30,\"comment\":\"\"},\"TC005\":{\"score\":15,\"comment\":\"\"},\"TC006\":{\"score\":5,\"comment\":\"\"},\"TC007\":{\"score\":5,\"comment\":\"\"},\"TC008\":{\"score\":5,\"comment\":\"\"}}', 'Đã hoàn thành', '2025-08-07 21:42:30', NULL, 'Chưa đánh giá', NULL, 0),
-('QDDT0000003', 'GV000005', NULL, 'TC001', 'Phó chủ tịch', 95.00, '{\"TC001\":{\"score\":10,\"comment\":\"\"},\"TC002\":{\"score\":12,\"comment\":\"\"},\"TC003\":{\"score\":13,\"comment\":\"\"},\"TC004\":{\"score\":30,\"comment\":\"\"},\"TC005\":{\"score\":15,\"comment\":\"\"},\"TC006\":{\"score\":5,\"comment\":\"\"},\"TC007\":{\"score\":5,\"comment\":\"\"},\"TC008\":{\"score\":5,\"comment\":\"\"}}', 'Đã hoàn thành', '2025-08-07 22:23:45', NULL, 'Chưa đánh giá', NULL, 0);
+INSERT INTO `thanh_vien_hoi_dong` (`QD_SO`, `GV_MAGV`, `TV_HOTEN`, `TC_MATC`, `TV_VAITRO`, `TV_DIEM`, `TV_DIEMCHITIET`, `TV_TRANGTHAI`, `TV_NGAYDANHGIA`, `TV_FILEDANHGIA`, `TV_DANHGIA`) VALUES
+('123ab', 'GV000002', NULL, 'TC001', 'Chủ tịch', 0.00, NULL, 'Chưa đánh giá', NULL, NULL, 'Chưa đánh giá'),
+('QDDT0', 'GV000002', 'Huỳnh Thanh Phong', 'TC001', 'Chủ tịch', NULL, NULL, 'Chưa đánh giá', NULL, NULL, NULL),
+('QDDT0000003', 'GV000002', NULL, 'TC001', 'Chủ tịch', 0.00, NULL, 'Chưa đánh giá', NULL, NULL, 'Chưa đánh giá'),
+('QDDT0000003', 'GV000003', NULL, 'TC001', 'Thành viên', 0.00, NULL, 'Chưa đánh giá', NULL, NULL, 'Chưa đánh giá'),
+('QDDT0000003', 'GV000004', NULL, 'TC001', 'Thư ký', 0.00, NULL, 'Chưa đánh giá', NULL, NULL, 'Chưa đánh giá'),
+('QDDT0000003', 'GV000005', NULL, 'TC001', 'Phó chủ tịch', 0.00, NULL, 'Chưa đánh giá', NULL, NULL, 'Chưa đánh giá');
 
 --
 -- Bẫy `thanh_vien_hoi_dong`
@@ -1182,35 +1152,6 @@ INSERT INTO `tieu_chi` (`TC_MATC`, `TC_TEN`, `TC_MOTA`, `TC_NDDANHGIA`, `TC_DIEM
 -- --------------------------------------------------------
 
 --
--- Cấu trúc bảng cho bảng `tieu_chi_danh_gia`
---
-
-CREATE TABLE `tieu_chi_danh_gia` (
-  `TC_MA` varchar(10) NOT NULL,
-  `TC_TEN` varchar(255) NOT NULL,
-  `TC_MOTA` text DEFAULT NULL,
-  `TC_DIEM_TOIDAI` decimal(5,2) DEFAULT 10.00,
-  `TC_THUTU` int(11) DEFAULT 0,
-  `TC_TRANGTHAI` enum('Hoß║ít ─æß╗Öng','Kh├┤ng hoß║ít ─æß╗Öng') DEFAULT 'Hoß║ít ─æß╗Öng',
-  `TC_NGAYTAO` datetime DEFAULT current_timestamp(),
-  `TC_NGAYCAPNHAT` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Đang đổ dữ liệu cho bảng `tieu_chi_danh_gia`
---
-
-INSERT INTO `tieu_chi_danh_gia` (`TC_MA`, `TC_TEN`, `TC_MOTA`, `TC_DIEM_TOIDAI`, `TC_THUTU`, `TC_TRANGTHAI`, `TC_NGAYTAO`, `TC_NGAYCAPNHAT`) VALUES
-('TC001', 'T├¡nh mß╗øi v├á t├¡nh s├íng tß║ío cß╗ºa ─æß╗ü t├ái', '─É├ính gi├í mß╗®c ─æß╗Ö mß╗øi mß║╗, s├íng tß║ío v├á t├¡nh khß║ú thi cß╗ºa ─æß╗ü t├ái nghi├¬n cß╗®u', 15.00, 1, 'Hoß║ít ─æß╗Öng', '2025-08-07 15:56:24', '2025-08-07 15:56:24'),
-('TC002', 'Phã░ãíng ph├íp nghi├¬n cß╗®u', '─É├ính gi├í t├¡nh ph├╣ hß╗úp v├á hiß╗çu quß║ú cß╗ºa phã░ãíng ph├íp nghi├¬n cß╗®u ─æã░ß╗úc ├íp dß╗Ñng', 15.00, 2, 'Hoß║ít ─æß╗Öng', '2025-08-07 15:56:24', '2025-08-07 15:56:24'),
-('TC003', 'Kß║┐t quß║ú nghi├¬n cß╗®u', '─É├ính gi├í chß║Ñt lã░ß╗úng v├á t├¡nh ─æß║ºy ─æß╗º cß╗ºa kß║┐t quß║ú nghi├¬n cß╗®u ─æß║ít ─æã░ß╗úc', 25.00, 3, 'Hoß║ít ─æß╗Öng', '2025-08-07 15:56:24', '2025-08-07 15:56:24'),
-('TC004', 'T├¡nh ß╗®ng dß╗Ñng thß╗▒c tiß╗àn', '─É├ính gi├í khß║ú n─âng ß╗®ng dß╗Ñng thß╗▒c tiß╗àn v├á t├íc ─æß╗Öng cß╗ºa kß║┐t quß║ú nghi├¬n cß╗®u', 20.00, 4, 'Hoß║ít ─æß╗Öng', '2025-08-07 15:56:24', '2025-08-07 15:56:24'),
-('TC005', 'Chß║Ñt lã░ß╗úng b├ío c├ío v├á thuyß║┐t tr├¼nh', '─É├ính gi├í chß║Ñt lã░ß╗úng cß╗ºa b├ío c├ío nghi├¬n cß╗®u v├á kß╗╣ n─âng thuyß║┐t tr├¼nh', 15.00, 5, 'Hoß║ít ─æß╗Öng', '2025-08-07 15:56:24', '2025-08-07 15:56:24'),
-('TC006', 'Th├íi ─æß╗Ö v├á tinh thß║ºn nghi├¬n cß╗®u', '─É├ính gi├í th├íi ─æß╗Ö nghi├¬n cß╗®u khoa hß╗ìc v├á tinh thß║ºn hß╗ìc tß║¡p cß╗ºa sinh vi├¬n', 10.00, 6, 'Hoß║ít ─æß╗Öng', '2025-08-07 15:56:24', '2025-08-07 15:56:24');
-
--- --------------------------------------------------------
-
---
 -- Cấu trúc bảng cho bảng `user`
 --
 
@@ -1239,7 +1180,7 @@ CREATE TABLE `view_chi_tiet_danh_gia` (
 `CTDDG_MA` char(10)
 ,`QD_SO` varchar(11)
 ,`QD_NGAY` date
-,`BB_SOBB` char(11)
+,`BB_SOBB` char(10)
 ,`BB_NGAYNGHIEMTHU` date
 ,`GV_MAGV` char(8)
 ,`GV_HOTEN` varchar(59)
@@ -1329,17 +1270,7 @@ ALTER TABLE `bien_ban`
   ADD PRIMARY KEY (`BB_SOBB`),
   ADD KEY `idx_bien_ban_tongdiem` (`BB_TONGDIEM`),
   ADD KEY `idx_bien_ban_tongdiem_new` (`BB_TONGDIEM`),
-  ADD KEY `FK_BIEN_BAN_CO_BIEN_B_QUYET_DI` (`QD_SO`) USING BTREE;
-
---
--- Chỉ mục cho bảng `chi_tiet_danh_gia_tieu_chi`
---
-ALTER TABLE `chi_tiet_danh_gia_tieu_chi`
-  ADD PRIMARY KEY (`CDGTC_MA`),
-  ADD UNIQUE KEY `unique_evaluation` (`CDGTC_MAGV`,`CDGTC_MADT`,`CDGTC_MATC`),
-  ADD KEY `CDGTC_MATC` (`CDGTC_MATC`),
-  ADD KEY `idx_chi_tiet_danh_gia_member` (`CDGTC_MAGV`,`CDGTC_MADT`),
-  ADD KEY `idx_chi_tiet_danh_gia_project` (`CDGTC_MADT`);
+  ADD KEY `FK_BIEN_BAN_CO_BIEN_B_QUYET_DI` (`QD_SO`);
 
 --
 -- Chỉ mục cho bảng `chi_tiet_diem_danh_gia`
@@ -1375,17 +1306,17 @@ ALTER TABLE `de_tai_nghien_cuu`
 --
 ALTER TABLE `file_danh_gia`
   ADD PRIMARY KEY (`FDG_MA`),
-  ADD KEY `file_danh_gia_ibfk_1` (`BB_SOBB`);
+  ADD KEY `BB_SOBB` (`BB_SOBB`);
 
 --
 -- Chỉ mục cho bảng `file_dinh_kem`
 --
 ALTER TABLE `file_dinh_kem`
   ADD PRIMARY KEY (`FDG_MA`),
+  ADD KEY `FK_FILE_DAN_CUA_BIEN_BAN` (`BB_SOBB`),
   ADD KEY `idx_fdg_loai` (`FDG_LOAI`),
   ADD KEY `idx_fdg_gv_magv` (`GV_MAGV`),
-  ADD KEY `idx_fdg_ngaytao` (`FDG_NGAYTAO`),
-  ADD KEY `FK_FILE_DAN_CUA_BIEN_BAN` (`BB_SOBB`);
+  ADD KEY `idx_fdg_ngaytao` (`FDG_NGAYTAO`);
 
 --
 -- Chỉ mục cho bảng `giang_vien`
@@ -1524,13 +1455,6 @@ ALTER TABLE `tieu_chi`
   ADD PRIMARY KEY (`TC_MATC`);
 
 --
--- Chỉ mục cho bảng `tieu_chi_danh_gia`
---
-ALTER TABLE `tieu_chi_danh_gia`
-  ADD PRIMARY KEY (`TC_MA`),
-  ADD KEY `idx_tieu_chi_thutu` (`TC_THUTU`);
-
---
 -- Chỉ mục cho bảng `user`
 --
 ALTER TABLE `user`
@@ -1550,12 +1474,6 @@ ALTER TABLE `yeu_cau_dang_ky`
 --
 -- AUTO_INCREMENT cho các bảng đã đổ
 --
-
---
--- AUTO_INCREMENT cho bảng `chi_tiet_danh_gia_tieu_chi`
---
-ALTER TABLE `chi_tiet_danh_gia_tieu_chi`
-  MODIFY `CDGTC_MA` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT cho bảng `thong_bao`
@@ -1592,12 +1510,6 @@ ALTER TABLE `bao_cao`
 --
 ALTER TABLE `bien_ban`
   ADD CONSTRAINT `FK_BIEN_BAN_CO_BIEN_B_QUYET_DI` FOREIGN KEY (`QD_SO`) REFERENCES `quyet_dinh_nghiem_thu` (`QD_SO`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Các ràng buộc cho bảng `chi_tiet_danh_gia_tieu_chi`
---
-ALTER TABLE `chi_tiet_danh_gia_tieu_chi`
-  ADD CONSTRAINT `chi_tiet_danh_gia_tieu_chi_ibfk_1` FOREIGN KEY (`CDGTC_MATC`) REFERENCES `tieu_chi_danh_gia` (`TC_MA`) ON DELETE CASCADE;
 
 --
 -- Các ràng buộc cho bảng `chi_tiet_diem_danh_gia`

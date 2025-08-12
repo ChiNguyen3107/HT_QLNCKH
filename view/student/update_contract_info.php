@@ -92,29 +92,8 @@ if (empty($project_id) || empty($contract_code) || empty($contract_date) ||
     exit();
 }
 
-// Nếu thiếu end_date, tự tính theo thời hạn đăng ký từ ghi chú đề tài
-if (empty($end_date)) {
-    $duration_months = 6;
-    $proj_stmt = $conn->prepare("SELECT DT_GHICHU FROM de_tai_nghien_cuu WHERE DT_MADT = ?");
-    if ($proj_stmt) {
-        $proj_stmt->bind_param("s", $project_id);
-        if ($proj_stmt->execute()) {
-            $proj_res = $proj_stmt->get_result();
-            if ($proj_res && $proj_res->num_rows > 0) {
-                $ghichu = $proj_res->fetch_assoc()['DT_GHICHU'] ?? '';
-                if ($ghichu && preg_match('/duration_months\s*=\s*(\d+)/i', $ghichu, $m)) {
-                    $duration_months = max(1, (int)$m[1]);
-                }
-            }
-        }
-    }
-    if (!empty($start_date)) {
-        $end_date = date('Y-m-d', strtotime($start_date . " +$duration_months months"));
-    }
-}
-
 // Validate dates
-if (empty($start_date) || empty($end_date) || strtotime($start_date) >= strtotime($end_date)) {
+if (strtotime($start_date) >= strtotime($end_date)) {
     $_SESSION['error_message'] = "Ngày kết thúc phải sau ngày bắt đầu.";
     header("Location: view_project.php?id=" . urlencode($project_id));
     exit();

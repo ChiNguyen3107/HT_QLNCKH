@@ -23,11 +23,20 @@ try {
 $year_filter = isset($_GET['year']) ? intval($_GET['year']) : date('Y');
 $faculty_filter = isset($_GET['faculty']) ? $_GET['faculty'] : '';
 
-// Lấy danh sách năm để lọc
+// Lấy danh sách khóa học từ cơ sở dữ liệu
 $years = [];
-$current_year = date('Y');
-for ($i = 2018; $i <= $current_year; $i++) {
-    $years[] = $i;
+$year_sql = "SELECT DISTINCT KH_NAM FROM khoa_hoc ORDER BY KH_NAM ASC";
+$year_result = $conn->query($year_sql);
+if ($year_result) {
+    while ($year = $year_result->fetch_assoc()) {
+        $years[] = $year['KH_NAM'];
+    }
+} else {
+    // Fallback: tạo danh sách năm nếu không lấy được từ DB
+    $current_year = date('Y');
+    for ($i = 2018; $i <= $current_year; $i++) {
+        $years[] = $i;
+    }
 }
 
 // Lấy danh sách khoa/đơn vị
@@ -401,6 +410,67 @@ $additional_css = '<style>
         }
     }
     
+    /* Styles for student list table */
+    #studentListTable {
+        font-size: 0.9rem;
+    }
+    
+    #studentListTable th {
+        background-color: #4e73df;
+        color: white;
+        font-weight: 600;
+        text-align: center;
+        vertical-align: middle;
+    }
+    
+    #studentListTable td {
+        vertical-align: middle;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .badge-secondary {
+        background-color: #6c757d;
+    }
+    
+    .badge-primary {
+        background-color: #007bff;
+    }
+    
+    .badge-success {
+        background-color: #28a745;
+    }
+    
+    /* Loading spinner */
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+    }
+    
+    /* Filter form improvements */
+    .filter-form .form-group {
+        margin-bottom: 0.5rem;
+    }
+    
+    .filter-form label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .filter-form .form-control {
+        font-size: 0.875rem;
+    }
+    
+    /* Pagination improvements */
+    .pagination-sm .page-link {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
     /* Layout fix for research reports - Remove any extra spacing */
     body {
         margin: 0 !important;
@@ -756,7 +826,7 @@ include '../../include/research_header.php';
                         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                             <h6 class="m-0 font-weight-bold text-primary">Danh sách sinh viên theo lớp</h6>
                             <button class="btn btn-sm btn-outline-primary" id="exportStudentListTable">
-                                <i class="fas fa-file-excel fa-sm"></i> Xuất Excel
+                                <i class="fas fa-file-csv fa-sm"></i> Xuất CSV
                             </button>
                         </div>
                         <div class="card-body">
@@ -776,12 +846,12 @@ include '../../include/research_header.php';
                                             </select>
                                         </div>
                                         <div class="form-group col-md-2">
-                                            <label for="school_year">Khóa</label>
+                                            <label for="school_year">Khóa học</label>
                                             <select class="form-control" id="school_year" name="school_year">
                                                 <option value="">Tất cả</option>
-                                                <?php for($i = date('Y') - 5; $i <= date('Y'); $i++): ?>
-                                                    <option value="<?php echo $i; ?>"><?php echo $i; ?></option>
-                                                <?php endfor; ?>
+                                                <?php foreach ($years as $year): ?>
+                                                    <option value="<?php echo htmlspecialchars($year); ?>"><?php echo htmlspecialchars($year); ?></option>
+                                                <?php endforeach; ?>
                                             </select>
                                         </div>
                                         <div class="form-group col-md-3">
@@ -1059,7 +1129,29 @@ include '../../include/research_header.php';
                     }
                 }
             });
-              // Xử lý sự kiện xuất báo cáo
+
+            // ===== CHỨC NĂNG QUẢN LÝ DANH SÁCH SINH VIÊN =====
+            
+            // Biến toàn cục cho phân trang
+            let currentPage = 1;
+            let totalPages = 1;
+            let totalStudents = 0;
+            
+            // Khởi tạo chức năng lọc sinh viên
+            initializeStudentList();
+            
+            // Xử lý sự kiện thay đổi khoa để tải danh sách lớp
+            $('#department').on('change', function() {
+                loadClassesByDepartment();
+            });
+            
+            // Xử lý sự kiện lọc sinh viên
+            $('#filterStudentList').on('click', function() {
+                currentPage = 1;
+                loadStudentList();
+            });
+            
+            // Xử lý sự kiện xuất báo cáo
             $('#exportActivityReport, #exportProjectsList, #exportStudentStats').click(function() {
                 const type = $(this).attr('id').replace('export', '').replace('Report', '').replace('List', '').replace('Stats', '');
                 exportReport(type);
@@ -1076,6 +1168,229 @@ include '../../include/research_header.php';
                 const tableType = $(this).attr('id').replace('export', '').replace('Table', '').toLowerCase();
                 exportTable(tableType);
             });
+            
+            // Xử lý sự kiện xuất danh sách sinh viên
+            $('#exportStudentListTable').click(function() {
+                exportStudentList();
+            });
+            
+            // Hàm khởi tạo danh sách sinh viên
+            function initializeStudentList() {
+                // Tải danh sách lớp khi trang được load
+                loadClassesByDepartment();
+                
+                // Tải danh sách sinh viên mặc định
+                loadStudentList();
+            }
+            
+            // Hàm tải danh sách lớp theo khoa
+            function loadClassesByDepartment() {
+                const department = $('#department').val();
+                const schoolYear = $('#school_year').val();
+                
+                if (!department || !schoolYear) {
+                    $('#class').html('<option value="">Tất cả lớp</option>');
+                    return;
+                }
+                
+                $.ajax({
+                    url: '../../api/get_department_classes.php',
+                    type: 'GET',
+                    data: {
+                        dept_id: department,
+                        year: schoolYear
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success && response.classes) {
+                            let options = '<option value="">Tất cả lớp</option>';
+                            response.classes.forEach(function(classItem) {
+                                options += `<option value="${classItem.class_id}">${classItem.class_name} (${classItem.student_count} SV)</option>`;
+                            });
+                            $('#class').html(options);
+                        } else {
+                            $('#class').html('<option value="">Tất cả lớp</option>');
+                        }
+                    },
+                    error: function() {
+                        $('#class').html('<option value="">Tất cả lớp</option>');
+                    }
+                });
+            }
+            
+            // Hàm tải danh sách sinh viên
+            function loadStudentList() {
+                const department = $('#department').val();
+                const schoolYear = $('#school_year').val();
+                const classId = $('#class').val();
+                const researchStatus = $('#research_status').val();
+                
+                // Hiển thị loading
+                $('#studentListLoading').show();
+                $('#studentListTable tbody').html('<tr><td colspan="7" class="text-center">Đang tải dữ liệu...</td></tr>');
+                
+                $.ajax({
+                    url: '../../api/get_student_list.php',
+                    type: 'GET',
+                    data: {
+                        department: department,
+                        school_year: schoolYear,
+                        class: classId,
+                        research_status: researchStatus,
+                        page: currentPage,
+                        limit: 20
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        $('#studentListLoading').hide();
+                        
+                        if (response.success && response.data) {
+                            displayStudentList(response.data);
+                            updatePagination(response.total, response.page, response.limit);
+                            updateStudentCount(response.total);
+                        } else {
+                            $('#studentListTable tbody').html('<tr><td colspan="7" class="text-center text-muted">Không có dữ liệu hoặc có lỗi xảy ra</td></tr>');
+                            updateStudentCount(0);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $('#studentListLoading').hide();
+                        $('#studentListTable tbody').html('<tr><td colspan="7" class="text-center text-danger">Lỗi khi tải dữ liệu: ' + error + '</td></tr>');
+                        updateStudentCount(0);
+                    }
+                });
+            }
+            
+            // Hàm hiển thị danh sách sinh viên
+            function displayStudentList(students) {
+                let html = '';
+                
+                if (students.length === 0) {
+                    html = '<tr><td colspan="7" class="text-center text-muted">Không có sinh viên nào thỏa mãn điều kiện lọc</td></tr>';
+                } else {
+                    students.forEach(function(student, index) {
+                        const stt = (currentPage - 1) * 20 + index + 1;
+                        const researchStatus = getResearchStatusText(student.project_count);
+                        const statusClass = getResearchStatusClass(student.project_count);
+                        
+                        html += `
+                            <tr>
+                                <td class="text-center">${stt}</td>
+                                <td>${student.SV_MASV}</td>
+                                <td>${student.SV_HOTEN}</td>
+                                <td>${student.LOP_TEN || 'N/A'}</td>
+                                <td>${student.DV_TENDV || 'N/A'}</td>
+                                <td class="text-center">
+                                    <span class="badge ${statusClass}">${researchStatus}</span>
+                                </td>
+                                <td class="text-center font-weight-bold">${student.project_count}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                $('#studentListTable tbody').html(html);
+            }
+            
+            // Hàm lấy trạng thái nghiên cứu
+            function getResearchStatusText(projectCount) {
+                if (projectCount === 0) {
+                    return 'Chưa tham gia';
+                } else if (projectCount === 1) {
+                    return 'Đang tham gia';
+                } else {
+                    return 'Tham gia nhiều';
+                }
+            }
+            
+            // Hàm lấy class CSS cho trạng thái
+            function getResearchStatusClass(projectCount) {
+                if (projectCount === 0) {
+                    return 'badge-secondary';
+                } else if (projectCount === 1) {
+                    return 'badge-primary';
+                } else {
+                    return 'badge-success';
+                }
+            }
+            
+            // Hàm cập nhật phân trang
+            function updatePagination(total, currentPage, limit) {
+                totalStudents = total;
+                totalPages = Math.ceil(total / limit);
+                currentPage = currentPage || 1;
+                
+                let paginationHtml = '';
+                
+                if (totalPages <= 1) {
+                    $('#studentPagination').html('');
+                    return;
+                }
+                
+                // Nút Previous
+                if (currentPage > 1) {
+                    paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${currentPage - 1}">Trước</a></li>`;
+                }
+                
+                // Các trang
+                const startPage = Math.max(1, currentPage - 2);
+                const endPage = Math.min(totalPages, currentPage + 2);
+                
+                for (let i = startPage; i <= endPage; i++) {
+                    const activeClass = i === currentPage ? 'active' : '';
+                    paginationHtml += `<li class="page-item ${activeClass}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+                }
+                
+                // Nút Next
+                if (currentPage < totalPages) {
+                    paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${currentPage + 1}">Sau</a></li>`;
+                }
+                
+                $('#studentPagination').html(paginationHtml);
+                
+                // Xử lý sự kiện click phân trang
+                $('#studentPagination .page-link').off('click').on('click', function(e) {
+                    e.preventDefault();
+                    const page = parseInt($(this).data('page'));
+                    if (page && page !== currentPage) {
+                        currentPage = page;
+                        loadStudentList();
+                    }
+                });
+            }
+            
+            // Hàm cập nhật số lượng sinh viên
+            function updateStudentCount(count) {
+                $('#studentCount').text(`Hiển thị ${count} sinh viên`);
+            }
+            
+            // Hàm xuất danh sách sinh viên
+            function exportStudentList() {
+                const department = $('#department').val();
+                const schoolYear = $('#school_year').val();
+                const classId = $('#class').val();
+                const researchStatus = $('#research_status').val();
+                
+                // Hiển thị loading
+                const btn = $('#exportStudentListTable');
+                const originalText = btn.html();
+                btn.html('<i class="fas fa-spinner fa-spin mr-2"></i> Đang xuất...');
+                
+                // Tạo URL để tải về file Excel
+                let fileUrl = '../../api/export_student_list.php?';
+                fileUrl += 'department=' + encodeURIComponent(department);
+                fileUrl += '&school_year=' + encodeURIComponent(schoolYear);
+                fileUrl += '&class=' + encodeURIComponent(classId);
+                fileUrl += '&research_status=' + encodeURIComponent(researchStatus);
+                
+                // Mở URL trong tab mới
+                window.open(fileUrl, '_blank');
+                
+                // Khôi phục nút sau 2 giây
+                setTimeout(() => {
+                    btn.html(originalText);
+                }, 2000);
+            }
             
             // Hàm xuất báo cáo
             function exportReport(type) {

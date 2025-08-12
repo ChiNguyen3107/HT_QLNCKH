@@ -3390,7 +3390,7 @@ try {
                             </div>
                         </div>
 
-                        <?php if ($project['DT_FILEBTM']): ?>
+                        <?php if (!empty($project['DT_FILEBTM'])): ?>
                             <hr>
                             <div class="mt-3">
                                 <h5 class="section-title"><i class="fas fa-file-alt"></i> File thuyết minh</h5>
@@ -3615,7 +3615,7 @@ try {
                         <div class="tab-content" id="documentTabsContent">
                             <!-- Tab Thuyết minh -->
                             <div class="tab-pane fade show active" id="proposal" role="tabpanel" aria-labelledby="proposal-tab">
-                                <?php if ($project['DT_FILEBTM']): ?>
+                                <?php if (!empty($project['DT_FILEBTM'])): ?>
                                     <div class="proposal-file-current">
                                         <h6 class="text-primary mb-3"><i class="fas fa-file-alt mr-2"></i>File thuyết minh hiện tại</h6>
                                         <div class="d-flex align-items-center justify-content-between">

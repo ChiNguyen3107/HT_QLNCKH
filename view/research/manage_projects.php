@@ -23,6 +23,20 @@ $type_filter = isset($_GET['type']) ? $_GET['type'] : '';
 $search_term = isset($_GET['search']) ? $_GET['search'] : '';
 $faculty_filter = isset($_GET['faculty']) ? $_GET['faculty'] : '';
 
+// Advanced filters
+$date_from = isset($_GET['dateFrom']) ? $_GET['dateFrom'] : '';
+$date_to = isset($_GET['dateTo']) ? $_GET['dateTo'] : '';
+$sort_by = isset($_GET['sortBy']) ? $_GET['sortBy'] : 'DT_NGAYTAO';
+$sort_order = isset($_GET['sortOrder']) ? $_GET['sortOrder'] : 'DESC';
+
+// Validate sort parameters
+$allowed_sort_fields = ['DT_NGAYTAO', 'DT_TENDT', 'DT_MADT', 'DT_TRANGTHAI'];
+if (!in_array($sort_by, $allowed_sort_fields)) {
+    $sort_by = 'DT_NGAYTAO';
+}
+
+$sort_order = strtoupper($sort_order) === 'ASC' ? 'ASC' : 'DESC';
+
 // Phân trang
 $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
 $items_per_page = 10;
@@ -56,9 +70,17 @@ if (!empty($search_term)) {
     $sql .= " AND (dt.DT_TENDT LIKE ? OR dt.DT_MADT LIKE ? OR CONCAT(gv.GV_HOGV, ' ', gv.GV_TENGV) LIKE ?)";
 }
 
+// Điều kiện lọc theo ngày
+if (!empty($date_from)) {
+    $sql .= " AND DATE(dt.DT_NGAYTAO) >= ?";
+}
+if (!empty($date_to)) {
+    $sql .= " AND DATE(dt.DT_NGAYTAO) <= ?";
+}
+
 // Thêm sắp xếp và giới hạn kết quả
 $sql_count = $sql;
-$sql .= " ORDER BY dt.DT_NGAYTAO DESC LIMIT ?, ?";
+$sql .= " ORDER BY {$sort_by} {$sort_order} LIMIT ?, ?";
 
 // Xây dựng mảng tham số và kiểu dữ liệu
 $types = '';
@@ -86,6 +108,16 @@ if (!empty($search_term)) {
     $params[] = $search_param;
     $params[] = $search_param;
     $params[] = $search_param;
+}
+
+// Thêm tham số lọc ngày
+if (!empty($date_from)) {
+    $types .= 's';
+    $params[] = $date_from;
+}
+if (!empty($date_to)) {
+    $types .= 's';
+    $params[] = $date_to;
 }
 
 // Thêm tham số phân trang
@@ -190,7 +222,255 @@ if ($stats_result) {
 $page_title = "Quản lý đề tài | Quản lý nghiên cứu";
 
 // Define any additional CSS specific to this page
-$additional_css = '<link href="/NLNganh/assets/css/research/manage-projects-enhanced.css" rel="stylesheet">';
+$additional_css = '<link href="/NLNganh/assets/css/research/manage-projects-enhanced.css" rel="stylesheet">
+<style>
+/* Enhanced Filter Styles */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+}
+
+.form-select-sm {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.input-group-sm .form-control {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.alert-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.btn-sm {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+
+/* Filter collapse animation */
+.collapse {
+    transition: all 0.3s ease;
+}
+
+/* Enhanced form controls */
+.form-control:focus, .form-select:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+/* Active filter badges */
+.badge.bg-primary { background-color: #4e73df !important; }
+.badge.bg-success { background-color: #1cc88a !important; }
+.badge.bg-warning { background-color: #f6c23e !important; color: #2c3e50 !important; }
+.badge.bg-info { background-color: #36b9cc !important; }
+.badge.bg-secondary { background-color: #858796 !important; }
+.badge.bg-danger { background-color: #e74a3b !important; }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .col-lg-2 {
+        margin-bottom: 1rem;
+    }
+    .d-flex.gap-2 {
+        flex-direction: column;
+    }
+    .d-flex.gap-2 .btn {
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Filter section styling */
+.card-header.bg-gradient-primary {
+    border-bottom: none;
+}
+
+.btn-link {
+    color: #4e73df;
+}
+
+.btn-link:hover {
+    color: #224abe;
+    text-decoration: none;
+}
+
+/* Enhanced table styling */
+.table-responsive {
+    border-radius: 0.35rem;
+    overflow: hidden;
+}
+
+.table thead th {
+    background-color: #4e73df;
+    color: #4e73df;
+    border: none;
+    font-weight: 600;
+    padding: 0.75rem 0.5rem;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(78, 115, 223, 0.05);
+}
+
+.table tbody td {
+    padding: 0.75rem 0.5rem;
+    vertical-align: middle;
+}
+
+/* Project status styling */
+.project-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-pending { background-color: #fff3cd; color: #856404; }
+.status-progress { background-color: #d1ecf1; color: #0c5460; }
+.status-completed { background-color: #d4edda; color: #155724; }
+.status-warning { background-color: #f8d7da; color: #721c24; }
+.status-rejected { background-color: #f8d7da; color: #721c24; }
+.status-info { background-color: #d1ecf1; color: #0c5460; }
+
+/* Button group styling */
+.btn-group .btn {
+    margin-right: 2px;
+}
+
+.btn-group .btn:last-child {
+    margin-right: 0;
+}
+
+/* Filter group styling */
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.filter-group .form-label {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.filter-group .form-control,
+.filter-group .form-select {
+    height: 38px;
+    font-size: 0.9rem;
+}
+
+/* Compact layout */
+.form-label {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Enhanced button styling */
+.btn {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+}
+
+.btn-primary {
+    background-color: #4e73df;
+    border-color: #4e73df;
+}
+
+.btn-primary:hover {
+    background-color: #224abe;
+    border-color: #224abe;
+}
+
+/* Enhanced alert styling */
+.alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+.alert-info .fas {
+    color: #0c5460;
+}
+
+/* Enhanced badge styling */
+.badge {
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 0.375rem;
+}
+
+/* Remove unnecessary animations */
+.badge:hover {
+    transform: none;
+}
+
+/* Empty state styling */
+.empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+.empty-state i {
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.empty-state h5 {
+    margin-bottom: 0.5rem;
+    color: #6c757d;
+}
+
+.empty-state p {
+    margin-bottom: 1.5rem;
+    color: #6c757d;
+}
+
+/* DataTables styling improvements */
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_filter {
+    margin-bottom: 1rem;
+}
+
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_paginate {
+    margin-top: 1rem;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .filter-group {
+        margin-bottom: 1rem;
+    }
+    
+    .d-grid.gap-2 {
+        gap: 0.5rem !important;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter {
+        text-align: left;
+        margin-bottom: 0.5rem;
+    }
+}
+</style>';
 
 // Include the research header
 include '../../include/research_header.php';
@@ -250,61 +530,194 @@ include '../../include/research_header.php';
         </div>
     </div>
     
-    <!-- Filters and search section -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-filter me-2"></i>
-                Bộ lọc và tìm kiếm
-            </h5>
+    <!-- Enhanced Filters and Search Section -->
+    <div class="card mb-4 shadow-sm border-0">
+        <div class="card-header bg-gradient-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-filter me-2"></i>
+                    Bộ lọc và tìm kiếm
+                </h5>
+                <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="true" aria-controls="filterCollapse">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
+            </div>
         </div>
-        <div class="card-body">
-            <form method="GET" action="" class="needs-validation" novalidate>
-                <div class="row g-3 align-items-end">
-                    <div class="col-lg-2 col-md-6">
-                        <label for="status" class="form-label fw-bold"><i class="fas fa-tasks me-1"></i>Trạng thái</label>
-                        <select class="form-select" id="status" name="status">
-                            <option value="">Tất cả</option>
-                            <option value="Chờ duyệt" <?php echo $status_filter == 'Chờ duyệt' ? 'selected' : ''; ?>>Chờ duyệt</option>
-                            <option value="Đang thực hiện" <?php echo $status_filter == 'Đang thực hiện' ? 'selected' : ''; ?>>Đang thực hiện</option>
-                            <option value="Đã hoàn thành" <?php echo $status_filter == 'Đã hoàn thành' ? 'selected' : ''; ?>>Đã hoàn thành</option>
-                            <option value="Tạm dừng" <?php echo $status_filter == 'Tạm dừng' ? 'selected' : ''; ?>>Tạm dừng</option>
-                            <option value="Đã hủy" <?php echo $status_filter == 'Đã hủy' ? 'selected' : ''; ?>>Đã hủy</option>
-                            <option value="Đang xử lý" <?php echo $status_filter == 'Đang xử lý' ? 'selected' : ''; ?>>Đang xử lý</option>
-                        </select>
+        <div class="collapse show" id="filterCollapse">
+            <div class="card-body bg-light p-4">
+                <form method="GET" action="" class="needs-validation" novalidate id="filterForm">
+                    <!-- Main Filter Row -->
+                    <div class="row g-4 mb-4">
+                        <!-- Status Filter -->
+                        <div class="col-lg-2 col-md-6">
+                            <div class="filter-group">
+                                <label for="status" class="form-label fw-bold text-primary mb-2">Trạng thái</label>
+                                <select class="form-select border-primary" id="status" name="status">
+                                    <option value="">Tất cả trạng thái</option>
+                                    <option value="Chờ duyệt" <?php echo $status_filter == 'Chờ duyệt' ? 'selected' : ''; ?>>Chờ duyệt</option>
+                                    <option value="Đang thực hiện" <?php echo $status_filter == 'Đang thực hiện' ? 'selected' : ''; ?>>Đang thực hiện</option>
+                                    <option value="Đã hoàn thành" <?php echo $status_filter == 'Đã hoàn thành' ? 'selected' : ''; ?>>Đã hoàn thành</option>
+                                    <option value="Tạm dừng" <?php echo $status_filter == 'Tạm dừng' ? 'selected' : ''; ?>>Tạm dừng</option>
+                                    <option value="Đã hủy" <?php echo $status_filter == 'Đã hủy' ? 'selected' : ''; ?>>Đã hủy</option>
+                                    <option value="Đang xử lý" <?php echo $status_filter == 'Đang xử lý' ? 'selected' : ''; ?>>Đang xử lý</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Project Type Filter -->
+                        <div class="col-lg-2 col-md-6">
+                            <div class="filter-group">
+                                <label for="type" class="form-label fw-bold text-primary mb-2">Loại đề tài</label>
+                                <select class="form-select border-primary" id="type" name="type">
+                                    <option value="">Tất cả loại</option>
+                                    <?php foreach ($types_list as $type): ?>
+                                    <option value="<?php echo htmlspecialchars($type['LDT_MA']); ?>" <?php echo $type_filter == $type['LDT_MA'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($type['LDT_TENLOAI']); ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Faculty Filter -->
+                        <div class="col-lg-2 col-md-6">
+                            <div class="filter-group">
+                                <label for="faculty" class="form-label fw-bold text-primary mb-2">Khoa/Đơn vị</label>
+                                <select class="form-select border-primary" id="faculty" name="faculty">
+                                    <option value="">Tất cả khoa</option>
+                                    <?php foreach ($faculties as $faculty): ?>
+                                    <option value="<?php echo htmlspecialchars($faculty['DV_MADV']); ?>" <?php echo $faculty_filter == $faculty['DV_MADV'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($faculty['DV_TENDV']); ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Search Input -->
+                        <div class="col-lg-4 col-md-6">
+                            <div class="filter-group">
+                                <label for="search" class="form-label fw-bold text-primary mb-2">Tìm kiếm</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control border-primary" id="search" name="search" 
+                                           placeholder="Tìm theo tên đề tài, mã đề tài, giảng viên..." 
+                                           value="<?php echo htmlspecialchars($search_term); ?>">
+                                    <button class="btn btn-outline-secondary" type="button" id="clearSearch" title="Xóa tìm kiếm">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="col-lg-2 col-md-12">
+                            <div class="filter-group d-flex flex-column h-100 justify-content-end">
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search me-2"></i>Tìm kiếm
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="resetFilters" title="Làm mới">
+                                        <i class="fas fa-sync-alt me-2"></i>Làm mới
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-lg-2 col-md-6">
-                        <label for="type" class="form-label fw-bold"><i class="fas fa-layer-group me-1"></i>Loại đề tài</label>
-                        <select class="form-select" id="type" name="type">
-                            <option value="">Tất cả</option>
-                            <?php foreach ($types_list as $type): ?>
-                            <option value="<?php echo htmlspecialchars($type['LDT_MA']); ?>" <?php echo $type_filter == $type['LDT_MA'] ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($type['LDT_TENLOAI']); ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
+                    
+                    <!-- Advanced Filters Row (Collapsible) -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <button class="btn btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFilters" aria-expanded="false">
+                                <i class="fas fa-cog me-2"></i>Bộ lọc nâng cao <i class="fas fa-chevron-down ms-1"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="col-lg-2 col-md-6">
-                        <label for="faculty" class="form-label fw-bold"><i class="fas fa-university me-1"></i>Khoa</label>
-                        <select class="form-select" id="faculty" name="faculty">
-                            <option value="">Tất cả</option>
-                            <?php foreach ($faculties as $faculty): ?>
-                            <option value="<?php echo htmlspecialchars($faculty['DV_MADV']); ?>" <?php echo $faculty_filter == $faculty['DV_MADV'] ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($faculty['DV_TENDV']); ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
+                    
+                    <div class="collapse" id="advancedFilters">
+                        <div class="row g-4 pt-3 border-top">
+                            <!-- Date Range Filter -->
+                            <div class="col-lg-3 col-md-6">
+                                <div class="filter-group">
+                                    <label for="dateFrom" class="form-label fw-bold text-secondary mb-2">Từ ngày</label>
+                                    <input type="date" class="form-control" id="dateFrom" name="dateFrom" 
+                                           value="<?php echo isset($_GET['dateFrom']) ? htmlspecialchars($_GET['dateFrom']) : ''; ?>">
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-3 col-md-6">
+                                <div class="filter-group">
+                                    <label for="dateTo" class="form-label fw-bold text-secondary mb-2">Đến ngày</label>
+                                    <input type="date" class="form-control" id="dateTo" name="dateTo" 
+                                           value="<?php echo isset($_GET['dateTo']) ? htmlspecialchars($_GET['dateTo']) : ''; ?>">
+                                </div>
+                            </div>
+                            
+                            <!-- Sort Order -->
+                            <div class="col-lg-3 col-md-6">
+                                <div class="filter-group">
+                                    <label for="sortBy" class="form-label fw-bold text-secondary mb-2">Sắp xếp theo</label>
+                                    <select class="form-select" id="sortBy" name="sortBy">
+                                        <option value="DT_NGAYTAO" <?php echo (isset($_GET['sortBy']) && $_GET['sortBy'] == 'DT_NGAYTAO') ? 'selected' : ''; ?>>Ngày tạo</option>
+                                        <option value="DT_TENDT" <?php echo (isset($_GET['sortBy']) && $_GET['sortBy'] == 'DT_TENDT') ? 'selected' : ''; ?>>Tên đề tài</option>
+                                        <option value="DT_MADT" <?php echo (isset($_GET['sortBy']) && $_GET['sortBy'] == 'DT_MADT') ? 'selected' : ''; ?>>Mã đề tài</option>
+                                        <option value="DT_TRANGTHAI" <?php echo (isset($_GET['sortBy']) && $_GET['sortBy'] == 'DT_TRANGTHAI') ? 'selected' : ''; ?>>Trạng thái</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Sort Direction -->
+                            <div class="col-lg-3 col-md-6">
+                                <div class="filter-group">
+                                    <label for="sortOrder" class="form-label fw-bold text-secondary mb-2">Thứ tự</label>
+                                    <select class="form-select" id="sortOrder" name="sortOrder">
+                                        <option value="DESC" <?php echo (isset($_GET['sortOrder']) && $_GET['sortOrder'] == 'DESC') ? 'selected' : ''; ?>>Giảm dần</option>
+                                        <option value="ASC" <?php echo (isset($_GET['sortOrder']) && $_GET['sortOrder'] == 'ASC') ? 'selected' : ''; ?>>Tăng dần</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-lg-4 col-md-6">
-                        <label for="search" class="form-label fw-bold"><i class="fas fa-search me-1"></i>Tìm kiếm</label>
-                        <input type="text" class="form-control" id="search" name="search" placeholder="Tên đề tài, mã, giảng viên..." value="<?php echo htmlspecialchars($search_term); ?>">
+                    
+                    <!-- Active Filters Display -->
+                    <?php if (!empty($status_filter) || !empty($type_filter) || !empty($faculty_filter) || !empty($search_term) || !empty($date_from) || !empty($date_to)): ?>
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="alert alert-info py-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-filter me-2"></i>
+                                    <strong>Bộ lọc đang áp dụng:</strong>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <?php if (!empty($status_filter)): ?>
+                                        <span class="badge bg-primary px-3 py-2">Trạng thái: <?php echo htmlspecialchars($status_filter); ?></span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($type_filter)): ?>
+                                        <span class="badge bg-success px-3 py-2">Loại: <?php echo htmlspecialchars($type_filter); ?></span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($faculty_filter)): ?>
+                                        <span class="badge bg-warning px-3 py-2">Khoa: <?php echo htmlspecialchars($faculty_filter); ?></span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($search_term)): ?>
+                                        <span class="badge bg-info px-3 py-2">Tìm kiếm: "<?php echo htmlspecialchars($search_term); ?>"</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($date_from) || !empty($date_to)): ?>
+                                        <span class="badge bg-secondary px-3 py-2">
+                                            Khoảng thời gian: 
+                                            <?php echo !empty($date_from) ? date('d/m/Y', strtotime($date_from)) : 'Từ đầu'; ?> 
+                                            - 
+                                            <?php echo !empty($date_to) ? date('d/m/Y', strtotime($date_to)) : 'Đến nay'; ?>
+                                        </span>
+                                    <?php endif; ?>
+                                    <a href="manage_projects.php" class="badge bg-danger text-decoration-none px-3 py-2">
+                                        <i class="fas fa-times me-1"></i>Xóa tất cả
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-lg-2 col-md-12 d-flex">
-                        <button type="submit" class="btn btn-primary w-100 me-2"><i class="fas fa-search"></i></button>
-                        <a href="manage_projects.php" class="btn btn-secondary w-100"><i class="fas fa-sync-alt"></i></a>
-                    </div>
-                </div>
-            </form>
+                    <?php endif; ?>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -317,10 +730,10 @@ include '../../include/research_header.php';
                     <span class="badge bg-light text-dark ms-2"><?php echo $total_items; ?> đề tài được lọc</span>
                 </h5>
                 <div class="btn-group" role="group">
-                    <button class="btn btn-success btn-sm" id="exportBtn">
+                    <button class="btn btn-success btn-sm" id="exportBtn" title="Xuất Excel">
                         <i class="fas fa-file-excel me-1"></i>Xuất Excel
                     </button>
-                    <button class="btn btn-info btn-sm" id="printBtn">
+                    <button class="btn btn-info btn-sm" id="printBtn" title="In danh sách">
                         <i class="fas fa-print me-1"></i>In danh sách
                     </button>
                 </div>
@@ -331,14 +744,14 @@ include '../../include/research_header.php';
                 <table class="table table-striped table-hover datatable" id="projectsTable" width="100%" cellspacing="0">
                     <thead class="table-dark">
                         <tr>
-                            <th><i class="fas fa-hashtag me-1"></i>Mã đề tài</th>
-                            <th><i class="fas fa-file-alt me-1"></i>Tên đề tài</th>
-                            <th><i class="fas fa-user-tie me-1"></i>Giảng viên hướng dẫn</th>
-                            <th><i class="fas fa-building me-1"></i>Khoa/Đơn vị</th>
-                            <th><i class="fas fa-tag me-1"></i>Loại đề tài</th>
-                            <th><i class="fas fa-info-circle me-1"></i>Trạng thái</th>
-                            <th><i class="fas fa-calendar me-1"></i>Ngày tạo</th>
-                            <th class="no-sort"><i class="fas fa-cogs me-1"></i>Thao tác</th>
+                            <th>Mã đề tài</th>
+                            <th>Tên đề tài</th>
+                            <th>Giảng viên hướng dẫn</th>
+                            <th>Khoa/Đơn vị</th>
+                            <th>Loại đề tài</th>
+                            <th>Trạng thái</th>
+                            <th>Ngày tạo</th>
+                            <th class="no-sort">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -395,7 +808,6 @@ include '../../include/research_header.php';
                                     </td>
                                     <td>
                                         <small class="text-muted">
-                                            <i class="fas fa-clock me-1"></i>
                                             <?php echo isset($project['DT_NGAYTAO']) ? date('d/m/Y', strtotime($project['DT_NGAYTAO'])) : 'N/A'; ?>
                                         </small>
                                     </td>
@@ -403,27 +815,23 @@ include '../../include/research_header.php';
                                         <div class="btn-group" role="group">
                                             <a href="view_project.php?id=<?php echo htmlspecialchars($project['DT_MADT']); ?>" 
                                                class="btn btn-info btn-sm" 
-                                               title="Xem chi tiết"
-                                               data-bs-toggle="tooltip">
+                                               title="Xem chi tiết">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                             <a href="edit_project.php?id=<?php echo htmlspecialchars($project['DT_MADT']); ?>" 
                                                class="btn btn-warning btn-sm" 
-                                               title="Chỉnh sửa"
-                                               data-bs-toggle="tooltip">
+                                               title="Chỉnh sửa">
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             <?php if ($project['DT_TRANGTHAI'] == 'Chờ duyệt' || $project['DT_TRANGTHAI'] == 'Đang xử lý'): ?>
                                                 <a href="approve_project.php?id=<?php echo htmlspecialchars($project['DT_MADT']); ?>" 
                                                    class="btn btn-success btn-sm" 
-                                                   title="Phê duyệt"
-                                                   data-bs-toggle="tooltip">
+                                                   title="Phê duyệt">
                                                     <i class="fas fa-check"></i>
                                                 </a>
                                             <?php endif; ?>
                                             <button class="btn btn-danger btn-sm" 
                                                     title="Xóa"
-                                                    data-bs-toggle="tooltip"
                                                     onclick="confirmDelete('<?php echo htmlspecialchars($project['DT_MADT']); ?>')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -431,19 +839,6 @@ include '../../include/research_header.php';
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="8" class="text-center">
-                                    <div class="empty-state">
-                                        <i class="fas fa-folder-open"></i>
-                                        <h5>Không tìm thấy đề tài nào</h5>
-                                        <p>Thử thay đổi điều kiện lọc hoặc thêm đề tài mới</p>
-                                        <a href="create_project.php" class="btn btn-primary">
-                                            <i class="fas fa-plus mr-1"></i>Thêm đề tài mới
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -464,7 +859,7 @@ include '../../include/research_header.php';
     <!-- Custom JavaScript for enhanced functionality -->
     <script>
         $(document).ready(function() {
-            // Initialize Bootstrap tooltips
+            // Initialize Bootstrap tooltips (only for elements that need them)
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl);
@@ -484,7 +879,8 @@ include '../../include/research_header.php';
                         last: "Cuối cùng",
                         next: "Tiếp",
                         previous: "Trước"
-                    }
+                    },
+                    emptyTable: "Không có dữ liệu để hiển thị"
                 },
                 responsive: true,
                 pageLength: 10,
@@ -493,10 +889,29 @@ include '../../include/research_header.php';
                 paging: true,
                 info: true,
                 autoWidth: false,
+                processing: true,
                 columnDefs: [
-                    { targets: 'no-sort', orderable: false }
+                    { targets: 7, orderable: false, searchable: false } // Cột thao tác
                 ],
-                order: [[6, 'desc']]
+                order: [[6, 'desc']],
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+                     '<"row"<"col-sm-12"tr>>' +
+                     '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+                drawCallback: function(settings) {
+                    // Xử lý trường hợp không có dữ liệu
+                    if (settings.json && settings.json.data && settings.json.data.length === 0) {
+                        $(this).find('tbody').html(
+                            '<tr><td colspan="8" class="text-center py-4">' +
+                            '<div class="empty-state">' +
+                            '<i class="fas fa-folder-open fa-3x text-muted mb-3"></i>' +
+                            '<h5 class="text-muted">Không tìm thấy đề tài nào</h5>' +
+                            '<p class="text-muted">Thử thay đổi điều kiện lọc hoặc thêm đề tài mới</p>' +
+                            '<a href="create_project.php" class="btn btn-primary">' +
+                            '<i class="fas fa-plus me-2"></i>Thêm đề tài mới</a>' +
+                            '</div></td></tr>'
+                        );
+                    }
+                }
             });
             
             // Animation on scroll
@@ -556,7 +971,66 @@ include '../../include/research_header.php';
                 printTable();
             });
             
-            // Initialize tooltips
+            // Enhanced Filter Functionality
+            // Clear search button
+            $('#clearSearch').on('click', function() {
+                $('#search').val('').focus();
+            });
+            
+            // Reset all filters
+            $('#resetFilters').on('click', function() {
+                window.location.href = 'manage_projects.php';
+            });
+            
+            // Auto-submit form when filters change (optional)
+            $('#status, #type, #faculty').on('change', function() {
+                // Uncomment the line below if you want auto-submit on filter change
+                // $('#filterForm').submit();
+            });
+            
+            // Collapse/Expand filter section
+            $('[data-bs-toggle="collapse"]').on('click', function() {
+                const icon = $(this).find('i.fas');
+                if ($(this).attr('aria-expanded') === 'true') {
+                    icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                } else {
+                    icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                }
+            });
+            
+            // Advanced filters collapse
+            $('#advancedFilters').on('show.bs.collapse', function() {
+                $('[data-bs-target="#advancedFilters"] i.fas.fa-chevron-down').removeClass('fa-chevron-down').addClass('fa-chevron-up');
+            }).on('hide.bs.collapse', function() {
+                $('[data-bs-target="#advancedFilters"] i.fas.fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+            });
+            
+            // Date validation
+            $('#dateFrom, #dateTo').on('change', function() {
+                const dateFrom = $('#dateFrom').val();
+                const dateTo = $('#dateTo').val();
+                
+                if (dateFrom && dateTo && dateFrom > dateTo) {
+                    alert('Ngày bắt đầu không thể lớn hơn ngày kết thúc!');
+                    $(this).val('');
+                }
+            });
+            
+            // Real-time search with debounce
+            let searchTimeout;
+            $('#search').on('input', function() {
+                clearTimeout(searchTimeout);
+                const searchTerm = $(this).val();
+                
+                searchTimeout = setTimeout(function() {
+                    if (searchTerm.length >= 2 || searchTerm.length === 0) {
+                        // Uncomment the line below if you want real-time search
+                        // $('#filterForm').submit();
+                    }
+                }, 500);
+            });
+            
+            // Initialize tooltips (only for elements that need them)
             $('[data-toggle="tooltip"]').tooltip();
             
             // Helper functions
