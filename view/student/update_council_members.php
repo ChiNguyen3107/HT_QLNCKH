@@ -127,6 +127,32 @@ try {
 
     error_log("Found " . count($members_data) . " council members to process");
     
+    // Lấy thông tin giảng viên hướng dẫn của đề tài
+    $supervisor_sql = "SELECT dt.GV_MAGV FROM de_tai_nghien_cuu dt WHERE dt.DT_MADT = ?";
+    $stmt = $conn->prepare($supervisor_sql);
+    if (!$stmt) {
+        throw new Exception("Lỗi chuẩn bị truy vấn lấy giảng viên hướng dẫn: " . $conn->error);
+    }
+    $stmt->bind_param("s", $project_id);
+    $stmt->execute();
+    $supervisor_result = $stmt->get_result();
+    
+    if ($supervisor_result->num_rows === 0) {
+        throw new Exception('Không tìm thấy thông tin đề tài');
+    }
+    
+    $supervisor = $supervisor_result->fetch_assoc();
+    $supervisor_id = $supervisor['GV_MAGV'];
+    error_log("Project supervisor ID: " . $supervisor_id);
+
+    // Kiểm tra xem có giảng viên hướng dẫn trong danh sách thành viên không
+    foreach ($members_data as $member) {
+        $gv_magv = $member['id'] ?? '';
+        if ($gv_magv === $supervisor_id) {
+            throw new Exception('Không thể thêm giảng viên hướng dẫn vào thành viên hội đồng. Giảng viên hướng dẫn không được phép tham gia hội đồng nghiệm thu của đề tài mình hướng dẫn.');
+        }
+    }
+    
     // Xóa thành viên hội đồng cũ
     $delete_members_sql = "DELETE FROM thanh_vien_hoi_dong WHERE QD_SO = ?";
     $stmt = $conn->prepare($delete_members_sql);
@@ -209,10 +235,44 @@ try {
         }
     }
 
-    // Tạo mã tiến độ mới
-    $progress_id = 'TD' . date('ymdHis') . rand(10, 99);
-    if (strlen($progress_id) > 10) {
-        $progress_id = substr($progress_id, 0, 10);
+    // Tạo mã tiến độ mới (đảm bảo không quá 10 ký tự và unique)
+    $progress_id = null;
+    $attempts = 0;
+    $max_attempts = 10;
+    
+    do {
+        $timestamp = date('ymd');
+        $random = rand(10, 99);
+        $progress_id = 'TD' . $timestamp . $random;
+        
+        // Đảm bảo mã không quá 10 ký tự
+        if (strlen($progress_id) > 10) {
+            $progress_id = substr($progress_id, 0, 10);
+        }
+        
+        // Kiểm tra xem mã đã tồn tại chưa
+        $check_sql = "SELECT 1 FROM tien_do_de_tai WHERE TDDT_MA = ? LIMIT 1";
+        $check_stmt = $conn->prepare($check_sql);
+        if ($check_stmt) {
+            $check_stmt->bind_param("s", $progress_id);
+            $check_stmt->execute();
+            $exists = $check_stmt->get_result()->num_rows > 0;
+            $check_stmt->close();
+            
+            if (!$exists) {
+                break; // Mã unique, thoát khỏi vòng lặp
+            }
+        }
+        
+        $attempts++;
+    } while ($attempts < $max_attempts);
+    
+    // Nếu không tạo được mã unique, sử dụng timestamp
+    if ($attempts >= $max_attempts) {
+        $progress_id = 'TD' . time();
+        if (strlen($progress_id) > 10) {
+            $progress_id = substr($progress_id, 0, 10);
+        }
     }
 
     $progress_sql = "INSERT INTO tien_do_de_tai (TDDT_MA, DT_MADT, SV_MASV, TDDT_TIEUDE, TDDT_NOIDUNG, TDDT_NGAYCAPNHAT, TDDT_PHANTRAMHOANTHANH) 
@@ -227,16 +287,22 @@ try {
     
     if (!$stmt->execute()) {
         error_log("Failed to execute progress statement: " . $stmt->error);
+        error_log("Progress data - ID: $progress_id, Project: $project_id, User: $user_id");
+        error_log("Progress title length: " . strlen($progress_title));
+        error_log("Progress content length: " . strlen($progress_content));
         // Không throw exception cho progress vì không critical
     } else {
-        error_log("Progress inserted successfully");
+        error_log("Progress inserted successfully - ID: $progress_id");
+        error_log("Progress details - Title: $progress_title");
+        error_log("Progress details - Content length: " . strlen($progress_content));
+        error_log("Progress details - Project: $project_id, User: $user_id");
     }
 
     // Commit transaction
     $conn->commit();
     error_log("Council members transaction committed successfully");
 
-    $_SESSION['success_message'] = "Cập nhật thành viên hội đồng nghiệm thu thành công! Đã thêm $inserted_count thành viên.";
+    $_SESSION['success_message'] = "Cập nhật thành viên hội đồng nghiệm thu thành công! Đã thêm $inserted_count thành viên. Thông tin này đã được ghi lại trong tiến độ đề tài.";
     
 } catch (Exception $e) {
     // Rollback transaction
@@ -264,8 +330,8 @@ try {
 // Clean output buffer và redirect
 ob_end_clean();
 
-// Redirect về trang chi tiết đề tài với tab báo cáo
-$redirect_url = "view_project.php?id=" . urlencode($project_id) . "&tab=report";
+// Redirect về trang chi tiết đề tài (tiến độ sẽ được hiển thị ở phần chính)
+$redirect_url = "view_project.php?id=" . urlencode($project_id);
 header("Location: " . $redirect_url);
 exit();
 ?>

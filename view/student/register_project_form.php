@@ -467,6 +467,14 @@ if ($priority_fields_result) {
             </div>
         <?php endif; ?>
 
+        <!-- Thông báo về file thuyết minh bắt buộc -->
+        <div class="alert alert-info animate__animated animate__fadeIn">
+            <i class="fas fa-info-circle mr-2"></i>
+            <strong>Lưu ý quan trọng:</strong> Tất cả đề tài đăng ký <strong>bắt buộc phải có file thuyết minh</strong> 
+            (định dạng PDF, DOC, DOCX, tối đa 5MB). File thuyết minh phải mô tả chi tiết về mục tiêu, nội dung, 
+            phương pháp nghiên cứu và kế hoạch thực hiện đề tài.
+        </div>
+
         <div class="card shadow mb-4 animate__animated animate__fadeIn">
             <div class="card-header py-3">
                 <h6 class="m-0 font-weight-bold text-white">
@@ -613,15 +621,12 @@ if ($priority_fields_result) {
                                 <label for="memberCount" class="required-field">Số lượng thành viên (bao gồm
                                     chủ nhiệm)</label>
                                 <select class="form-control" id="memberCount" name="member_count" required>
-                                    <option value="1">1 thành viên</option>
-                                    <option value="2">2 thành viên</option>
-                                    <option value="3" selected>3 thành viên</option>
-                                    <option value="4">4 thành viên</option>
-                                    <option value="5">5 thành viên</option>
+                                    <option value="3" selected>3 thành viên (1 chủ nhiệm + 2 thành viên)</option>
+                                    <option value="4">4 thành viên (1 chủ nhiệm + 3 thành viên)</option>
+                                    <option value="5">5 thành viên (1 chủ nhiệm + 4 thành viên)</option>
                                 </select>
                                 <div class="invalid-feedback">Vui lòng chọn số lượng thành viên</div>
-                                <small class="text-muted">Số lượng phù hợp cho đề tài sinh viên là 2-4 thành
-                                    viên</small>
+                                <small class="text-muted">Mỗi đề tài có 1 chủ nhiệm và từ 2-4 thành viên tham gia</small>
                             </div>
                         </div>
 
@@ -629,16 +634,15 @@ if ($priority_fields_result) {
                             <div class="col-md-6 mb-3">
                                 <label for="implementationTime" class="required-field">Thời gian thực
                                     hiện</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" value="6 tháng" disabled>
-                                    <div class="input-group-append">
-                                        <span class="input-group-text"><i
-                                                class="fas fa-calendar"></i></span>
-                                    </div>
-                                </div>
-                                <small class="text-muted">Thời gian thực hiện là 6 tháng kể từ ngày đề tài
-                                    được phê duyệt</small>
-                                <input type="hidden" name="implementation_time" value="6">
+                                <select class="form-control" id="implementationTime" name="implementation_time" required>
+                                    <option value="">Chọn thời gian thực hiện</option>
+                                    <option value="3">3 tháng</option>
+                                    <option value="6" selected>6 tháng</option>
+                                    <option value="9">9 tháng</option>
+                                    <option value="12">12 tháng</option>
+                                </select>
+                                <div class="invalid-feedback">Vui lòng chọn thời gian thực hiện</div>
+                                <small class="text-muted">Thời gian thực hiện kể từ ngày đề tài được phê duyệt</small>
                             </div>
                         </div>
 
@@ -730,6 +734,11 @@ if ($priority_fields_result) {
 
                         <!-- Thông tin thành viên -->
                         <div id="membersSection">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                <strong>Lưu ý:</strong> Theo quy định, mỗi đề tài phải có 1 chủ nhiệm và từ 2-4 thành viên tham gia. Hệ thống sẽ kiểm tra và ngăn chặn việc thêm thành viên trùng lặp (cùng MSSV) trong danh sách.
+                            </div>
+                            
                             <h5 class="mb-3">
                                 <i class="fas fa-users mr-2"></i>Thông tin thành viên tham gia
                                 <span class="badge badge-primary ml-2">Số lượng: <span
@@ -843,16 +852,17 @@ if ($priority_fields_result) {
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="projectOutline">Đính kèm đề cương (không bắt buộc)</label>
+                                    <label for="projectOutline" class="required-field">Đính kèm thuyết minh đề tài <span class="text-danger">*</span></label>
                                     <div class="custom-file">
                                         <input type="file" class="custom-file-input" id="projectOutline"
-                                            name="project_outline" accept=".pdf,.doc,.docx">
+                                            name="project_outline" accept=".pdf,.doc,.docx" required>
                                         <label class="custom-file-label" for="projectOutline">Chọn
                                             file...</label>
                                     </div>
+                                    <div class="invalid-feedback">Vui lòng đính kèm file thuyết minh đề tài</div>
                                     <small class="form-text text-muted">
                                         <i class="fas fa-info-circle mr-1 text-primary"></i>
-                                        Định dạng: PDF, DOC, DOCX, tối đa 5MB. Đề cương chi tiết giúp giảng
+                                        <strong>Bắt buộc:</strong> Định dạng PDF, DOC, DOCX, tối đa 5MB. File thuyết minh chi tiết giúp giảng
                                         viên đánh giá tốt hơn và tăng cơ hội được duyệt.
                                     </small>
                                 </div>
@@ -894,8 +904,7 @@ if ($priority_fields_result) {
                                                 class="text-dark"></span></p>
                                         <p><strong>Khoa chủ trì:</strong> <span id="summary-faculty"
                                                 class="text-dark"></span></p>
-                                        <p><strong>Thời gian thực hiện:</strong> <span class="text-dark">6
-                                                tháng</span></p>
+                                        <p><strong>Thời gian thực hiện:</strong> <span id="summary-implementation-time" class="text-dark"></span></p>
                                         <p><strong>Số thành viên:</strong> <span id="summary-member-count"
                                                 class="text-dark"></span> người</p>
                                     </div>
@@ -952,6 +961,17 @@ if ($priority_fields_result) {
                                 <div class="card bg-light mb-3">
                                     <div class="card-body">
                                         <p id="summary-expected-results"></p>
+                                    </div>
+                                </div>
+
+                                <h5 class="border-bottom pb-2 text-primary">
+                                    <i class="fas fa-file-alt mr-2"></i>File thuyết minh đề tài
+                                </h5>
+                                <div class="card bg-light mb-3">
+                                    <div class="card-body">
+                                        <p><strong>Tên file:</strong> <span id="summary-project-outline-name"></span></p>
+                                        <p><strong>Kích thước:</strong> <span id="summary-project-outline-size"></span></p>
+                                        <p><strong>Định dạng:</strong> <span id="summary-project-outline-type"></span></p>
                                     </div>
                                 </div>
 
@@ -1145,6 +1165,15 @@ if ($priority_fields_result) {
                     return false;
                 }
 
+                // Kiểm tra trùng lặp thành viên khi chuyển sang bước 2
+                if (step === 1) {
+                    const duplicateCheck = checkAllMembersForDuplicates();
+                    if (duplicateCheck.hasDuplicates) {
+                        alert('Có thành viên trùng lặp trong danh sách! Vui lòng kiểm tra lại các MSSV sau:\n' + duplicateCheck.duplicates.join(', '));
+                        return false;
+                    }
+                }
+
                 // Chuẩn bị dữ liệu cho bước xác nhận nếu chuyển sang bước 4
                 if (step === 3) {
                     prepareConfirmationData();
@@ -1172,6 +1201,11 @@ if ($priority_fields_result) {
 
                 // Lưu bước hiện tại
                 currentStep = step;
+
+                // Kiểm tra trùng lặp khi chuyển sang bước 2
+                if (step === 2) {
+                    checkAndShowOverallDuplicates();
+                }
 
                 // Cuộn lên đầu
                 $('html, body').animate({
@@ -1212,22 +1246,26 @@ if ($priority_fields_result) {
                     $('#currentMemberCount').text(maxMembers);
                 }
 
-                // Hiển thị/ẩn nút thêm thành viên và section
-                if (maxMembers === 0) {
-                    $('#membersSection').hide(); // Không có thành viên nào ngoài chủ nhiệm
-                } else {
-                    $('#membersSection').show();
+                // Luôn hiển thị section thành viên vì theo quy định mới luôn có ít nhất 2 thành viên
+                $('#membersSection').show();
 
-                    // Ẩn nút thêm thành viên nếu đã đủ số lượng
-                    if ($('#membersList .member-card').length >= maxMembers) {
-                        $('#addMemberBtn').hide();
-                    } else {
-                        $('#addMemberBtn').show();
-                    }
+                // Tự động thêm thành viên nếu chưa đủ số lượng tối thiểu
+                while ($('#membersList .member-card').length < maxMembers) {
+                    addMemberCard();
+                }
+
+                // Ẩn nút thêm thành viên nếu đã đủ số lượng
+                if ($('#membersList .member-card').length >= maxMembers) {
+                    $('#addMemberBtn').hide();
+                } else {
+                    $('#addMemberBtn').show();
                 }
 
                 // Cập nhật số thứ tự thành viên
                 updateMemberNumbers();
+                
+                // Kiểm tra và cập nhật trạng thái validation
+                checkMembersCompletion();
             }
 
             // Xử lý nút thêm thành viên
@@ -1244,8 +1282,173 @@ if ($priority_fields_result) {
 
                     // Cập nhật số lượng hiển thị
                     $('#currentMemberCount').text($('#membersList .member-card').length);
+                    
+                    // Kiểm tra và cập nhật trạng thái validation
+                    checkMembersCompletion();
                 }
             });
+
+            // Hàm kiểm tra thành viên trùng lặp
+            function checkDuplicateMember(studentId) {
+                const existingMembers = [];
+                
+                // Lấy tất cả MSSV đã có
+                $('#membersList .member-student-id').each(function() {
+                    const id = $(this).val().trim();
+                    if (id && id !== studentId) {
+                        existingMembers.push(id);
+                    }
+                });
+                
+                // Kiểm tra với chủ nhiệm
+                const leaderId = $('#leaderStudentId').val().trim();
+                if (leaderId && leaderId === studentId) {
+                    return {
+                        duplicate: true,
+                        message: 'MSSV này đã được sử dụng cho chủ nhiệm đề tài!'
+                    };
+                }
+                
+                // Kiểm tra với các thành viên khác
+                if (existingMembers.includes(studentId)) {
+                    return {
+                        duplicate: true,
+                        message: 'MSSV này đã được thêm vào danh sách thành viên!'
+                    };
+                }
+                
+                return { duplicate: false };
+            }
+
+            // Hàm kiểm tra tất cả thành viên có trùng lặp không
+            function checkAllMembersForDuplicates() {
+                const allStudentIds = [];
+                const duplicates = [];
+                
+                // Lấy MSSV của chủ nhiệm
+                const leaderId = $('#leaderStudentId').val().trim();
+                if (leaderId) {
+                    allStudentIds.push(leaderId);
+                }
+                
+                // Lấy MSSV của các thành viên
+                $('#membersList .member-student-id').each(function() {
+                    const studentId = $(this).val().trim();
+                    if (studentId) {
+                        if (allStudentIds.includes(studentId)) {
+                            duplicates.push(studentId);
+                        } else {
+                            allStudentIds.push(studentId);
+                        }
+                    }
+                });
+                
+                return {
+                    hasDuplicates: duplicates.length > 0,
+                    duplicates: [...new Set(duplicates)] // Loại bỏ trùng lặp trong danh sách lỗi
+                };
+            }
+
+            // Hàm kiểm tra và hiển thị cảnh báo trùng lặp tổng thể
+            function checkAndShowOverallDuplicates() {
+                const duplicateCheck = checkAllMembersForDuplicates();
+                
+                // Xóa cảnh báo cũ
+                $('#duplicate-warning').remove();
+                
+                if (duplicateCheck.hasDuplicates) {
+                    // Hiển thị cảnh báo tổng thể
+                    const warningHtml = `
+                        <div id="duplicate-warning" class="alert alert-warning alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <strong>Cảnh báo:</strong> Có thành viên trùng lặp trong danh sách! 
+                            MSSV trùng lặp: <strong>${duplicateCheck.duplicates.join(', ')}</strong>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    `;
+                    
+                    // Thêm cảnh báo vào đầu section thành viên
+                    $('#membersSection').prepend(warningHtml);
+                    
+                    // Disable nút "Tiếp theo" nếu có trùng lặp
+                    $('.next-step[data-step="2"]').prop('disabled', true).addClass('btn-secondary').removeClass('btn-primary');
+                } else {
+                    // Enable nút "Tiếp theo" nếu không có trùng lặp
+                    $('.next-step[data-step="2"]').prop('disabled', false).addClass('btn-primary').removeClass('btn-secondary');
+                }
+            }
+
+            // Hàm kiểm tra đủ số lượng thành viên
+            function checkMembersCompletion() {
+                const maxMembers = parseInt($('#memberCount').val()) - 1;
+                const currentMembers = $('#membersList .member-card').length;
+                const completedMembers = $('#membersList .member-card.member-loaded').length;
+                
+                // Xóa cảnh báo cũ
+                $('#members-completion-warning').remove();
+                
+                // Theo quy định mới, luôn phải có ít nhất 2 thành viên (ngoài chủ nhiệm)
+                if (maxMembers >= 2) {
+                    if (currentMembers < maxMembers) {
+                        // Thiếu thành viên
+                        const warningHtml = `
+                            <div id="members-completion-warning" class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="fas fa-exclamation-circle mr-2"></i>
+                                <strong>Bắt buộc:</strong> Bạn cần thêm <strong>${maxMembers - currentMembers}</strong> thành viên nữa để đủ số lượng yêu cầu!
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        `;
+                        $('#membersSection').prepend(warningHtml);
+                        
+                        // Disable nút "Tiếp theo"
+                        $('.next-step[data-step="2"]').prop('disabled', true).addClass('btn-secondary').removeClass('btn-primary');
+                        return false;
+                    } else if (completedMembers < maxMembers) {
+                        // Đủ số lượng nhưng chưa hoàn thành thông tin
+                        const warningHtml = `
+                            <div id="members-completion-warning" class="alert alert-warning alert-dismissible fade show" role="alert">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                <strong>Cần hoàn thành:</strong> Bạn cần hoàn thành thông tin cho <strong>${maxMembers - completedMembers}</strong> thành viên nữa!
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        `;
+                        $('#membersSection').prepend(warningHtml);
+                        
+                        // Disable nút "Tiếp theo"
+                        $('.next-step[data-step="2"]').prop('disabled', true).addClass('btn-secondary').removeClass('btn-primary');
+                        return false;
+                    } else {
+                        // Đủ số lượng và hoàn thành
+                        const successHtml = `
+                            <div id="members-completion-warning" class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                <strong>Hoàn thành:</strong> Đã đủ số lượng thành viên và hoàn thành thông tin!
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        `;
+                        $('#membersSection').prepend(successHtml);
+                        
+                        // Enable nút "Tiếp theo" nếu không có trùng lặp
+                        const duplicateCheck = checkAllMembersForDuplicates();
+                        if (!duplicateCheck.hasDuplicates) {
+                            $('.next-step[data-step="2"]').prop('disabled', false).addClass('btn-primary').removeClass('btn-secondary');
+                        }
+                        return true;
+                    }
+                } else {
+                    // Trường hợp này không nên xảy ra theo quy định mới
+                    $('.next-step[data-step="2"]').prop('disabled', false).addClass('btn-primary').removeClass('btn-secondary');
+                    return true;
+                }
+            }
 
             // Thêm thẻ thành viên mới
             function addMemberCard() {
@@ -1264,6 +1467,14 @@ if ($priority_fields_result) {
                     updateMemberNumbers();
                     updateMembersUI();
                     $('#addMemberBtn').show();
+                    
+                    // Kiểm tra trùng lặp sau khi xóa thành viên
+                    if (currentStep === 2) {
+                        checkAndShowOverallDuplicates();
+                    }
+                    
+                    // Kiểm tra và cập nhật trạng thái validation
+                    checkMembersCompletion();
                 });
                 
                 // Ẩn nút clear ban đầu
@@ -1385,6 +1596,30 @@ if ($priority_fields_result) {
                             alert('Vui lòng điền đầy đủ thông tin chủ nhiệm đề tài!');
                         }
 
+                        // Kiểm tra trùng lặp thành viên
+                        const duplicateCheck = checkAllMembersForDuplicates();
+                        if (duplicateCheck.hasDuplicates) {
+                            isValid = false;
+                            alert('Có thành viên trùng lặp trong danh sách! Vui lòng kiểm tra lại các MSSV sau:\n' + duplicateCheck.duplicates.join(', '));
+                            return false;
+                        }
+
+                        // Kiểm tra đủ số lượng thành viên
+                        const maxMembers = parseInt($('#memberCount').val()) - 1;
+                        const currentMembers = $('#membersList .member-card').length;
+                        const completedMembers = $('#membersList .member-card.member-loaded').length;
+                        
+                        // Theo quy định mới, luôn phải có ít nhất 2 thành viên (ngoài chủ nhiệm)
+                        if (maxMembers >= 2) {
+                            if (currentMembers < maxMembers) {
+                                alert(`Bạn cần thêm ${maxMembers - currentMembers} thành viên nữa để đủ số lượng yêu cầu!`);
+                                isValid = false;
+                            } else if (completedMembers < maxMembers) {
+                                alert(`Bạn cần hoàn thành thông tin cho ${maxMembers - completedMembers} thành viên nữa!`);
+                                isValid = false;
+                            }
+                        }
+
                         // Kiểm tra từng thành viên
                         $('#membersList .member-card').each(function() {
                             const name = $(this).find('.member-name').val().trim();
@@ -1452,21 +1687,26 @@ if ($priority_fields_result) {
                             isValid = false;
                         }
 
-                        // Kiểm tra file đề cương (nếu có)
+                        // Kiểm tra file thuyết minh (bắt buộc)
                         const fileInput = document.getElementById('projectOutline');
-                        if (fileInput.files.length > 0) {
+                        if (fileInput.files.length === 0) {
+                            $('#projectOutline').addClass('is-invalid');
+                            isValid = false;
+                        } else {
                             const file = fileInput.files[0];
                             const fileExtension = file.name.split('.').pop().toLowerCase();
                             const allowedExtensions = ['pdf', 'doc', 'docx'];
                             const maxFileSize = 5 * 1024 * 1024; // 5MB
 
                             if (allowedExtensions.indexOf(fileExtension) === -1) {
-                                alert('File đề cương phải là định dạng PDF, DOC hoặc DOCX!');
+                                alert('File thuyết minh phải là định dạng PDF, DOC hoặc DOCX!');
+                                $('#projectOutline').addClass('is-invalid');
                                 isValid = false;
                             }
                             
                             if (file.size > maxFileSize) {
-                                alert('Kích thước file đề cương không được vượt quá 5MB!');
+                                alert('Kích thước file thuyết minh không được vượt quá 5MB!');
+                                $('#projectOutline').addClass('is-invalid');
                                 isValid = false;
                             }
                         }
@@ -1496,6 +1736,15 @@ if ($priority_fields_result) {
                 return re.test(String(email).toLowerCase());
             }
 
+            // Hàm format kích thước file
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
             // Chuẩn bị dữ liệu hiển thị cho bước xác nhận
             function prepareConfirmationData() {
                 // Thông tin đề tài
@@ -1505,6 +1754,7 @@ if ($priority_fields_result) {
                 $('#summary-research-field').text($('#researchField option:selected').text());
                 $('#summary-project-category').text($('#projectCategory option:selected').text());
                 $('#summary-faculty').text($('#facultyId option:selected').text());
+                $('#summary-implementation-time').text($('#implementationTime option:selected').text());
                 $('#summary-member-count').text($('#memberCount').val());
 
                 // Thông tin giảng viên hướng dẫn
@@ -1516,6 +1766,19 @@ if ($priority_fields_result) {
                 // Mô tả và kết quả dự kiến
                 $('#summary-project-description').text($('#projectDescription').val());
                 $('#summary-expected-results').text($('#expectedResults').val());
+
+                // Thông tin file thuyết minh
+                const fileInput = document.getElementById('projectOutline');
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    $('#summary-project-outline-name').text(file.name);
+                    $('#summary-project-outline-size').text(formatFileSize(file.size));
+                    $('#summary-project-outline-type').text(file.name.split('.').pop().toUpperCase());
+                } else {
+                    $('#summary-project-outline-name').text('Chưa chọn file');
+                    $('#summary-project-outline-size').text('N/A');
+                    $('#summary-project-outline-type').text('N/A');
+                }
 
                 // Danh sách thành viên
                 let tableHTML = '';
@@ -1554,6 +1817,46 @@ if ($priority_fields_result) {
                     return false;
                 }
 
+                // Kiểm tra thành viên trùng lặp trước khi submit
+                const duplicateMembers = [];
+                const allStudentIds = [];
+                
+                // Lấy MSSV của chủ nhiệm
+                const leaderId = $('#leaderStudentId').val().trim();
+                if (leaderId) {
+                    allStudentIds.push(leaderId);
+                }
+                
+                // Lấy MSSV của các thành viên
+                $('#membersList .member-student-id').each(function() {
+                    const studentId = $(this).val().trim();
+                    if (studentId) {
+                        if (allStudentIds.includes(studentId)) {
+                            duplicateMembers.push(studentId);
+                        } else {
+                            allStudentIds.push(studentId);
+                        }
+                    }
+                });
+                
+                if (duplicateMembers.length > 0) {
+                    event.preventDefault();
+                    alert('Có thành viên trùng lặp trong danh sách! Vui lòng kiểm tra lại các MSSV sau:\n' + duplicateMembers.join(', '));
+                    return false;
+                }
+
+                // Kiểm tra file thuyết minh một lần nữa trước khi submit
+                const fileInput = document.getElementById('projectOutline');
+                if (fileInput.files.length === 0) {
+                    event.preventDefault();
+                    alert('Vui lòng đính kèm file thuyết minh đề tài trước khi gửi đăng ký!');
+                    $('#projectOutline').addClass('is-invalid');
+                    $('html, body').animate({
+                        scrollTop: $('#projectOutline').offset().top - 120
+                    }, 500);
+                    return false;
+                }
+
                 // Thay đổi nút submit để ngăn gửi nhiều lần
                 $('#submitRegistrationBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Đang xử lý...');
             });
@@ -1571,6 +1874,14 @@ if ($priority_fields_result) {
                 
                 if (!studentId.match(/^[A-Za-z0-9]{8}$/)) {
                     alert('MSSV phải có đúng 8 ký tự');
+                    return;
+                }
+
+                // Kiểm tra trùng lặp trước khi tìm kiếm
+                const duplicateCheck = checkDuplicateMember(studentId);
+                if (duplicateCheck.duplicate) {
+                    alert('Lỗi: ' + duplicateCheck.message);
+                    studentIdInput.focus();
                     return;
                 }
                 
@@ -1608,6 +1919,9 @@ if ($priority_fields_result) {
                             
                             // Thông báo thành công
                             memberCard.find('.member-name').parent().append('<small class="text-success"><i class="fas fa-check-circle mr-1"></i>Đã tải thông tin thành công</small>');
+                            
+                            // Kiểm tra và cập nhật trạng thái validation sau khi tải thông tin thành công
+                            checkMembersCompletion();
                             
                         } else {
                             alert('Lỗi: ' + response.message);
@@ -1665,9 +1979,43 @@ if ($priority_fields_result) {
                 
                 // Ẩn nút clear
                 $(this).hide();
+                
+                // Kiểm tra và cập nhật trạng thái validation sau khi xóa thông tin
+                checkMembersCompletion();
             });
 
-            // Thêm CSS cho trạng thái đã load
+            // Xử lý validation khi nhập MSSV
+            $(document).on('input', '.member-student-id', function() {
+                const memberCard = $(this).closest('.member-card');
+                const studentId = $(this).val().trim();
+                
+                // Xóa thông báo lỗi cũ
+                memberCard.find('.duplicate-error').remove();
+                
+                if (studentId && studentId.length === 8) {
+                    const duplicateCheck = checkDuplicateMember(studentId);
+                    if (duplicateCheck.duplicate) {
+                        // Hiển thị thông báo lỗi
+                        $(this).addClass('is-invalid');
+                        memberCard.find('.member-name').parent().append(
+                            '<small class="text-danger duplicate-error"><i class="fas fa-exclamation-triangle mr-1"></i>' + 
+                            duplicateCheck.message + '</small>'
+                        );
+                    } else {
+                        $(this).removeClass('is-invalid');
+                    }
+                } else {
+                    $(this).removeClass('is-invalid');
+                }
+                
+                // Kiểm tra tổng thể và hiển thị cảnh báo nếu có trùng lặp
+                if (currentStep === 2) {
+                    checkAndShowOverallDuplicates();
+                    checkMembersCompletion();
+                }
+            });
+
+            // Thêm CSS cho trạng thái đã load và lỗi trùng lặp
             $("<style>")
     .prop("type", "text/css")
     .html(`
@@ -1680,6 +2028,15 @@ if ($priority_fields_result) {
     }
     .member-loaded .clear-student-info {
         display: inline-block;
+    }
+    .duplicate-error {
+        display: block;
+        margin-top: 5px;
+        font-weight: 500;
+    }
+    .member-card .is-invalid {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
     }
     `)
     .appendTo("head");

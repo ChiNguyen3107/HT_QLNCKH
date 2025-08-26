@@ -160,6 +160,16 @@ class ProjectModel extends BaseModel {
      * @return array Danh sách báo cáo
      */
     public function getProjectReports($project_id) {
+        // Kiểm tra xem bảng bao_cao có tồn tại không
+        $check_sql = "SHOW TABLES LIKE 'bao_cao'";
+        $check_result = fetchRow($check_sql);
+        
+        if (!$check_result) {
+            // Bảng bao_cao không tồn tại, trả về mảng rỗng
+            error_log("Bảng bao_cao không tồn tại trong cơ sở dữ liệu");
+            return [];
+        }
+        
         $sql = "SELECT bc.*, lbc.LBC_TENLOAI, sv.SV_MASV, sv.SV_HOSV, sv.SV_TENSV
                 FROM bao_cao bc
                 LEFT JOIN loai_bao_cao lbc ON bc.LBC_MALOAI = lbc.LBC_MALOAI

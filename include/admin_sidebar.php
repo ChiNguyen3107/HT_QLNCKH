@@ -44,6 +44,13 @@
                 </a>
             </li>
             <li>
+                <a href="/NLNganh/view/admin/manage_advisor.php"
+                    class="<?php echo (strpos($_SERVER['REQUEST_URI'], 'manage_advisor') !== false) ? 'active' : ''; ?>">
+                    <i class="fas fa-user-tie"></i>
+                    <span>Quản lý CVHT</span>
+                </a>
+            </li>
+            <li>
                 <a href="/NLNganh/view/admin/manage_departments/manage_departments.php"
                     class="<?php echo (strpos($_SERVER['REQUEST_URI'], 'manage_departments') !== false) ? 'active' : ''; ?>">
                     <i class="fas fa-building"></i>

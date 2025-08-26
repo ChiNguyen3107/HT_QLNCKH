@@ -1,121 +1,132 @@
 <?php
 session_start();
-include 'include/connect.php';
+require 'include/connect.php';
+$conn->set_charset('utf8mb4');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
+/**
+ * Kiểm tra mật khẩu với nhiều định dạng:
+ * - bcrypt/argon2: password_verify
+ * - sha256 hex (64 ký tự)
+ * - md5 hex (32 ký tự)
+ * - plain text (fallback, hạn chế dùng)
+ */
+function verify_password_mixed(string $raw, ?string $stored): bool {
+    if ($stored === null) return false;
+    $stored = trim((string)$stored);
 
-    // Debug log
-    error_log("Đăng nhập: $username");
-
-    // Kiểm tra trong bảng `user`
-    $sql = "SELECT * FROM user WHERE USERNAME = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $username);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();        if (password_verify($password, $user['PASSWORD'])) {
-            $_SESSION['user_id'] = $user['USER_ID'] ?? $user['USERNAME'];
-            $_SESSION['username'] = $user['USERNAME'];
-            $_SESSION['role'] = $user['ROLE'];
-            $_SESSION['user_name'] = $user['NAME'] ?? $user['USERNAME'];            
-            
-            // Log successful login
-            error_log("Đăng nhập thành công: {$user['USERNAME']} với vai trò {$user['ROLE']}");
-
-            // Chuyển hướng theo vai trò - sử dụng đường dẫn tuyệt đối
-            if ($user['ROLE'] == 'admin') {
-                header("Location: /NLNganh/view/admin/admin_dashboard.php");
-            } elseif ($user['ROLE'] == 'teacher') {
-                header("Location: /NLNganh/view/teacher/teacher_dashboard.php");
-            } elseif ($user['ROLE'] == 'student') {
-                header("Location: /NLNganh/view/student/student_dashboard.php");            } elseif ($user['ROLE'] == 'research_manager') {
-                // Đảm bảo luôn có giá trị manager_id để xác thực API
-                if (!empty($user['USER_ID'])) {
-                    // Nếu có USER_ID, sử dụng nó
-                    $_SESSION['manager_id'] = $user['USER_ID'];
-                } else {
-                    // Mặc định gán manager_id giống với user_id
-                    $_SESSION['manager_id'] = $user['USERNAME'];
-                    
-                    // Hoặc kiểm tra xem có quản lý nghiên cứu có mã QLR001 không
-                    $check_sql = "SELECT QL_MA FROM quan_ly_nghien_cuu WHERE QL_MA = 'QLR001'";
-                    $check_result = $conn->query($check_sql);
-                    if ($check_result && $check_result->num_rows > 0) {
-                        $_SESSION['manager_id'] = 'QLR001';
-                    }
-                }
-                
-                // Ghi log
-                error_log("Research manager login successful. manager_id: {$_SESSION['manager_id']}");
-                header("Location: /NLNganh/view/research/research_dashboard.php");
-            }
-            exit();
-        }
+    // bcrypt / argon2
+    if (preg_match('/^(\$(2y|2b|2a)\$|\$argon2(id|i|d)\$)/', $stored)) {
+        return password_verify($raw, $stored);
     }
-
-    // Kiểm tra trong bảng `sinh_vien`
-    $sql = "SELECT * FROM sinh_vien WHERE SV_MASV = ? OR SV_EMAIL = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ss", $username, $username);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
-        if (password_verify($password, $user['SV_MATKHAU'])) {
-            $_SESSION['user_id'] = $user['SV_MASV'];
-            $_SESSION['username'] = $user['SV_EMAIL'];
-            $_SESSION['role'] = 'student';
-            $_SESSION['user_name'] = $user['SV_HOSV'] . ' ' . $user['SV_TENSV'];
-            header("Location: /NLNganh/view/student/student_dashboard.php");
-            exit();
-        }
+    // sha-256 hex
+    if (preg_match('/^[0-9a-f]{64}$/i', $stored)) {
+        return hash('sha256', $raw) === strtolower($stored);
     }
-
-    // Kiểm tra trong bảng `giang_vien`
-    // Cho phép đăng nhập bằng cả mã giảng viên hoặc email
-    $sql = "SELECT * FROM giang_vien WHERE GV_MAGV = ? OR GV_EMAIL = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ss", $username, $username);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
-
-        // Kiểm tra mật khẩu với nhiều phương thức (password_verify và so sánh trực tiếp)
-        $password_correct = false;
-
-        if (password_verify($password, $user['GV_MATKHAU'])) {
-            $password_correct = true;
-        } elseif ($password == $user['GV_MATKHAU']) {
-            // Cho phép so sánh trực tiếp nếu mật khẩu không được hash
-            $password_correct = true;
-            error_log("Đăng nhập giảng viên với mật khẩu plain text");
-        }
-
-        if ($password_correct) {
-            // Thiết lập session
-            $_SESSION['user_id'] = $user['GV_MAGV']; 
-            $_SESSION['username'] = $user['GV_EMAIL'];
-            $_SESSION['role'] = 'teacher';
-            $_SESSION['user_name'] = $user['GV_HOGV'] . ' ' . $user['GV_TENGV'];
-            
-            error_log("Đăng nhập giảng viên thành công: {$user['GV_MAGV']} - {$user['GV_HOGV']} {$user['GV_TENGV']}");
-            
-            // Sử dụng đường dẫn tuyệt đối giống như các trường hợp khác
-            header("Location: /NLNganh/view/teacher/teacher_dashboard.php");
-            exit();
-        }
+    // md5 hex
+    if (preg_match('/^[0-9a-f]{32}$/i', $stored)) {
+        return md5($raw) === strtolower($stored);
     }
-
-    // Đăng nhập thất bại
-    error_log("Đăng nhập thất bại: $username");
-    header("Location: login.php?error=invalid_credentials");
-    exit();
+    // plain text (không khuyến nghị)
+    return hash_equals($stored, $raw);
 }
-?>
+
+/** Sau khi đăng nhập đúng, nếu hash cũ không phải bcrypt/argon2 thì nâng cấp lên bcrypt */
+function maybe_rehash_bcrypt(mysqli $conn, string $table, string $id_col, string $id_val,
+                             string $pass_col, string $raw, string $stored): void {
+    if (!preg_match('/^\$2[aby]\$|\$argon2(id|i|d)\$/', $stored)) {
+        $new = password_hash($raw, PASSWORD_DEFAULT);
+        $sql = "UPDATE {$table} SET {$pass_col}=? WHERE {$id_col}=?";
+        if ($stmt = $conn->prepare($sql)) {
+            $stmt->bind_param("ss", $new, $id_val);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = trim($_POST['username'] ?? '');
+    $password = (string)($_POST['password'] ?? '');
+
+    // ===== 1) Bảng user =====
+    if ($stmt = $conn->prepare("SELECT * FROM user WHERE USERNAME = ?")) {
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $rs = $stmt->get_result();
+        if ($u = $rs->fetch_assoc()) {
+            if (verify_password_mixed($password, $u['PASSWORD'])) {
+                session_regenerate_id(true);
+                $_SESSION['user_id']   = $u['USER_ID'] ?? $u['USERNAME'];
+                $_SESSION['username']  = $u['USERNAME'];
+                $_SESSION['role']      = $u['ROLE'];
+                $_SESSION['user_name'] = $u['NAME'] ?? $u['USERNAME'];
+
+                maybe_rehash_bcrypt($conn, 'user', 'USERNAME', $u['USERNAME'], 'PASSWORD', $password, $u['PASSWORD']);
+
+                switch ($u['ROLE']) {
+                    case 'admin':
+                        header("Location: /NLNganh/view/admin/admin_dashboard.php"); break;
+                    case 'teacher':
+                        header("Location: /NLNganh/view/teacher/teacher_dashboard.php"); break;
+                    case 'student':
+                        header("Location: /NLNganh/view/student/student_dashboard.php"); break;
+                    case 'research_manager':
+                        $_SESSION['manager_id'] = $u['USER_ID'] ?: $u['USERNAME'];
+                        header("Location: /NLNganh/view/research/research_dashboard.php"); break;
+                    default:
+                        header("Location: /NLNganh/index.php"); break;
+                }
+                exit;
+            }
+        }
+        $stmt->close();
+    }
+
+    // ===== 2) Bảng sinh_vien (đăng nhập bằng mã SV hoặc email) =====
+    if ($stmt = $conn->prepare("SELECT * FROM sinh_vien WHERE SV_MASV = ? OR SV_EMAIL = ?")) {
+        $stmt->bind_param("ss", $username, $username);
+        $stmt->execute();
+        $rs = $stmt->get_result();
+        if ($sv = $rs->fetch_assoc()) {
+            if (verify_password_mixed($password, $sv['SV_MATKHAU'])) {
+                session_regenerate_id(true);
+                $_SESSION['user_id']   = $sv['SV_MASV'];
+                $_SESSION['username']  = $sv['SV_EMAIL'];
+                $_SESSION['role']      = 'student';
+                $_SESSION['user_name'] = $sv['SV_HOSV'].' '.$sv['SV_TENSV'];
+
+                maybe_rehash_bcrypt($conn, 'sinh_vien', 'SV_MASV', $sv['SV_MASV'], 'SV_MATKHAU', $password, $sv['SV_MATKHAU']);
+
+                header("Location: /NLNganh/view/student/student_dashboard.php");
+                exit;
+            }
+        }
+        $stmt->close();
+    }
+
+    // ===== 3) Bảng giang_vien (đăng nhập bằng mã GV hoặc email) =====
+    if ($stmt = $conn->prepare("SELECT * FROM giang_vien WHERE GV_MAGV = ? OR GV_EMAIL = ?")) {
+        $stmt->bind_param("ss", $username, $username);
+        $stmt->execute();
+        $rs = $stmt->get_result();
+        if ($gv = $rs->fetch_assoc()) {
+            if (verify_password_mixed($password, $gv['GV_MATKHAU'])) {
+                session_regenerate_id(true);
+                $_SESSION['user_id']   = $gv['GV_MAGV'];
+                $_SESSION['username']  = $gv['GV_EMAIL'];
+                $_SESSION['role']      = 'teacher';
+                $_SESSION['user_name'] = $gv['GV_HOGV'].' '.$gv['GV_TENGV'];
+
+                maybe_rehash_bcrypt($conn, 'giang_vien', 'GV_MAGV', $gv['GV_MAGV'], 'GV_MATKHAU', $password, $gv['GV_MATKHAU']);
+
+                header("Location: /NLNganh/view/teacher/teacher_dashboard.php");
+                exit;
+            }
+        }
+        $stmt->close();
+    }
+
+    // ===== Thất bại =====
+    header("Location: login.php?error=invalid_credentials");
+    exit;
+}

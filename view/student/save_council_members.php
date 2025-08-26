@@ -48,6 +48,28 @@ try {
         throw new Exception('Dữ liệu thành viên hội đồng không hợp lệ');
     }
 
+    // Lấy thông tin giảng viên hướng dẫn của đề tài
+    $supervisor_sql = "SELECT GV_MAGV FROM de_tai_nghien_cuu WHERE DT_MADT = ?";
+    $stmt = $conn->prepare($supervisor_sql);
+    $stmt->bind_param("s", $project_id);
+    $stmt->execute();
+    $supervisor_result = $stmt->get_result();
+    
+    if ($supervisor_result->num_rows === 0) {
+        throw new Exception('Không tìm thấy thông tin đề tài');
+    }
+    
+    $supervisor = $supervisor_result->fetch_assoc();
+    $supervisor_id = $supervisor['GV_MAGV'];
+
+    // Kiểm tra xem có giảng viên hướng dẫn trong danh sách thành viên không
+    foreach ($members_data as $member) {
+        $gv_magv = $member['id'] ?? '';
+        if ($gv_magv === $supervisor_id) {
+            throw new Exception('Không thể thêm giảng viên hướng dẫn vào thành viên hội đồng. Giảng viên hướng dẫn không được phép tham gia hội đồng nghiệm thu của đề tài mình hướng dẫn.');
+        }
+    }
+
     // Xóa thành viên hội đồng cũ
     $delete_sql = "DELETE FROM thanh_vien_hoi_dong WHERE QD_SO = ?";
     $stmt = $conn->prepare($delete_sql);

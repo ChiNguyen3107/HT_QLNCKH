@@ -155,6 +155,24 @@ try {
     }
     error_log("File uploaded successfully to: " . $upload_path);
 
+    // Lưu vết file cũ vào lịch sử trước khi cập nhật
+    if ($old_file) {
+        // Lấy thông tin file cũ
+        $old_file_path = $upload_dir . $old_file;
+        $old_file_size = file_exists($old_file_path) ? filesize($old_file_path) : 0;
+        $old_file_type = pathinfo($old_file, PATHINFO_EXTENSION);
+        
+        // Thêm vào bảng lịch sử thuyết minh
+        $history_sql = "INSERT INTO lich_su_thuyet_minh (DT_MADT, FILE_TEN, FILE_KICHTHUOC, FILE_LOAI, LY_DO, NGUOI_TAI, NGAY_TAI, LA_HIEN_TAI) 
+                       VALUES (?, ?, ?, ?, ?, ?, NOW(), 0)";
+        $stmt = $conn->prepare($history_sql);
+        if ($stmt) {
+            $stmt->bind_param("ssisss", $project_id, $old_file, $old_file_size, $old_file_type, $update_reason, $student_info['SV_HOTEN']);
+            $stmt->execute();
+            error_log("Old file saved to history: " . $old_file);
+        }
+    }
+    
     // Cập nhật đường dẫn file trong database
     $update_sql = "UPDATE de_tai_nghien_cuu SET DT_FILEBTM = ? WHERE DT_MADT = ?";
     $stmt = $conn->prepare($update_sql);
@@ -179,6 +197,19 @@ try {
     $stmt->execute();
     $student_result = $stmt->get_result();
     $student_info = $student_result->fetch_assoc();
+
+    // Lưu file mới vào lịch sử và đánh dấu là file hiện tại
+    $new_file_size = filesize($upload_path);
+    $new_file_type = pathinfo($new_filename, PATHINFO_EXTENSION);
+    
+    $new_history_sql = "INSERT INTO lich_su_thuyet_minh (DT_MADT, FILE_TEN, FILE_KICHTHUOC, FILE_LOAI, LY_DO, NGUOI_TAI, NGAY_TAI, LA_HIEN_TAI) 
+                       VALUES (?, ?, ?, ?, ?, ?, NOW(), 1)";
+    $stmt = $conn->prepare($new_history_sql);
+    if ($stmt) {
+        $stmt->bind_param("ssisss", $project_id, $new_filename, $new_file_size, $new_file_type, $update_reason, $student_info['SV_HOTEN']);
+        $stmt->execute();
+        error_log("New file saved to history as current: " . $new_filename);
+    }
 
     // Thêm vào tiến độ đề tài
     $progress_title = "Cập nhật file thuyết minh";
@@ -208,13 +239,10 @@ try {
     
     error_log("Progress inserted successfully - insert id: " . $conn->insert_id);
 
-    // Xóa file cũ nếu tồn tại
-    if ($old_file && file_exists($upload_dir . $old_file)) {
-        if (unlink($upload_dir . $old_file)) {
-            error_log("Old file deleted successfully: " . $old_file);
-        } else {
-            error_log("Failed to delete old file: " . $old_file);
-        }
+    // Không xóa file cũ ngay lập tức để giữ lịch sử
+    // File cũ sẽ được giữ lại trong thư mục uploads để có thể tải về từ lịch sử
+    if ($old_file) {
+        error_log("Old file preserved for history: " . $old_file);
     }
 
     // Commit transaction

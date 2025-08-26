@@ -39,7 +39,8 @@ try {
                 gv.GV_TENGV as firstName,
                 gv.GV_EMAIL as email,
                 gv.GV_CHUYENMON as specialty,
-                k.DV_TENDV as department
+                gv.DV_MADV as department_code,
+                k.DV_TENDV as department_name
             FROM giang_vien gv 
             LEFT JOIN khoa k ON gv.DV_MADV = k.DV_MADV 
             ORDER BY gv.GV_HOGV ASC, gv.GV_TENGV ASC";
@@ -63,7 +64,9 @@ try {
             'firstName' => $row['firstName'] ?? '',
             'email' => $row['email'] ?? '',
             'specialty' => $row['specialty'] ?? 'Không có thông tin',
-            'department' => $row['department'] ?? 'Không xác định'
+            'department_code' => $row['department_code'] ?? '',
+            'department_name' => $row['department_name'] ?? 'Không xác định',
+            'department' => $row['department_name'] ?? 'Không xác định' // Giữ lại để tương thích
         ];
     }
     

@@ -510,7 +510,18 @@ while ($class_row = $class_stats->fetch_assoc()) {
 
     $class_name = $class_row['LOP_TEN'];
 
-
+    // Lấy thông tin khoa của lớp
+    $class_info_query = "SELECT k.DV_MADV, k.DV_TENDV, l.KH_NAM
+                        FROM lop l
+                        JOIN khoa k ON l.DV_MADV = k.DV_MADV
+                        WHERE l.LOP_MA = ?";
+    $stmt = $conn->prepare($class_info_query);
+    if ($stmt === false) {
+        die("Lỗi truy vấn thông tin lớp: " . $conn->error);
+    }
+    $stmt->bind_param("s", $class_code);
+    $stmt->execute();
+    $class_info = $stmt->get_result()->fetch_assoc();
 
     // Truy vấn danh sách sinh viên của lớp
 
@@ -528,8 +539,6 @@ while ($class_row = $class_stats->fetch_assoc()) {
 
                                JOIN de_tai_nghien_cuu dt ON cttg.DT_MADT = dt.DT_MADT 
 
-                               WHERE dt.GV_MAGV = ? 
-
                            ) cttg ON sv.SV_MASV = cttg.SV_MASV
 
                            WHERE sv.LOP_MA = ?
@@ -546,7 +555,7 @@ while ($class_row = $class_stats->fetch_assoc()) {
 
 
 
-    $stmt->bind_param("ss", $teacher_id, $class_code);
+    $stmt->bind_param("s", $class_code);
 
     $stmt->execute();
 
@@ -584,7 +593,7 @@ while ($class_row = $class_stats->fetch_assoc()) {
 
                                       JOIN de_tai_nghien_cuu dt ON cttg.DT_MADT = dt.DT_MADT
 
-                                      WHERE cttg.SV_MASV = ? AND dt.GV_MAGV = ?";
+                                      WHERE cttg.SV_MASV = ?";
 
             $stmt = $conn->prepare($student_projects_query);
 
@@ -596,7 +605,7 @@ while ($class_row = $class_stats->fetch_assoc()) {
 
 
 
-            $stmt->bind_param("ss", $student['SV_MASV'], $teacher_id);
+            $stmt->bind_param("s", $student['SV_MASV']);
 
             $stmt->execute();
 
@@ -635,6 +644,10 @@ while ($class_row = $class_stats->fetch_assoc()) {
         'class_code' => $class_code,
 
         'class_name' => $class_name,
+
+        'faculty_name' => $class_info['DV_TENDV'] ?? '',
+
+        'year' => $class_info['KH_NAM'] ?? '',
 
         'total_students' => $total_students,
 
@@ -5205,7 +5218,7 @@ if ($class_stats) {
 
                             <!-- Student Filter Section -->
 
-                            <div class="row mb-3">
+                            <!-- <div class="row mb-3">
 
                                 <div class="col-12">
 
@@ -5305,7 +5318,7 @@ if ($class_stats) {
 
                                 </div>
 
-                            </div>
+                            </div> -->
 
 
 
@@ -5332,12 +5345,95 @@ if ($class_stats) {
                                         </div>
 
                                         <div class="card-body">
+                                            
+                                            <!-- Bộ lọc cho chi tiết sinh viên -->
+                                            <div class="row mb-4">
+                                                <div class="col-md-12">
+                                                    <div class="card border-primary">
+                                                        <div class="card-header bg-primary text-white">
+                                                            <h6 class="mb-0">
+                                                                <i class="fas fa-filter mr-2"></i>
+                                                                Bộ lọc chi tiết sinh viên
+                                                            </h6>
+                                                        </div>
+                                                        <div class="card-body">
+                                                            <div class="row">
+                                                                <div class="col-md-3">
+                                                                    <label for="classFilter">Lọc theo lớp:</label>
+                                                                    <select class="form-control" id="classFilter">
+                                                                        <option value="">Tất cả lớp</option>
+                                                                        <?php foreach ($class_students_details as $class_code => $class_data): ?>
+                                                                            <option value="<?php echo htmlspecialchars($class_data['class_name']); ?>">
+                                                                                <?php echo htmlspecialchars($class_data['class_name']); ?>
+                                                                            </option>
+                                                                        <?php endforeach; ?>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="col-md-3">
+                                                                    <label for="facultyFilter">Lọc theo khoa:</label>
+                                                                    <select class="form-control" id="facultyFilter">
+                                                                        <option value="">Tất cả khoa</option>
+                                                                        <?php 
+                                                                        $faculties = [];
+                                                                        foreach ($class_students_details as $class_data) {
+                                                                            if (!in_array($class_data['faculty_name'], $faculties)) {
+                                                                                $faculties[] = $class_data['faculty_name'];
+                                                                            }
+                                                                        }
+                                                                        foreach ($faculties as $faculty): ?>
+                                                                            <option value="<?php echo htmlspecialchars($faculty); ?>">
+                                                                                <?php echo htmlspecialchars($faculty); ?>
+                                                                            </option>
+                                                                        <?php endforeach; ?>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="col-md-3">
+                                                                    <label for="participationFilter">Lọc theo tham gia:</label>
+                                                                    <select class="form-control" id="participationFilter">
+                                                                        <option value="">Tất cả</option>
+                                                                        <option value="participating">Có tham gia NCKH</option>
+                                                                        <option value="not-participating">Không tham gia NCKH</option>
+                                                                        <option value="high-participation">Tham gia cao (>50%)</option>
+                                                                        <option value="low-participation">Tham gia thấp (≤50%)</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="col-md-3">
+                                                                    <label for="studentSearch">Tìm kiếm sinh viên:</label>
+                                                                    <input type="text" class="form-control" id="studentSearch" placeholder="Nhập tên hoặc MSSV...">
+                                                                </div>
+                                                            </div>
+                                                            <div class="row mt-3">
+                                                                <div class="col-md-12">
+                                                                    <button type="button" class="btn btn-primary mr-2" id="applyFilters">
+                                                                        <i class="fas fa-search mr-1"></i>
+                                                                        Áp dụng bộ lọc
+                                                                    </button>
+                                                                    <button type="button" class="btn btn-secondary" id="clearFilters">
+                                                                        <i class="fas fa-times mr-1"></i>
+                                                                        Xóa bộ lọc
+                                                                    </button>
+                                                                    <span class="ml-3 text-muted">
+                                                                        <i class="fas fa-info-circle mr-1"></i>
+                                                                        Hiển thị: <span id="filterResultsCount">0</span> lớp
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
 
                                             <div class="accordion" id="classStudentsDetails">
 
                                                 <?php foreach ($class_students_details as $class_code => $class_data): ?>
 
-                                                    <div class="card class-detail-card mb-3">
+                                                    <div class="card class-detail-card mb-3" 
+                                                         data-class-name="<?php echo htmlspecialchars($class_data['class_name']); ?>"
+                                                         data-faculty="<?php echo htmlspecialchars($class_data['faculty_name']); ?>"
+                                                         data-participation-rate="<?php echo $class_data['participation_rate']; ?>"
+                                                         data-total-students="<?php echo $class_data['total_students']; ?>"
+                                                         data-participating-students="<?php echo $class_data['participating_students']; ?>"
+                                                         data-class-hash="<?php echo md5($class_code); ?>">
 
                                                         <div class="card-header class-detail-header"
 
@@ -5479,7 +5575,59 @@ if ($class_stats) {
 
                                                                 </div>
 
-
+                                                                <!-- Bộ lọc sinh viên trong lớp -->
+                                                                <div class="row mb-3">
+                                                                    <div class="col-md-12">
+                                                                        <div class="card">
+                                                                            <div class="card-header">
+                                                                                <h6 class="mb-0">
+                                                                                    <i class="fas fa-filter"></i> Bộ lọc sinh viên
+                                                                                </h6>
+                                                                            </div>
+                                                                            <div class="card-body">
+                                                                                <div class="row">
+                                                                                    <div class="col-md-4">
+                                                                                        <label for="studentSearch<?php echo md5($class_code); ?>">Tìm kiếm sinh viên:</label>
+                                                                                        <input type="text" 
+                                                                                               class="form-control" 
+                                                                                               id="studentSearch<?php echo md5($class_code); ?>" 
+                                                                                               placeholder="Nhập tên hoặc MSSV...">
+                                                                                    </div>
+                                                                                    <div class="col-md-4">
+                                                                                        <label for="participationFilter<?php echo md5($class_code); ?>">Lọc theo tham gia NCKH:</label>
+                                                                                        <select class="form-control" id="participationFilter<?php echo md5($class_code); ?>">
+                                                                                            <option value="">Tất cả</option>
+                                                                                            <option value="1">Có tham gia</option>
+                                                                                            <option value="0">Không tham gia</option>
+                                                                                        </select>
+                                                                                    </div>
+                                                                                    <div class="col-md-4 d-flex align-items-end">
+                                                                                        <div class="btn-group w-100">
+                                                                                            <button type="button" 
+                                                                                                    class="btn btn-primary btn-sm" 
+                                                                                                    onclick="applyStudentFilter('<?php echo md5($class_code); ?>')">
+                                                                                                <i class="fas fa-search"></i> Lọc
+                                                                                            </button>
+                                                                                            <button type="button" 
+                                                                                                    class="btn btn-secondary btn-sm" 
+                                                                                                    onclick="clearStudentFilter('<?php echo md5($class_code); ?>')">
+                                                                                                <i class="fas fa-times"></i> Xóa lọc
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="row mt-2">
+                                                                                    <div class="col-md-12">
+                                                                                        <small class="text-muted">
+                                                                                            Hiển thị: <span id="studentCount<?php echo md5($class_code); ?>"><?php echo count($class_data['students']); ?></span> 
+                                                                                            / <?php echo count($class_data['students']); ?> sinh viên
+                                                                                        </small>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
 
                                                                 <table
 
@@ -5509,7 +5657,10 @@ if ($class_stats) {
 
                                                                             <tr
 
-                                                                                class="student-row <?php echo $student['has_project'] ? 'has-project' : 'no-project'; ?>">
+                                                                                class="student-row <?php echo $student['has_project'] ? 'has-project' : 'no-project'; ?>"
+                                                                                data-student-name="<?php echo htmlspecialchars($student['SV_HOSV'] . ' ' . $student['SV_TENSV']); ?>"
+                                                                                data-student-id="<?php echo htmlspecialchars($student['SV_MASV']); ?>"
+                                                                                data-has-project="<?php echo $student['has_project'] ? '1' : '0'; ?>">
 
                                                                                 <td><?php echo $student['SV_MASV']; ?></td>
 
@@ -7301,6 +7452,253 @@ if ($class_stats) {
                 // Kích hoạt tab đúng
                 $(`#${activeTab}-tab`).tab('show');
             }
+        });
+
+        // Bộ lọc cho chi tiết sinh viên theo lớp
+        $(document).ready(function() {
+            let originalClassCards = [];
+            
+            // Lưu trữ trạng thái ban đầu
+            function saveOriginalState() {
+                originalClassCards = [];
+                $('.class-detail-card').each(function() {
+                    originalClassCards.push($(this).clone(true));
+                });
+            }
+            
+            // Khôi phục trạng thái ban đầu
+            function restoreOriginalState() {
+                $('#classStudentsDetails').empty();
+                originalClassCards.forEach(function(card) {
+                    $('#classStudentsDetails').append(card);
+                });
+                updateFilterCount();
+            }
+            
+            // Cập nhật số lượng kết quả
+            function updateFilterCount() {
+                const visibleCount = $('.class-detail-card:visible').length;
+                $('#filterResultsCount').text(visibleCount);
+            }
+            
+            // Lọc theo tên sinh viên hoặc MSSV
+            function filterByStudent(studentSearch) {
+                if (!studentSearch) return true;
+                
+                const searchLower = studentSearch.toLowerCase();
+                let hasMatchingStudent = false;
+                
+                $(this).find('.student-row').each(function() {
+                    const studentName = $(this).data('student-name').toLowerCase();
+                    const studentId = $(this).data('student-id').toLowerCase();
+                    
+                    if (studentName.includes(searchLower) || studentId.includes(searchLower)) {
+                        hasMatchingStudent = true;
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+                
+                return hasMatchingStudent;
+            }
+            
+            // Áp dụng bộ lọc
+            function applyFilters() {
+                const classFilter = $('#classFilter').val();
+                const facultyFilter = $('#facultyFilter').val();
+                const participationFilter = $('#participationFilter').val();
+                const studentSearch = $('#studentSearch').val();
+                
+                $('.class-detail-card').each(function() {
+                    let showCard = true;
+                    const $card = $(this);
+                    
+                    // Lọc theo tên lớp
+                    if (classFilter && $card.data('class-name') !== classFilter) {
+                        showCard = false;
+                    }
+                    
+                    // Lọc theo khoa
+                    if (facultyFilter && $card.data('faculty') !== facultyFilter) {
+                        showCard = false;
+                    }
+                    
+                    // Lọc theo tỷ lệ tham gia
+                    if (participationFilter) {
+                        const participationRate = parseFloat($card.data('participation-rate'));
+                        const hasParticipatingStudents = parseInt($card.data('participating-students')) > 0;
+                        
+                        switch (participationFilter) {
+                            case 'participating':
+                                if (!hasParticipatingStudents) showCard = false;
+                                break;
+                            case 'not-participating':
+                                if (hasParticipatingStudents) showCard = false;
+                                break;
+                            case 'high-participation':
+                                if (participationRate <= 50) showCard = false;
+                                break;
+                            case 'low-participation':
+                                if (participationRate > 50) showCard = false;
+                                break;
+                        }
+                    }
+                    
+                    // Lọc theo tìm kiếm sinh viên
+                    if (studentSearch && !filterByStudent.call($card, studentSearch)) {
+                        showCard = false;
+                    }
+                    
+                    if (showCard) {
+                        $card.show();
+                        // Hiển thị tất cả sinh viên trong lớp này nếu không có tìm kiếm
+                        if (!studentSearch) {
+                            $card.find('.student-row').show();
+                        }
+                    } else {
+                        $card.hide();
+                    }
+                });
+                
+                updateFilterCount();
+                
+                // Hiển thị thông báo nếu không có kết quả
+                if ($('.class-detail-card:visible').length === 0) {
+                    if ($('#noResultsMessage').length === 0) {
+                        $('#classStudentsDetails').append(`
+                            <div id="noResultsMessage" class="alert alert-info text-center">
+                                <i class="fas fa-search mr-2"></i>
+                                Không tìm thấy lớp nào phù hợp với bộ lọc đã chọn.
+                            </div>
+                        `);
+                    }
+                } else {
+                    $('#noResultsMessage').remove();
+                }
+            }
+            
+            // Xử lý sự kiện nút áp dụng bộ lọc
+            $('#applyFilters').on('click', function() {
+                applyFilters();
+            });
+            
+            // Xử lý sự kiện nút xóa bộ lọc
+            $('#clearFilters').on('click', function() {
+                $('#classFilter').val('');
+                $('#facultyFilter').val('');
+                $('#participationFilter').val('');
+                $('#studentSearch').val('');
+                restoreOriginalState();
+            });
+            
+            // Xử lý sự kiện Enter trong ô tìm kiếm
+            $('#studentSearch').on('keypress', function(e) {
+                if (e.which === 13) {
+                    applyFilters();
+                }
+            });
+            
+            // Xử lý sự kiện thay đổi bộ lọc (tự động áp dụng)
+            $('#classFilter, #facultyFilter, #participationFilter').on('change', function() {
+                applyFilters();
+            });
+            
+            // Khởi tạo
+            saveOriginalState();
+            updateFilterCount();
+        });
+
+        // Hàm lọc sinh viên trong từng lớp
+        function applyStudentFilter(classHash) {
+            const searchTerm = $(`#studentSearch${classHash}`).val().toLowerCase();
+            const participationFilter = $(`#participationFilter${classHash}`).val();
+            
+            // Tìm bảng sinh viên trong lớp cụ thể
+            const $card = $(`#classStudentsDetails .card[data-class-hash="${classHash}"]`);
+            const $table = $card.find('.students-table');
+            const $rows = $table.find('.student-row');
+            let visibleCount = 0;
+            
+            $rows.each(function() {
+                const $row = $(this);
+                const studentName = $row.data('student-name') || '';
+                const studentId = $row.data('student-id') || '';
+                // Chuẩn hóa về chuỗi để so sánh ổn định ('1'/'0'), tránh jQuery .data() tự ép kiểu số
+                const hasProject = String($row.attr('data-has-project') ?? '0');
+                
+                let showRow = true;
+                
+                // Lọc theo tìm kiếm
+                if (searchTerm) {
+                    if (!studentName.toLowerCase().includes(searchTerm) && !studentId.toLowerCase().includes(searchTerm)) {
+                        showRow = false;
+                    }
+                }
+                
+                // Lọc theo tham gia NCKH
+                if (participationFilter !== '') {
+                    if (participationFilter === '1' && hasProject !== '1') {
+                        showRow = false;
+                    } else if (participationFilter === '0' && hasProject !== '0') {
+                        showRow = false;
+                    }
+                }
+                
+                if (showRow) {
+                    $row.show();
+                    visibleCount++;
+                } else {
+                    $row.hide();
+                }
+            });
+            
+            // Cập nhật số lượng hiển thị
+            $(`#studentCount${classHash}`).text(visibleCount);
+            
+            // Hiển thị thông báo nếu không có kết quả
+            const $noResults = $(`#noStudentResults${classHash}`);
+            if (visibleCount === 0) {
+                if ($noResults.length === 0) {
+                    $table.after(`
+                        <div id="noStudentResults${classHash}" class="alert alert-info text-center mt-3">
+                            <i class="fas fa-search mr-2"></i>
+                            Không tìm thấy sinh viên nào phù hợp với bộ lọc đã chọn.
+                        </div>
+                    `);
+                }
+            } else {
+                $noResults.remove();
+            }
+        }
+        
+        // Hàm xóa bộ lọc sinh viên
+        function clearStudentFilter(classHash) {
+            $(`#studentSearch${classHash}`).val('');
+            $(`#participationFilter${classHash}`).val('');
+            
+            const $card = $(`#classStudentsDetails .card[data-class-hash="${classHash}"]`);
+            const $table = $card.find('.students-table');
+            const $rows = $table.find('.student-row');
+            const totalStudents = $rows.length;
+            
+            $rows.show();
+            $(`#studentCount${classHash}`).text(totalStudents);
+            $(`#noStudentResults${classHash}`).remove();
+        }
+        
+        // Xử lý sự kiện Enter trong ô tìm kiếm sinh viên
+        $(document).on('keypress', '[id^="studentSearch"]', function(e) {
+            if (e.which === 13) {
+                const classHash = $(this).attr('id').replace('studentSearch', '');
+                applyStudentFilter(classHash);
+            }
+        });
+        
+        // Xử lý sự kiện thay đổi bộ lọc tham gia (tự động áp dụng)
+        $(document).on('change', '[id^="participationFilter"]', function() {
+            const classHash = $(this).attr('id').replace('participationFilter', '');
+            applyStudentFilter(classHash);
         });
 
     </script>

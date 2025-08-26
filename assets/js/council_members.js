@@ -3,9 +3,13 @@
 
 let councilMembers = [];
 let availableTeachers = [];
+let projectSupervisor = null; // Thông tin giảng viên hướng dẫn
 
 // Khởi tạo khi trang load
 $(document).ready(function() {
+    // Load thông tin giảng viên hướng dẫn
+    loadProjectSupervisor();
+    
     // Load danh sách giảng viên
     loadAvailableTeachers();
     
@@ -22,6 +26,33 @@ $(document).ready(function() {
         }
     }
 });
+
+// Load thông tin giảng viên hướng dẫn của đề tài
+function loadProjectSupervisor() {
+    const projectId = $('input[name="project_id"]').val();
+    if (!projectId) {
+        console.error('Không tìm thấy project_id');
+        return;
+    }
+    
+    $.ajax({
+        url: '/NLNganh/api/get_project_supervisor.php',
+        method: 'GET',
+        data: { project_id: projectId },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                projectSupervisor = response.data;
+                console.log('Loaded supervisor:', projectSupervisor);
+            } else {
+                console.error('Error loading supervisor:', response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('AJAX error loading supervisor:', error);
+        }
+    });
+}
 
 // Load danh sách giảng viên từ API
 function loadAvailableTeachers() {
@@ -90,6 +121,10 @@ function showTeacherSelectionModal() {
                         </button>
                     </div>
                     <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            <strong>Lưu ý:</strong> Giảng viên hướng dẫn không được phép tham gia hội đồng nghiệm thu của đề tài mình hướng dẫn để đảm bảo tính khách quan.
+                        </div>
                         <div class="form-group">
                             <label>Tìm kiếm giảng viên:</label>
                             <input type="text" class="form-control" id="teacherSearch" 
@@ -130,26 +165,50 @@ function showTeacherSelectionModal() {
 function renderTeachersList(filteredTeachers = null) {
     const teachers = filteredTeachers || availableTeachers;
     const teachersListHtml = teachers.map(teacher => {
-        const isSelected = councilMembers.some(member => member.id === teacher.GV_MAGV);
-        const buttonText = isSelected ? 'Đã chọn' : 'Chọn';
-        const buttonClass = isSelected ? 'btn-secondary' : 'btn-primary';
-        const buttonDisabled = isSelected ? 'disabled' : '';
+        const isSelected = councilMembers.some(member => member.id === teacher.id);
+        const isSupervisor = projectSupervisor && projectSupervisor.id === teacher.id;
+        
+        let buttonText, buttonClass, buttonDisabled, cardClass, supervisorBadge;
+        
+        if (isSupervisor) {
+            buttonText = 'Giảng viên hướng dẫn';
+            buttonClass = 'btn-warning';
+            buttonDisabled = 'disabled';
+            cardClass = 'border-warning';
+            supervisorBadge = '<span class="badge badge-warning ml-2"><i class="fas fa-chalkboard-teacher mr-1"></i>GV hướng dẫn</span>';
+        } else if (isSelected) {
+            buttonText = 'Đã chọn';
+            buttonClass = 'btn-secondary';
+            buttonDisabled = 'disabled';
+            cardClass = '';
+            supervisorBadge = '';
+        } else {
+            buttonText = 'Chọn';
+            buttonClass = 'btn-primary';
+            buttonDisabled = '';
+            cardClass = '';
+            supervisorBadge = '';
+        }
         
         return `
-            <div class="card mb-2">
+            <div class="card mb-2 ${cardClass}">
                 <div class="card-body py-2">
                     <div class="row align-items-center">
                         <div class="col-md-8">
-                            <h6 class="mb-1">${teacher.GV_HOTEN}</h6>
+                            <h6 class="mb-1">
+                                ${teacher.name}
+                                ${supervisorBadge}
+                            </h6>
                             <small class="text-muted">
-                                <i class="fas fa-id-card mr-1"></i>${teacher.GV_MAGV} | 
-                                <i class="fas fa-building mr-1"></i>${teacher.K_TENKHOA || 'N/A'}
+                                <i class="fas fa-id-card mr-1"></i>${teacher.id} | 
+                                <i class="fas fa-building mr-1"></i>${teacher.department || 'N/A'}
                             </small>
+                            ${isSupervisor ? '<br><small class="text-warning"><i class="fas fa-exclamation-triangle mr-1"></i>Không thể tham gia hội đồng nghiệm thu</small>' : ''}
                         </div>
                         <div class="col-md-4 text-right">
                             <button type="button" class="btn btn-sm ${buttonClass} select-teacher-btn" 
-                                    data-teacher-id="${teacher.GV_MAGV}" 
-                                    data-teacher-name="${teacher.GV_HOTEN}" ${buttonDisabled}>
+                                    data-teacher-id="${teacher.id}" 
+                                    data-teacher-name="${teacher.name}" ${buttonDisabled}>
                                 <i class="fas fa-user-plus mr-1"></i>${buttonText}
                             </button>
                         </div>
@@ -172,9 +231,9 @@ function renderTeachersList(filteredTeachers = null) {
 // Lọc giảng viên theo từ khóa
 function filterTeachers(searchTerm) {
     const filtered = availableTeachers.filter(teacher => 
-        teacher.GV_HOTEN.toLowerCase().includes(searchTerm) ||
-        teacher.GV_MAGV.toLowerCase().includes(searchTerm) ||
-        (teacher.K_TENKHOA && teacher.K_TENKHOA.toLowerCase().includes(searchTerm))
+        teacher.name.toLowerCase().includes(searchTerm) ||
+        teacher.id.toLowerCase().includes(searchTerm) ||
+        (teacher.department && teacher.department.toLowerCase().includes(searchTerm))
     );
     renderTeachersList(filtered);
 }
@@ -185,6 +244,12 @@ function selectTeacher(teacherId, teacherName) {
     const existingMember = councilMembers.find(member => member.id === teacherId);
     if (existingMember) {
         showMessage('Giảng viên này đã được chọn làm thành viên hội đồng', 'warning');
+        return;
+    }
+    
+    // Kiểm tra xem có phải là giảng viên hướng dẫn không
+    if (projectSupervisor && projectSupervisor.id === teacherId) {
+        showMessage('Không thể thêm giảng viên hướng dẫn vào thành viên hội đồng. Giảng viên hướng dẫn không được phép tham gia hội đồng nghiệm thu của đề tài mình hướng dẫn.', 'warning');
         return;
     }
     

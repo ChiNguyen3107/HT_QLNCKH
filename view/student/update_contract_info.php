@@ -38,6 +38,30 @@ $contract_description = trim($_POST['contract_description'] ?? '');
 $update_reason = trim($_POST['update_reason'] ?? '');
 $user_id = $_SESSION['user_id'];
 
+// Lấy thời gian thực hiện từ ghi chú đề tài để tự động tính thời gian hợp đồng
+$duration_months = 6; // Mặc định 6 tháng
+$project_sql = "SELECT DT_GHICHU FROM de_tai_nghien_cuu WHERE DT_MADT = ?";
+$stmt = $conn->prepare($project_sql);
+if ($stmt) {
+    $stmt->bind_param("s", $project_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows > 0) {
+        $project = $result->fetch_assoc();
+        if (!empty($project['DT_GHICHU'])) {
+            if (preg_match('/duration_months\s*=\s*(\d+)/i', $project['DT_GHICHU'], $matches)) {
+                $duration_months = max(1, intval($matches[1]));
+            }
+        }
+    }
+}
+
+// Tự động tính toán thời gian hợp đồng nếu không có ngày bắt đầu/kết thúc
+if (empty($start_date) || empty($end_date)) {
+    $start_date = date('Y-m-d');
+    $end_date = date('Y-m-d', strtotime("+$duration_months months"));
+}
+
 // Kiểm tra quyền chủ nhiệm trước khi xử lý
 $check_role_sql = "SELECT CTTG_VAITRO FROM chi_tiet_tham_gia WHERE DT_MADT = ? AND SV_MASV = ?";
 $stmt = $conn->prepare($check_role_sql);
@@ -86,7 +110,7 @@ error_log("Update contract info - Files: " . print_r($_FILES, true));
 
 // Kiểm tra dữ liệu đầu vào
 if (empty($project_id) || empty($contract_code) || empty($contract_date) || 
-    empty($start_date) || empty($end_date) || empty($total_budget) || empty($update_reason)) {
+    empty($total_budget) || empty($update_reason)) {
     $_SESSION['error_message'] = "Vui lòng điền đầy đủ thông tin bắt buộc.";
     header("Location: view_project.php?id=" . urlencode($project_id));
     exit();

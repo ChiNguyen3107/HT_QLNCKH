@@ -100,6 +100,27 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <span>Báo cáo thống kê</span>
                 </a>
             </li>
+            <li class="menu-with-dropdown">
+                <a href="#" class="dropdown-toggle <?php echo (strpos($current_page, 'class_management') !== false || strpos($current_page, 'manage_class') !== false) ? 'active' : ''; ?>">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>Quản lý lớp học</span>
+                    <i class="fas fa-angle-right dropdown-icon"></i>
+                </a>
+                <ul class="submenu">
+                    <li>
+                        <a href="/NLNganh/view/teacher/class_management.php" class="<?php echo ($current_page === 'class_management.php') ? 'active' : ''; ?>">
+                            <i class="fas fa-list-alt"></i>
+                            <span>Danh sách lớp</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/NLNganh/view/teacher/class_statistics.php" class="<?php echo ($current_page === 'class_statistics.php') ? 'active' : ''; ?>">
+                            <i class="fas fa-chart-pie"></i>
+                            <span>Thống kê lớp</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
             <li>
                 <a href="/NLNganh/view/teacher/schedule.php" class="<?php echo ($current_page === 'schedule.php') ? 'active' : ''; ?>">
                     <i class="fas fa-calendar"></i>

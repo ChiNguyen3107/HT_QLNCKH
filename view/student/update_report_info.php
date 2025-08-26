@@ -10,12 +10,7 @@ include '../../include/functions.php';
 
 // Debug - kiểm tra session
 error_log("Update report info - User ID: " . ($_SESSION['user_id'] ?? 'NOT SET'));
-error_log("Update report info - Role: " . ($_SESSION['role// Clean output buffer và redirect
-ob_end_clean();
-
-// Redirect về trang chi tiết đề tài với tab biên bản
-header("Location: view_project.php?id=" . urlencode($project_id) . "&tab=report");
-exit();'NOT SET'));
+error_log("Update report info - Role: " . ($_SESSION['role'] ?? 'NOT SET'));
 
 // Kiểm tra kết nối cơ sở dữ liệu
 if ($conn->connect_error) {
@@ -199,6 +194,32 @@ try {
         
         if ($members_data && is_array($members_data) && count($members_data) > 0) {
             error_log("Found " . count($members_data) . " council members to process");
+            
+            // Lấy thông tin giảng viên hướng dẫn của đề tài
+            $supervisor_sql = "SELECT dt.GV_MAGV FROM de_tai_nghien_cuu dt WHERE dt.DT_MADT = ?";
+            $stmt = $conn->prepare($supervisor_sql);
+            if (!$stmt) {
+                throw new Exception("Lỗi chuẩn bị truy vấn lấy giảng viên hướng dẫn: " . $conn->error);
+            }
+            $stmt->bind_param("s", $project_id);
+            $stmt->execute();
+            $supervisor_result = $stmt->get_result();
+            
+            if ($supervisor_result->num_rows === 0) {
+                throw new Exception('Không tìm thấy thông tin đề tài');
+            }
+            
+            $supervisor = $supervisor_result->fetch_assoc();
+            $supervisor_id = $supervisor['GV_MAGV'];
+            error_log("Project supervisor ID: " . $supervisor_id);
+
+            // Kiểm tra xem có giảng viên hướng dẫn trong danh sách thành viên không
+            foreach ($members_data as $member) {
+                $gv_magv = $member['id'] ?? '';
+                if ($gv_magv === $supervisor_id) {
+                    throw new Exception('Không thể thêm giảng viên hướng dẫn vào thành viên hội đồng. Giảng viên hướng dẫn không được phép tham gia hội đồng nghiệm thu của đề tài mình hướng dẫn.');
+                }
+            }
             
             // Xóa thành viên hội đồng cũ
             $delete_members_sql = "DELETE FROM thanh_vien_hoi_dong WHERE QD_SO = ?";

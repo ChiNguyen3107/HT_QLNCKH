@@ -161,28 +161,72 @@ try {
     // Ghi lại tiến độ
     $progress_title = "Upload file đánh giá cho thành viên hội đồng";
     $progress_content = "Đã upload file đánh giá cho thành viên hội đồng.\n\n";
-    $progress_content .= "Lý do: " . $update_reason . "\n\n";
-    $progress_content .= "Chi tiết:\n";
-    $progress_content .= "- Thành viên: " . $member_info['GV_HOTEN'] . " (" . $member_info['TV_VAITRO'] . ")\n";
-    $progress_content .= "- Tên file: " . $file_name . "\n";
-    $progress_content .= "- Kích thước: " . number_format($uploaded_file['size'] / 1024, 2) . " KB\n";
+    $progress_content .= "📋 Chi tiết file đánh giá:\n";
+    $progress_content .= "• Thành viên: " . $member_info['GV_HOTEN'] . " (" . $member_info['TV_VAITRO'] . ")\n";
+    $progress_content .= "• Tên file: " . $file_name . "\n";
+    $progress_content .= "• Kích thước: " . number_format($uploaded_file['size'] / 1024, 2) . " KB\n";
     if ($file_description) {
-        $progress_content .= "- Mô tả: " . $file_description . "\n";
+        $progress_content .= "• Mô tả: " . $file_description . "\n";
     }
+    $progress_content .= "• Lý do upload: " . $update_reason . "\n\n";
+    $progress_content .= "✅ File đánh giá đã được lưu trữ và có thể tải xuống từ hệ thống.";
     
-    // Tạo mã tiến độ mới
-    $progress_id = 'TD' . date('ymd') . sprintf('%02d', rand(10, 99));
+    // Tạo mã tiến độ mới (đảm bảo unique)
+    $progress_id = null;
+    $attempts = 0;
+    $max_attempts = 10;
+    
+    do {
+        $timestamp = date('ymd');
+        $random = rand(10, 99);
+        $progress_id = 'TD' . $timestamp . $random;
+        
+        // Đảm bảo mã không quá 10 ký tự
+        if (strlen($progress_id) > 10) {
+            $progress_id = substr($progress_id, 0, 10);
+        }
+        
+        // Kiểm tra xem mã đã tồn tại chưa
+        $check_sql = "SELECT 1 FROM tien_do_de_tai WHERE TDDT_MA = ? LIMIT 1";
+        $check_stmt = $conn->prepare($check_sql);
+        if ($check_stmt) {
+            $check_stmt->bind_param("s", $progress_id);
+            $check_stmt->execute();
+            $exists = $check_stmt->get_result()->num_rows > 0;
+            $check_stmt->close();
+            
+            if (!$exists) {
+                break; // Mã unique, thoát khỏi vòng lặp
+            }
+        }
+        
+        $attempts++;
+    } while ($attempts < $max_attempts);
+    
+    // Nếu không tạo được mã unique, sử dụng timestamp
+    if ($attempts >= $max_attempts) {
+        $progress_id = 'TD' . time();
+        if (strlen($progress_id) > 10) {
+            $progress_id = substr($progress_id, 0, 10);
+        }
+    }
     
     $progress_sql = "INSERT INTO tien_do_de_tai (TDDT_MA, DT_MADT, SV_MASV, TDDT_TIEUDE, TDDT_NOIDUNG, TDDT_NGAYCAPNHAT, TDDT_PHANTRAMHOANTHANH) 
                     VALUES (?, ?, ?, ?, ?, NOW(), 100)";
     $stmt = $conn->prepare($progress_sql);
     $stmt->bind_param("sssss", $progress_id, $project_id, $user_id, $progress_title, $progress_content);
-    $stmt->execute();
+    
+    if (!$stmt->execute()) {
+        error_log("Failed to insert progress for file upload: " . $stmt->error);
+        // Không throw exception cho progress vì không critical
+    } else {
+        error_log("Progress inserted successfully for file upload - ID: $progress_id");
+    }
     
     // Commit transaction
     $conn->commit();
     
-    $_SESSION['success_message'] = "Upload file đánh giá cho thành viên " . $member_info['GV_HOTEN'] . " thành công!";
+    $_SESSION['success_message'] = "Upload file đánh giá cho thành viên " . $member_info['GV_HOTEN'] . " thành công! Thông tin này đã được ghi lại trong tiến độ đề tài.";
     
 } catch (Exception $e) {
     // Rollback transaction nếu có lỗi

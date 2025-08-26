@@ -97,15 +97,16 @@ if ($stmt) {
 }
 
 // Lấy danh sách biên bản
-$sql_minutes = "SELECT bb.*, hd.HD_NGAYHOP, sv.SV_HOSV, sv.SV_TENSV 
-                FROM bien_ban bb
-                LEFT JOIN hoi_dong hd ON bb.HD_MA = hd.HD_MA
-                LEFT JOIN sinh_vien sv ON bb.SV_MASV = sv.SV_MASV
-                WHERE bb.DT_MADT = ?
-                ORDER BY bb.BB_NGAYTAO DESC";
-$stmt = $conn->prepare($sql_minutes);
 $minutes = [];
-if ($stmt) {
+$sql_minutes = "SELECT bb.*, qd.QD_NGAY, qd.QD_FILE
+                FROM bien_ban bb
+                LEFT JOIN quyet_dinh_nghiem_thu qd ON bb.QD_SO = qd.QD_SO
+                WHERE qd.QD_SO = (SELECT QD_SO FROM de_tai_nghien_cuu WHERE DT_MADT = ?)
+                ORDER BY bb.BB_NGAYNGHIEMTHU DESC";
+$stmt = $conn->prepare($sql_minutes);
+if ($stmt === false) {
+    error_log("Lỗi SQL (bien_ban): " . $conn->error);
+} else {
     $stmt->bind_param("s", $project_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -115,15 +116,18 @@ if ($stmt) {
     $stmt->close();
 }
 
-// Lấy danh sách đánh giá
-$sql_evaluations = "SELECT dg.*, gv.GV_HOGV, gv.GV_TENGV
-                    FROM danh_gia dg
-                    LEFT JOIN giang_vien gv ON dg.GV_MAGV = gv.GV_MAGV
-                    WHERE dg.DT_MADT = ?
-                    ORDER BY dg.DG_NGAYDANHGIA DESC";
-$stmt = $conn->prepare($sql_evaluations);
+// Lấy danh sách đánh giá từ thành viên hội đồng
 $evaluations = [];
-if ($stmt) {
+$sql_evaluations = "SELECT tvhd.*, gv.GV_HOGV, gv.GV_TENGV, tc.TC_TEN, tc.TC_DIEMTOIDA
+                    FROM thanh_vien_hoi_dong tvhd
+                    LEFT JOIN giang_vien gv ON tvhd.GV_MAGV = gv.GV_MAGV
+                    LEFT JOIN tieu_chi tc ON tvhd.TC_MATC = tc.TC_MATC
+                    WHERE tvhd.QD_SO = (SELECT QD_SO FROM de_tai_nghien_cuu WHERE DT_MADT = ?)
+                    ORDER BY tvhd.TV_NGAYDANHGIA DESC";
+$stmt = $conn->prepare($sql_evaluations);
+if ($stmt === false) {
+    error_log("Lỗi SQL (thanh_vien_hoi_dong): " . $conn->error);
+} else {
     $stmt->bind_param("s", $project_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -1125,33 +1129,42 @@ function timeAgo($datetime) {
                                                             <table class="table table-bordered table-hover">
                                                                 <thead class="thead-light">
                                                                     <tr>
-                                                                        <th>Mã biên bản</th>
-                                                                        <th>Nội dung</th>
-                                                                        <th>Ngày họp</th>
-                                                                        <th>Ngày tạo</th>
+                                                                        <th>Số biên bản</th>
+                                                                        <th>Ngày nghiệm thu</th>
+                                                                        <th>Xếp loại</th>
+                                                                        <th>Tổng điểm</th>
                                                                         <th>Thao tác</th>
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody>
                                                                     <?php foreach ($minutes as $minute): ?>
                                                                         <tr>
-                                                                            <td><?php echo $minute['BB_MA']; ?></td>
+                                                                            <td><strong><?php echo $minute['BB_SOBB']; ?></strong></td>
+                                                                            <td><?php echo $minute['BB_NGAYNGHIEMTHU'] ? date('d/m/Y', strtotime($minute['BB_NGAYNGHIEMTHU'])) : '-'; ?></td>
                                                                             <td>
-                                                                                <strong><?php echo $minute['BB_NOIDUNG'] ?: 'Biên bản họp hội đồng'; ?></strong>
-                                                                                <?php if ($minute['SV_HOSV']): ?>
-                                                                                    <br><small class="text-muted">Sinh viên: <?php echo $minute['SV_HOSV'] . ' ' . $minute['SV_TENSV']; ?></small>
+                                                                                <span class="badge badge-<?php 
+                                                                                    switch($minute['BB_XEPLOAI']) {
+                                                                                        case 'Xuất sắc': echo 'success'; break;
+                                                                                        case 'Tốt': echo 'primary'; break;
+                                                                                        case 'Khá': echo 'info'; break;
+                                                                                        case 'Trung bình': echo 'warning'; break;
+                                                                                        case 'Yếu': echo 'danger'; break;
+                                                                                        default: echo 'secondary';
+                                                                                    }
+                                                                                ?>">
+                                                                                    <?php echo $minute['BB_XEPLOAI']; ?>
+                                                                                </span>
+                                                                            </td>
+                                                                            <td>
+                                                                                <?php if ($minute['BB_TONGDIEM']): ?>
+                                                                                    <strong><?php echo $minute['BB_TONGDIEM']; ?>/100</strong>
+                                                                                <?php else: ?>
+                                                                                    <span class="text-muted">Chưa có</span>
                                                                                 <?php endif; ?>
                                                                             </td>
-                                                                            <td><?php echo $minute['HD_NGAYHOP'] ? date('d/m/Y', strtotime($minute['HD_NGAYHOP'])) : '-'; ?></td>
-                                                                            <td><?php echo date('d/m/Y', strtotime($minute['BB_NGAYTAO'])); ?></td>
                                                                             <td>
-                                                                                <?php if ($minute['BB_FILE']): ?>
-                                                                                    <a href="../../uploads/minutes/<?php echo $minute['BB_FILE']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                                                        <i class="fas fa-eye"></i>
-                                                                                    </a>
-                                                                                <?php endif; ?>
-                                                                                <a href="view_minute.php?id=<?php echo $minute['BB_MA']; ?>" class="btn btn-sm btn-outline-info ml-1">
-                                                                                    <i class="fas fa-info-circle"></i>
+                                                                                <a href="view_minute.php?id=<?php echo $minute['BB_SOBB']; ?>" class="btn btn-sm btn-outline-info">
+                                                                                    <i class="fas fa-eye"></i> Xem chi tiết
                                                                                 </a>
                                                                             </td>
                                                                         </tr>
@@ -1165,9 +1178,17 @@ function timeAgo($datetime) {
                                                             Chưa có biên bản nào cho đề tài này.
                                                         </div>
                                                         <div class="text-center">
-                                                            <a href="create_minutes.php?id=<?php echo $project_id; ?>" class="btn btn-primary">
-                                                                <i class="fas fa-plus mr-1"></i>Tạo biên bản
-                                                            </a>
+                                                            <p class="text-muted mb-3">Biên bản nghiệm thu sẽ được tạo tự động khi có quyết định nghiệm thu</p>
+                                                            <?php if ($project['QD_SO']): ?>
+                                                                <a href="create_minutes.php?id=<?php echo $project_id; ?>" class="btn btn-primary">
+                                                                    <i class="fas fa-plus mr-1"></i>Tạo biên bản nghiệm thu
+                                                                </a>
+                                                            <?php else: ?>
+                                                                <div class="alert alert-info">
+                                                                    <i class="fas fa-info-circle mr-2"></i>
+                                                                    Cần có quyết định nghiệm thu trước khi tạo biên bản
+                                                                </div>
+                                                            <?php endif; ?>
                                                         </div>
                                                     <?php endif; ?>
                                                 </div>
@@ -1191,27 +1212,46 @@ function timeAgo($datetime) {
                                                                     <h6 class="mb-0 font-weight-bold">
                                                                         <i class="fas fa-star text-warning mr-2"></i>
                                                                         Đánh giá của <?php echo $evaluation['GV_HOGV'] . ' ' . $evaluation['GV_TENGV']; ?>
+                                                                        <span class="badge badge-info ml-2"><?php echo $evaluation['TV_VAITRO']; ?></span>
                                                                     </h6>
-                                                                    <span class="badge badge-primary">
-                                                                        <?php echo $evaluation['DG_DIEM']; ?>/10 điểm
-                                                                    </span>
+                                                                    <div class="d-flex align-items-center">
+                                                                        <span class="badge badge-primary mr-2">
+                                                                            <?php echo $evaluation['TV_DIEM'] ? $evaluation['TV_DIEM'] . '/100' : 'Chưa đánh giá'; ?>
+                                                                        </span>
+                                                                        <span class="badge badge-<?php 
+                                                                            switch($evaluation['TV_TRANGTHAI']) {
+                                                                                case 'Đã hoàn thành': echo 'success'; break;
+                                                                                case 'Đang đánh giá': echo 'warning'; break;
+                                                                                default: echo 'secondary';
+                                                                            }
+                                                                        ?>">
+                                                                            <?php echo $evaluation['TV_TRANGTHAI']; ?>
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
                                                                 <div class="card-body">
                                                                     <div class="row">
                                                                         <div class="col-md-8">
                                                                             <div class="mb-3">
-                                                                                <strong>Nhận xét:</strong>
-                                                                                <p class="mt-2"><?php echo nl2br($evaluation['DG_NHANXET']); ?></p>
+                                                                                <strong>Tiêu chí đánh giá:</strong>
+                                                                                <p class="mt-2"><?php echo htmlspecialchars($evaluation['TC_TEN']); ?></p>
+                                                                                <small class="text-muted">Điểm tối đa: <?php echo $evaluation['TC_DIEMTOIDA']; ?> điểm</small>
                                                                             </div>
+                                                                            <?php if ($evaluation['TV_DANHGIA']): ?>
+                                                                                <div class="mb-3">
+                                                                                    <strong>Nhận xét:</strong>
+                                                                                    <p class="mt-2"><?php echo nl2br(htmlspecialchars($evaluation['TV_DANHGIA'])); ?></p>
+                                                                                </div>
+                                                                            <?php endif; ?>
                                                                         </div>
                                                                         <div class="col-md-4">
                                                                             <div class="mb-2">
                                                                                 <strong>Ngày đánh giá:</strong>
-                                                                                <br><?php echo date('d/m/Y H:i', strtotime($evaluation['DG_NGAYDANHGIA'])); ?>
+                                                                                <br><?php echo $evaluation['TV_NGAYDANHGIA'] ? date('d/m/Y H:i', strtotime($evaluation['TV_NGAYDANHGIA'])) : 'Chưa đánh giá'; ?>
                                                                             </div>
-                                                                            <?php if ($evaluation['DG_FILE']): ?>
+                                                                            <?php if ($evaluation['TV_FILEDANHGIA']): ?>
                                                                                 <div class="mt-3">
-                                                                                    <a href="../../uploads/evaluations/<?php echo $evaluation['DG_FILE']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                                                    <a href="../../uploads/evaluations/<?php echo $evaluation['TV_FILEDANHGIA']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">
                                                                                         <i class="fas fa-file mr-1"></i>Xem file đánh giá
                                                                                     </a>
                                                                                 </div>
@@ -1227,9 +1267,17 @@ function timeAgo($datetime) {
                                                             Chưa có đánh giá nào cho đề tài này.
                                                         </div>
                                                         <div class="text-center">
-                                                            <a href="create_evaluation.php?id=<?php echo $project_id; ?>" class="btn btn-primary">
-                                                                <i class="fas fa-star mr-1"></i>Thêm đánh giá
-                                                            </a>
+                                                            <p class="text-muted mb-3">Đánh giá được thực hiện bởi thành viên hội đồng nghiệm thu</p>
+                                                            <?php if ($project['QD_SO']): ?>
+                                                                <a href="manage_evaluations.php?id=<?php echo $project_id; ?>" class="btn btn-primary">
+                                                                    <i class="fas fa-star mr-1"></i>Quản lý đánh giá
+                                                                </a>
+                                                            <?php else: ?>
+                                                                <div class="alert alert-info">
+                                                                    <i class="fas fa-info-circle mr-2"></i>
+                                                                    Cần có quyết định nghiệm thu trước khi thực hiện đánh giá
+                                                                </div>
+                                                            <?php endif; ?>
                                                         </div>
                                                     <?php endif; ?>
                                                 </div>

@@ -54,6 +54,68 @@ function generateProjectID($conn)
     return 'DT' . str_pad($next_id, 7, '0', STR_PAD_LEFT);
 }
 
+// Hàm kiểm tra đề tài trùng lặp
+function checkDuplicateProject($conn, $project_title, $project_description)
+{
+    // Kiểm tra tên đề tài trùng lặp
+    $title_query = "SELECT DT_MADT, DT_TENDT, DT_TRANGTHAI FROM de_tai_nghien_cuu WHERE DT_TENDT = ?";
+    $title_stmt = $conn->prepare($title_query);
+    $title_stmt->bind_param("s", $project_title);
+    $title_stmt->execute();
+    $title_result = $title_stmt->get_result();
+    
+    if ($title_result->num_rows > 0) {
+        $existing_project = $title_result->fetch_assoc();
+        return [
+            'duplicate' => true,
+            'type' => 'title',
+            'message' => 'Đã tồn tại đề tài với tên "' . $project_title . '". Vui lòng đặt tên khác hoặc kiểm tra lại.',
+            'existing_project' => $existing_project
+        ];
+    }
+    
+    // Kiểm tra mô tả trùng lặp (nếu mô tả dài hơn 100 ký tự)
+    if (strlen($project_description) > 100) {
+        $desc_query = "SELECT DT_MADT, DT_TENDT, DT_TRANGTHAI FROM de_tai_nghien_cuu WHERE DT_MOTA = ?";
+        $desc_stmt = $conn->prepare($desc_query);
+        $desc_stmt->bind_param("s", $project_description);
+        $desc_stmt->execute();
+        $desc_result = $desc_stmt->get_result();
+        
+        if ($desc_result->num_rows > 0) {
+            $existing_project = $desc_result->fetch_assoc();
+            return [
+                'duplicate' => true,
+                'type' => 'description',
+                'message' => 'Đã tồn tại đề tài với mô tả tương tự. Vui lòng kiểm tra lại.',
+                'existing_project' => $existing_project
+            ];
+        }
+    }
+    
+    // Kiểm tra sinh viên đã đăng ký đề tài với tên tương tự chưa (tránh đăng ký trùng)
+    $student_similar_query = "SELECT COUNT(*) as project_count 
+                             FROM chi_tiet_tham_gia ct
+                             JOIN de_tai_nghien_cuu dt ON ct.DT_MADT = dt.DT_MADT
+                             WHERE ct.SV_MASV = ? AND dt.DT_TENDT = ?";
+    $student_similar_stmt = $conn->prepare($student_similar_query);
+    $student_similar_stmt->bind_param("ss", $_POST['leader_student_id'], $project_title);
+    $student_similar_stmt->execute();
+    $student_similar_result = $student_similar_stmt->get_result();
+    $student_similar_count = $student_similar_result->fetch_assoc()['project_count'];
+    
+    if ($student_similar_count > 0) {
+        return [
+            'duplicate' => true,
+            'type' => 'student_similar',
+            'message' => 'Sinh viên này đã đăng ký một đề tài có tên tương tự. Vui lòng kiểm tra lại.',
+            'project_count' => $student_similar_count
+        ];
+    }
+    
+    return ['duplicate' => false];
+}
+
 try {
     // Bắt đầu transaction để đảm bảo tính toàn vẹn dữ liệu
     $conn->begin_transaction();
@@ -106,30 +168,46 @@ try {
         throw new Exception("Vui lòng điền đầy đủ thông tin đề tài!");
     }
 
-    // ===== XỬ LÝ FILE TẢI LÊN (NẾU CÓ) =====
+    // Kiểm tra đề tài trùng lặp
+    $duplicate_check = checkDuplicateProject($conn, $project_title, $project_description);
+    if ($duplicate_check['duplicate']) {
+        throw new Exception($duplicate_check['message']);
+    }
+
+    // ===== XỬ LÝ FILE THUYẾT MINH (BẮT BUỘC) =====
     $project_outline_path = null;
-    if (isset($_FILES['project_outline']) && $_FILES['project_outline']['error'] === UPLOAD_ERR_OK) {
-        $allowed_extensions = ['pdf', 'doc', 'docx'];
-        $file_extension = pathinfo($_FILES['project_outline']['name'], PATHINFO_EXTENSION);
+    
+    // Kiểm tra file thuyết minh bắt buộc
+    if (!isset($_FILES['project_outline']) || $_FILES['project_outline']['error'] !== UPLOAD_ERR_OK) {
+        throw new Exception("File thuyết minh đề tài là bắt buộc! Vui lòng đính kèm file thuyết minh.");
+    }
+    
+    $allowed_extensions = ['pdf', 'doc', 'docx'];
+    $file_extension = pathinfo($_FILES['project_outline']['name'], PATHINFO_EXTENSION);
+    $max_file_size = 5 * 1024 * 1024; // 5MB
 
-        // Kiểm tra định dạng file
-        if (!in_array(strtolower($file_extension), $allowed_extensions)) {
-            throw new Exception("Chỉ chấp nhận file PDF, DOC, DOCX!");
-        }
+    // Kiểm tra định dạng file
+    if (!in_array(strtolower($file_extension), $allowed_extensions)) {
+        throw new Exception("File thuyết minh phải là định dạng PDF, DOC hoặc DOCX!");
+    }
+    
+    // Kiểm tra kích thước file
+    if ($_FILES['project_outline']['size'] > $max_file_size) {
+        throw new Exception("Kích thước file thuyết minh không được vượt quá 5MB!");
+    }
 
-        // Tạo thư mục lưu trữ nếu chưa có
-        $upload_dir = '../../uploads/project_outlines/';
-        if (!file_exists($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
-        }
+    // Tạo thư mục lưu trữ nếu chưa có
+    $upload_dir = '../../uploads/project_outlines/';
+    if (!file_exists($upload_dir)) {
+        mkdir($upload_dir, 0777, true);
+    }
 
-        // Tạo tên file duy nhất
-        $project_outline_path = $upload_dir . uniqid('outline_') . '_' . $_FILES['project_outline']['name'];
+    // Tạo tên file duy nhất
+    $project_outline_path = $upload_dir . uniqid('outline_') . '_' . $_FILES['project_outline']['name'];
 
-        // Di chuyển file tải lên vào thư mục lưu trữ
-        if (!move_uploaded_file($_FILES['project_outline']['tmp_name'], $project_outline_path)) {
-            throw new Exception("Không thể lưu file đính kèm!");
-        }
+    // Di chuyển file tải lên vào thư mục lưu trữ
+    if (!move_uploaded_file($_FILES['project_outline']['tmp_name'], $project_outline_path)) {
+        throw new Exception("Không thể lưu file thuyết minh!");
     }
 
     // ===== THÊM DỮ LIỆU VÀO DATABASE =====
@@ -148,9 +226,12 @@ try {
     $decision_id = null; // Luôn để NULL cho đề tài mới
 
     // 2. Thêm đề tài nghiên cứu (không cần QD_SO cho đề tài mới)
+    // Tạo ghi chú với thời gian thực hiện
+    $project_notes = "duration_months=$implementation_time";
+    
     $project_query = "INSERT INTO de_tai_nghien_cuu 
-                     (DT_MADT, LDT_MA, GV_MAGV, LVNC_MA, LVUT_MA, DT_TENDT, DT_MOTA, DT_TRANGTHAI, DT_FILEBTM, QD_SO, DT_NGAYTAO, DT_SLSV, HD_MA) 
-                     VALUES (?, ?, ?, ?, ?, ?, ?, 'Chờ duyệt', ?, NULL, NOW(), ?, 'HD001')";
+                     (DT_MADT, LDT_MA, GV_MAGV, LVNC_MA, LVUT_MA, DT_TENDT, DT_MOTA, DT_TRANGTHAI, DT_FILEBTM, QD_SO, DT_NGAYTAO, DT_SLSV, HD_MA, DT_GHICHU) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 'Chờ duyệt', ?, NULL, NOW(), ?, 'HD001', ?)";
     $project_stmt = $conn->prepare($project_query);
 
     if ($project_stmt === false) {
@@ -158,7 +239,7 @@ try {
     }
 
     $project_stmt->bind_param(
-        "ssssssssi",
+        "ssssssssis",
         $project_id,
         $project_category,
         $advisor_id,
@@ -167,7 +248,8 @@ try {
         $project_title,
         $project_description,
         $project_outline_path,
-        $member_count
+        $member_count,
+        $project_notes
     );
 
     if (!$project_stmt->execute()) {
@@ -190,6 +272,14 @@ try {
 
     // 5. Thêm các thành viên khác (nếu có)
     if (count($member_student_ids) > 0) {
+        // Kiểm tra trùng lặp thành viên
+        $all_member_ids = array_merge([$leader_student_id], $member_student_ids);
+        $duplicate_check = array_diff_assoc($all_member_ids, array_unique($all_member_ids));
+        
+        if (!empty($duplicate_check)) {
+            throw new Exception("Có thành viên trùng lặp trong danh sách: " . implode(', ', array_unique($duplicate_check)));
+        }
+        
         foreach ($member_student_ids as $index => $member_id) {
             // Kiểm tra sinh viên trong CSDL
             $check_query = "SELECT SV_MASV FROM sinh_vien WHERE SV_MASV = ?";

@@ -1,4 +1,4 @@
-<?php
+ <?php
 // Bao gồm file session.php để kiểm tra phiên đăng nhập và vai trò
 include '../../include/session.php';
 checkTeacherRole();

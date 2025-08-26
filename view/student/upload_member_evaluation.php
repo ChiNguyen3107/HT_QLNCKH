@@ -229,9 +229,77 @@ try {
         throw new Exception('Không thể lưu thông tin file vào database');
     }
     
+    // Ghi lại tiến độ đề tài
+    try {
+        $progress_title = "Upload file đánh giá cho thành viên hội đồng";
+        $progress_content = "Đã upload file đánh giá cho thành viên hội đồng.\n\n";
+        $progress_content .= "📋 Chi tiết file đánh giá:\n";
+        $progress_content .= "• Tên file: " . $file_original_name . "\n";
+        $progress_content .= "• Kích thước: " . number_format($file_size / 1024, 2) . " KB\n";
+        if ($file_description) {
+            $progress_content .= "• Mô tả: " . $file_description . "\n";
+        }
+        $progress_content .= "\n✅ File đánh giá đã được lưu trữ và có thể tải xuống từ hệ thống.";
+        
+        // Tạo mã tiến độ mới (đảm bảo unique)
+        $progress_id = null;
+        $attempts = 0;
+        $max_attempts = 10;
+        
+        do {
+            $timestamp = date('ymd');
+            $random = rand(10, 99);
+            $progress_id = 'TD' . $timestamp . $random;
+            
+            // Đảm bảo mã không quá 10 ký tự
+            if (strlen($progress_id) > 10) {
+                $progress_id = substr($progress_id, 0, 10);
+            }
+            
+            // Kiểm tra xem mã đã tồn tại chưa
+            $check_sql = "SELECT 1 FROM tien_do_de_tai WHERE TDDT_MA = ? LIMIT 1";
+            $check_stmt = $conn->prepare($check_sql);
+            if ($check_stmt) {
+                $check_stmt->bind_param("s", $progress_id);
+                $check_stmt->execute();
+                $exists = $check_stmt->get_result()->num_rows > 0;
+                $check_stmt->close();
+                
+                if (!$exists) {
+                    break; // Mã unique, thoát khỏi vòng lặp
+                }
+            }
+            
+            $attempts++;
+        } while ($attempts < $max_attempts);
+        
+        // Nếu không tạo được mã unique, sử dụng timestamp
+        if ($attempts >= $max_attempts) {
+            $progress_id = 'TD' . time();
+            if (strlen($progress_id) > 10) {
+                $progress_id = substr($progress_id, 0, 10);
+            }
+        }
+        
+        $progress_sql = "INSERT INTO tien_do_de_tai (TDDT_MA, DT_MADT, SV_MASV, TDDT_TIEUDE, TDDT_NOIDUNG, TDDT_NGAYCAPNHAT, TDDT_PHANTRAMHOANTHANH) 
+                        VALUES (?, ?, ?, ?, ?, NOW(), 100)";
+        $stmt = $conn->prepare($progress_sql);
+        $stmt->bind_param("sssss", $progress_id, $project_id, $_SESSION['user_id'], $progress_title, $progress_content);
+        
+        if (!$stmt->execute()) {
+            writeDebugLog("Failed to insert progress for file upload: " . $stmt->error);
+            // Không throw exception cho progress vì không critical
+        } else {
+            writeDebugLog("Progress inserted successfully for file upload - ID: $progress_id");
+        }
+    } catch (Exception $progress_error) {
+        writeDebugLog("Progress insert error: " . $progress_error->getMessage());
+        // Không ảnh hưởng đến kết quả upload file
+    }
+    
     echo json_encode([
         'success' => true, 
-        'message' => 'Upload file thành công',
+        'message' => 'Upload file thành công. Thông tin đã được ghi lại trong tiến độ đề tài.',
         'file_name' => $file_original_name,
         'file_path' => $unique_filename
     ]);

@@ -92,10 +92,14 @@ if (isset($_FILES['outline_file']) && $_FILES['outline_file']['error'] == 0) {
 $project_id = 'DT' . date('ymd') . rand(1000, 9999);
 
 // Chuẩn bị câu lệnh SQL để thêm đề tài mới
+// Mặc định thời gian thực hiện là 6 tháng
+$implementation_time = 6;
+$project_notes = "duration_months=$implementation_time";
+
 $insert_project_sql = "INSERT INTO de_tai_nghien_cuu 
                       (DT_TENDT, DT_MOTA, GV_MAGV, LDT_MA, DT_TRANGTHAI, 
-                      DT_KETQUADUKIEN, DT_THOIGIANBATDAU, DT_THOIGIANKETTHUC, DT_SLSV) 
-                      VALUES (?, ?, ?, ?, 'Chờ duyệt', ?, NOW(), DATE_ADD(NOW(), INTERVAL 6 MONTH), ?)";
+                      DT_KETQUADUKIEN, DT_THOIGIANBATDAU, DT_THOIGIANKETTHUC, DT_SLSV, DT_GHICHU) 
+                      VALUES (?, ?, ?, ?, 'Chờ duyệt', ?, NOW(), DATE_ADD(NOW(), INTERVAL ? MONTH), ?, ?)";
 
 $stmt = $conn->prepare($insert_project_sql);
 if ($stmt === false) {
@@ -104,13 +108,15 @@ if ($stmt === false) {
     exit;
 }
 
-$stmt->bind_param("sssssi", 
+$stmt->bind_param("sssssiis", 
     $project_title, 
     $project_description, 
     $lecturer_id, 
     $project_type, 
     $expected_results, 
-    $member_count
+    $implementation_time,
+    $member_count,
+    $project_notes
 );
 
 // Thực hiện thêm đề tài mới

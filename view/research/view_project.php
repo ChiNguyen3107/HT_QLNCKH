@@ -41,6 +41,7 @@ if ($result->num_rows === 0) {
 }
 $project = $result->fetch_assoc();
 // Lấy danh sách sinh viên tham gia
+$students = [];
 $student_sql = "SELECT sv.*, 
                 CONCAT(sv.SV_HOSV, ' ', sv.SV_TENSV) as SV_HOTEN,
                 l.LOP_TEN,
@@ -56,86 +57,118 @@ $student_sql = "SELECT sv.*,
                 WHERE cttg.DT_MADT = ?
                 ORDER BY cttg.CTTG_VAITRO DESC, sv.SV_TENSV";
 $student_stmt = $conn->prepare($student_sql);
-$student_stmt->bind_param("s", $project_id);
-$student_stmt->execute();
-$student_result = $student_stmt->get_result();
-$students = [];
-while ($student = $student_result->fetch_assoc()) {
-    $students[] = $student;
+if ($student_stmt === false) {
+    error_log("Lỗi SQL (chi_tiet_tham_gia): " . $conn->error);
+} else {
+    $student_stmt->bind_param("s", $project_id);
+    $student_stmt->execute();
+    $student_result = $student_stmt->get_result();
+    while ($student = $student_result->fetch_assoc()) {
+        $students[] = $student;
+    }
 }
 // Lấy thông tin hợp đồng
+$contracts = [];
 $contract_sql = "SELECT * FROM hop_dong WHERE DT_MADT = ?";
 $contract_stmt = $conn->prepare($contract_sql);
-$contract_stmt->bind_param("s", $project_id);
-$contract_stmt->execute();
-$contract_result = $contract_stmt->get_result();
-$contracts = [];
-while ($contract = $contract_result->fetch_assoc()) {
-    $contracts[] = $contract;
+if ($contract_stmt === false) {
+    error_log("Lỗi SQL (hop_dong): " . $conn->error);
+} else {
+    $contract_stmt->bind_param("s", $project_id);
+    $contract_stmt->execute();
+    $contract_result = $contract_stmt->get_result();
+    while ($contract = $contract_result->fetch_assoc()) {
+        $contracts[] = $contract;
+    }
 }
 // Lấy thông tin quyết định nghiệm thu
-$decision_sql = "SELECT qd.*, bb.BB_SOBB, bb.BB_NGAYNGHIEMTHU, bb.BB_XEPLOAI, bb.BB_TONGDIEM
-                 FROM quyet_dinh_nghiem_thu qd
-                 LEFT JOIN bien_ban bb ON qd.BB_SOBB = bb.BB_SOBB
-                 WHERE qd.QD_SO = ?";
-$decision_stmt = $conn->prepare($decision_sql);
-$decision_stmt->bind_param("s", $project['QD_SO']);
-$decision_stmt->execute();
-$decision_result = $decision_stmt->get_result();
-$decision = $decision_result->fetch_assoc();
+$decision = null;
+if (!empty($project['QD_SO'])) {
+    $decision_sql = "SELECT qd.*, bb.BB_SOBB, bb.BB_NGAYNGHIEMTHU, bb.BB_XEPLOAI, bb.BB_TONGDIEM
+                     FROM quyet_dinh_nghiem_thu qd
+                     LEFT JOIN bien_ban bb ON qd.BB_SOBB = bb.BB_SOBB
+                     WHERE qd.QD_SO = ?";
+    $decision_stmt = $conn->prepare($decision_sql);
+    if ($decision_stmt === false) {
+        error_log("Lỗi SQL (quyet_dinh_nghiem_thu): " . $conn->error);
+    } else {
+        $decision_stmt->bind_param("s", $project['QD_SO']);
+        $decision_stmt->execute();
+        $decision_result = $decision_stmt->get_result();
+        $decision = $decision_result->fetch_assoc();
+    }
+}
 // Lấy thông tin thành viên hội đồng
-$council_sql = "SELECT tvhd.*, 
-                CONCAT(gv.GV_HOGV, ' ', gv.GV_TENGV) as GV_HOTEN,
-                tc.TC_TEN, tc.TC_DIEMTOIDA
-                FROM thanh_vien_hoi_dong tvhd
-                LEFT JOIN giang_vien gv ON tvhd.GV_MAGV = gv.GV_MAGV
-                LEFT JOIN tieu_chi tc ON tvhd.TC_MATC = tc.TC_MATC
-                WHERE tvhd.QD_SO = ?
-                ORDER BY tvhd.TV_VAITRO, gv.GV_TENGV";
-$council_stmt = $conn->prepare($council_sql);
 $council_members = [];
-if ($project['QD_SO']) {
-    $council_stmt->bind_param("s", $project['QD_SO']);
-    $council_stmt->execute();
-    $council_result = $council_stmt->get_result();
-    while ($member = $council_result->fetch_assoc()) {
-        $council_members[] = $member;
+if (!empty($project['QD_SO'])) {
+    $council_sql = "SELECT tvhd.*, 
+                    CONCAT(gv.GV_HOGV, ' ', gv.GV_TENGV) as GV_HOTEN,
+                    tc.TC_TEN, tc.TC_DIEMTOIDA
+                    FROM thanh_vien_hoi_dong tvhd
+                    LEFT JOIN giang_vien gv ON tvhd.GV_MAGV = gv.GV_MAGV
+                    LEFT JOIN tieu_chi tc ON tvhd.TC_MATC = tc.TC_MATC
+                    WHERE tvhd.QD_SO = ?
+                    ORDER BY tvhd.TV_VAITRO, gv.GV_TENGV";
+    $council_stmt = $conn->prepare($council_sql);
+    if ($council_stmt === false) {
+        error_log("Lỗi SQL (thanh_vien_hoi_dong): " . $conn->error);
+    } else {
+        $council_stmt->bind_param("s", $project['QD_SO']);
+        $council_stmt->execute();
+        $council_result = $council_stmt->get_result();
+        while ($member = $council_result->fetch_assoc()) {
+            $council_members[] = $member;
+        }
     }
 }
 // Lấy thông tin tiến độ
+$progress_list = [];
 $progress_sql = "SELECT * FROM tien_do_de_tai WHERE DT_MADT = ? ORDER BY TDDT_NGAYCAPNHAT DESC";
 $progress_stmt = $conn->prepare($progress_sql);
-$progress_stmt->bind_param("s", $project_id);
-$progress_stmt->execute();
-$progress_result = $progress_stmt->get_result();
-$progress_list = [];
-while ($progress = $progress_result->fetch_assoc()) {
-    $progress_list[] = $progress;
+if ($progress_stmt === false) {
+    error_log("Lỗi SQL (tien_do_de_tai): " . $conn->error);
+} else {
+    $progress_stmt->bind_param("s", $project_id);
+    $progress_stmt->execute();
+    $progress_result = $progress_stmt->get_result();
+    while ($progress = $progress_result->fetch_assoc()) {
+        $progress_list[] = $progress;
+    }
 }
 // Lấy thông tin báo cáo
+$reports = [];
 $report_sql = "SELECT bc.*, lbc.LBC_TENLOAI
                FROM bao_cao bc
                LEFT JOIN loai_bao_cao lbc ON bc.LBC_MALOAI = lbc.LBC_MALOAI
                WHERE bc.DT_MADT = ?
                ORDER BY bc.BC_NGAYNOP DESC";
 $report_stmt = $conn->prepare($report_sql);
-$report_stmt->bind_param("s", $project_id);
-$report_stmt->execute();
-$report_result = $report_stmt->get_result();
-$reports = [];
-while ($report = $report_result->fetch_assoc()) {
-    $reports[] = $report;
+if ($report_stmt === false) {
+    // Ghi log lỗi để debug
+    error_log("Lỗi SQL (bao_cao): " . $conn->error);
+    // Không làm gì, giữ mảng reports trống
+} else {
+    $report_stmt->bind_param("s", $project_id);
+    $report_stmt->execute();
+    $report_result = $report_stmt->get_result();
+    while ($report = $report_result->fetch_assoc()) {
+        $reports[] = $report;
+    }
 }
 // Lấy thông tin file đính kèm
-$file_sql = "SELECT * FROM file_dinh_kem WHERE BB_SOBB = ?";
-$file_stmt = $conn->prepare($file_sql);
 $files = [];
-if ($decision && $decision['BB_SOBB']) {
-    $file_stmt->bind_param("s", $decision['BB_SOBB']);
-    $file_stmt->execute();
-    $file_result = $file_stmt->get_result();
-    while ($file = $file_result->fetch_assoc()) {
-        $files[] = $file;
+if ($decision && !empty($decision['BB_SOBB'])) {
+    $file_sql = "SELECT * FROM file_dinh_kem WHERE BB_SOBB = ?";
+    $file_stmt = $conn->prepare($file_sql);
+    if ($file_stmt === false) {
+        error_log("Lỗi SQL (file_dinh_kem): " . $conn->error);
+    } else {
+        $file_stmt->bind_param("s", $decision['BB_SOBB']);
+        $file_stmt->execute();
+        $file_result = $file_stmt->get_result();
+        while ($file = $file_result->fetch_assoc()) {
+            $files[] = $file;
+        }
     }
 }
 // Lấy lịch sử thay đổi

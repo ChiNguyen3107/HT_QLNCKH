@@ -102,6 +102,10 @@ $types_result = $conn->query($types_query);
 function getStudentCount($conn, $project_id) {
     $sql = "SELECT COUNT(*) as count FROM chi_tiet_tham_gia WHERE DT_MADT = ?";
     $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        error_log("Lỗi SQL (chi_tiet_tham_gia): " . $conn->error);
+        return 0;
+    }
     $stmt->bind_param("s", $project_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -113,6 +117,11 @@ function getStudentCount($conn, $project_id) {
 function getReportCount($conn, $project_id) {
     $sql = "SELECT COUNT(*) as count FROM bao_cao WHERE DT_MADT = ?";
     $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        // Bảng bao_cao không tồn tại, trả về 0
+        error_log("Lỗi SQL (bao_cao): " . $conn->error);
+        return 0;
+    }
     $stmt->bind_param("s", $project_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -124,6 +133,10 @@ function getReportCount($conn, $project_id) {
 function getContractInfo($conn, $project_id) {
     $sql = "SELECT * FROM hop_dong WHERE DT_MADT = ?";
     $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        error_log("Lỗi SQL (hop_dong): " . $conn->error);
+        return null;
+    }
     $stmt->bind_param("s", $project_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -134,6 +147,10 @@ function getContractInfo($conn, $project_id) {
 function getLatestProgress($conn, $project_id) {
     $sql = "SELECT * FROM tien_do_de_tai WHERE DT_MADT = ? ORDER BY TDDT_NGAYCAPNHAT DESC LIMIT 1";
     $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        error_log("Lỗi SQL (tien_do_de_tai): " . $conn->error);
+        return null;
+    }
     $stmt->bind_param("s", $project_id);
     $stmt->execute();
     $result = $stmt->get_result();
