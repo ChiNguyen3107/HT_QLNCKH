@@ -382,6 +382,13 @@ body {
                         <span class="nav-text">Nhà nghiên cứu</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="/NLNganh/view/research/manage_advisor.php" 
+                       class="nav-link <?php echo ($current_page == 'manage_advisor.php') ? 'active' : ''; ?>">
+                        <i class="nav-icon fas fa-user-tie"></i>
+                        <span class="nav-text">Quản lý CVHT</span>
+                    </a>
+                </li>
                 
         </div>
 

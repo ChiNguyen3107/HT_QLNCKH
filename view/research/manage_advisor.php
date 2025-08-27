@@ -115,24 +115,15 @@ $teachers_result = $conn->query("SELECT GV_MAGV, CONCAT(GV_HOGV, ' ', GV_TENGV) 
 $classes_result = $conn->query("SELECT LOP_MA, LOP_TEN, KH_NAM FROM lop ORDER BY LOP_TEN");
 ?>
 
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý CVHT - Research Admin</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .advisor-card { border: 1px solid #e0e0e0; border-radius: 10px; margin-bottom: 15px; }
-        .active-advisor { border-left: 4px solid #28a745; }
-        .inactive-advisor { border-left: 4px solid #dc3545; opacity: 0.7; }
-    </style>
-</head>
-<body>
-    <?php include '../../include/research_sidebar.php'; ?>
-    
-    <div class="container-fluid">
+<?php
+$additional_css = '<link href="/NLNganh/assets/css/research/manage-advisor.css" rel="stylesheet">';
+include '../../include/research_header.php';
+?>
+
+<!-- Sidebar đã được include trong header -->
+
+<!-- Begin Page Content -->
+<div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="h3 mb-0">
