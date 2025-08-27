@@ -106,22 +106,23 @@ if ($academic_years) {
 
 // Tính tổng thống kê
 $total_students = 0;
-$total_projects = 0;
-$total_completed_projects = 0;
-$total_ongoing_projects = 0;
+$total_projects_ongoing = 0;
+$total_projects_completed = 0;
+$total_projects_pending = 0;
 $total_participation_rate = 0;
 $class_count = 0;
 $classes_list = [];
 while ($class = $classes->fetch_assoc()) {
     $classes_list[] = $class;
     $total_students += $class['TONG_SV'];
-    $total_projects += $class['SV_CO_DETAI'];
-    $total_completed_projects += $class['DETAI_HOAN_THANH'];
-    $total_ongoing_projects += $class['DETAI_DANG_THUCHIEN'];
+    $total_projects_ongoing += $class['DETAI_DANG_THUCHIEN'];
+    $total_projects_completed += $class['DETAI_HOAN_THANH'];
+    $total_projects_pending += $class['DETAI_CHO_DUYET'];
     $total_participation_rate += $class['TY_LE_THAM_GIA_PHANTRAM'];
     $class_count++;
 }
 $avg_participation_rate = $class_count > 0 ? round($total_participation_rate / $class_count, 2) : 0;
+$total_projects = $total_projects_ongoing + $total_projects_completed + $total_projects_pending;
 ?>
 
 <!DOCTYPE html>
@@ -239,31 +240,6 @@ $avg_participation_rate = $class_count > 0 ? round($total_participation_rate / $
             margin-bottom: 20px;
         }
         
-        .stats-card .card-body {
-            padding: 1.5rem;
-        }
-        
-        .stats-card i {
-            opacity: 0.8;
-        }
-        
-        .class-card .card-header {
-            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
-            border-bottom: 2px solid #dee2e6;
-        }
-        
-        .bg-light {
-            --bs-bg-opacity: 0.8;
-        }
-        
-        .progress {
-            border-radius: 10px;
-        }
-        
-        .progress-bar {
-            border-radius: 10px;
-        }
-        
 
     </style>
 </head>
@@ -297,26 +273,26 @@ $avg_participation_rate = $class_count > 0 ? round($total_participation_rate / $
                     <div class="card stats-card bg-primary">
                         <div class="card-body text-center">
                             <i class="fas fa-users fa-2x mb-2"></i>
-                            <h4 class="card-title"><?= $total_students ?></h4>
+                            <h4 class="card-title"><?= number_format($total_students) ?></h4>
                             <p class="card-text">Tổng sinh viên</p>
                         </div>
                     </div>
                 </div>
-                                            <div class="col-md-3">
-                                <div class="card stats-card bg-success">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-folder-open fa-2x mb-2"></i>
-                                        <h4 class="card-title"><?= $total_projects ?></h4>
-                                        <p class="card-text">Sinh viên có đề tài</p>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="col-md-3">
+                    <div class="card stats-card bg-success">
+                        <div class="card-body text-center">
+                            <i class="fas fa-tasks fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($total_projects_ongoing) ?></h4>
+                            <p class="card-text">Đề tài đang thực hiện</p>
+                        </div>
+                    </div>
+                </div>
                 <div class="col-md-3">
                     <div class="card stats-card bg-info">
                         <div class="card-body text-center">
-                            <i class="fas fa-percentage fa-2x mb-2"></i>
-                            <h4 class="card-title"><?= $avg_participation_rate ?>%</h4>
-                            <p class="card-text">Tỷ lệ tham gia TB</p>
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($total_projects_completed) ?></h4>
+                            <p class="card-text">Đề tài hoàn thành</p>
                         </div>
                     </div>
                 </div>
@@ -331,39 +307,32 @@ $avg_participation_rate = $class_count > 0 ? round($total_participation_rate / $
                 </div>
             </div>
             
-            <!-- Thống kê bổ sung -->
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="card bg-light">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-success mb-1">
-                                        <i class="fas fa-check-circle"></i> Đề tài hoàn thành
-                                    </h6>
-                                    <h4 class="mb-0"><?= $total_completed_projects ?></h4>
-                                </div>
-                                <div>
-                                    <i class="fas fa-trophy fa-2x text-success opacity-75"></i>
-                                </div>
-                            </div>
+            <!-- Thống kê chi tiết -->
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <div class="card stats-card bg-secondary">
+                        <div class="card-body text-center">
+                            <i class="fas fa-clock fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($total_projects_pending) ?></h4>
+                            <p class="card-text">Đề tài chờ duyệt</p>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card bg-light">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-info mb-1">
-                                        <i class="fas fa-spinner"></i> Đang thực hiện
-                                    </h6>
-                                    <h4 class="mb-0"><?= $total_ongoing_projects ?></h4>
-                                </div>
-                                <div>
-                                    <i class="fas fa-clock fa-2x text-info opacity-75"></i>
-                                </div>
-                            </div>
+                <div class="col-md-4">
+                    <div class="card stats-card bg-danger">
+                        <div class="card-body text-center">
+                            <i class="fas fa-percentage fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= $avg_participation_rate ?>%</h4>
+                            <p class="card-text">Tỷ lệ tham gia TB</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card stats-card bg-dark">
+                        <div class="card-body text-center">
+                            <i class="fas fa-project-diagram fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($total_projects) ?></h4>
+                            <p class="card-text">Tổng đề tài</p>
                         </div>
                     </div>
                 </div>
@@ -450,74 +419,33 @@ $avg_participation_rate = $class_count > 0 ? round($total_participation_rate / $
                                     </div>
                                     
                                     <div class="mb-3">
-                                        <small class="text-muted">CVHT từ:</small><br>
-                                        <strong><?= $class['AC_NGAYBATDAU'] ? date('d/m/Y', strtotime($class['AC_NGAYBATDAU'])) : 'N/A' ?></strong>
-                                    </div>
-                                    
-                                    <div class="mb-3">
                                         <div class="d-flex justify-content-between mb-1">
                                             <small class="text-muted">Tỷ lệ tham gia:</small>
-                                            <small class="text-muted fw-bold"><?= $class['TY_LE_THAM_GIA_PHANTRAM'] ?>%</small>
+                                            <small class="text-muted"><?= $class['TY_LE_THAM_GIA_PHANTRAM'] ?>%</small>
                                         </div>
-                                        <div class="progress" style="height: 10px;">
+                                        <div class="progress">
                                             <div class="progress-bar bg-<?= getProgressBarColor($class['TY_LE_THAM_GIA_PHANTRAM']) ?>" 
-                                                 style="width: <?= $class['TY_LE_THAM_GIA_PHANTRAM'] ?>%"
-                                                 title="<?= $class['TY_LE_THAM_GIA_PHANTRAM'] ?>% sinh viên tham gia"></div>
+                                                 style="width: <?= $class['TY_LE_THAM_GIA_PHANTRAM'] ?>%"></div>
                                         </div>
-                                        <small class="text-muted">
-                                            <?= $class['SV_CO_DETAI'] ?> / <?= $class['TONG_SV'] ?> sinh viên
-                                        </small>
                                     </div>
                                     
-                                    <!-- Thống kê sinh viên -->
                                     <div class="row text-center mb-3">
                                         <div class="col-4">
-                                            <div class="border rounded p-2 bg-light">
+                                            <div class="border rounded p-2">
                                                 <div class="text-primary fw-bold"><?= $class['TONG_SV'] ?></div>
                                                 <small class="text-muted">Tổng SV</small>
                                             </div>
                                         </div>
                                         <div class="col-4">
-                                            <div class="border rounded p-2 bg-light">
+                                            <div class="border rounded p-2">
                                                 <div class="text-success fw-bold"><?= $class['SV_CO_DETAI'] ?></div>
                                                 <small class="text-muted">Có đề tài</small>
                                             </div>
                                         </div>
                                         <div class="col-4">
-                                            <div class="border rounded p-2 bg-light">
+                                            <div class="border rounded p-2">
                                                 <div class="text-warning fw-bold"><?= $class['SV_CHUA_CO_DETAI'] ?></div>
                                                 <small class="text-muted">Chưa có</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Thống kê trạng thái đề tài -->
-                                    <div class="mb-3">
-                                        <small class="text-muted">Trạng thái đề tài:</small>
-                                        <div class="row text-center mt-2">
-                                            <div class="col-3">
-                                                <div class="border rounded p-1 bg-primary text-white">
-                                                    <small class="fw-bold"><?= $class['DETAI_CHO_DUYET'] ?></small>
-                                                    <br><small>Chờ duyệt</small>
-                                                </div>
-                                            </div>
-                                            <div class="col-3">
-                                                <div class="border rounded p-1 bg-info text-white">
-                                                    <small class="fw-bold"><?= $class['DETAI_DANG_THUCHIEN'] ?></small>
-                                                    <br><small>Đang thực hiện</small>
-                                                </div>
-                                            </div>
-                                            <div class="col-3">
-                                                <div class="border rounded p-1 bg-success text-white">
-                                                    <small class="fw-bold"><?= $class['DETAI_HOAN_THANH'] ?></small>
-                                                    <br><small>Hoàn thành</small>
-                                                </div>
-                                            </div>
-                                            <div class="col-3">
-                                                <div class="border rounded p-1 bg-danger text-white">
-                                                    <small class="fw-bold"><?= $class['DETAI_TAM_DUNG'] ?></small>
-                                                    <br><small>Tạm dừng</small>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
