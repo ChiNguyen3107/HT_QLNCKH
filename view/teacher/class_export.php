@@ -1,263 +1,243 @@
 <?php
-// Bao gồm file session để kiểm tra phiên đăng nhập và vai trò
-include '../../include/session.php';
+session_start();
+require_once '../../include/database.php';
+require_once '../../include/session.php';
+
+// Kiểm tra đăng nhập
 checkTeacherRole();
 
-// Kết nối database
-include '../../include/connect.php';
-
-// Lấy thông tin giảng viên
 $teacher_id = $_SESSION['user_id'];
-$export_type = $_GET['export'] ?? 'csv';
+$export_type = $_GET['export'] ?? 'excel';
 $lop_ma = $_GET['lop_ma'] ?? '';
 
-// Xác định dữ liệu cần xuất
-if ($lop_ma) {
-    // Xuất chi tiết lớp cụ thể
-    exportClassDetail($conn, $teacher_id, $lop_ma, $export_type);
-} else {
-    // Xuất tổng quan các lớp
-    exportClassOverview($conn, $teacher_id, $export_type);
+if (empty($lop_ma)) {
+    die('Thiếu thông tin lớp học');
 }
 
-function exportClassDetail($conn, $teacher_id, $lop_ma, $export_type) {
-    // Kiểm tra quyền truy cập
-    $permission_check = $conn->prepare("SELECT COUNT(*) as count FROM advisor_class WHERE GV_MAGV = ? AND LOP_MA = ? AND AC_COHIEULUC = 1");
-    $permission_check->bind_param("ss", $teacher_id, $lop_ma);
-    $permission_check->execute();
-    $has_permission = $permission_check->get_result()->fetch_assoc()['count'] > 0;
-    $permission_check->close();
+// Kiểm tra quyền truy cập lớp
+$check_sql = "SELECT COUNT(*) as count FROM advisor_class 
+              WHERE GV_MAGV = ? AND LOP_MA = ? AND AC_COHIEULUC = 1";
+$check_stmt = $connection->prepare($check_sql);
+$check_stmt->bind_param("ss", $teacher_id, $lop_ma);
+$check_stmt->execute();
+$check_result = $check_stmt->get_result();
+$check_row = $check_result->fetch_assoc();
 
-    if (!$has_permission) {
-        header("Location: class_management.php?error=permission");
-        exit;
+if ($check_row['count'] == 0) {
+    die('Bạn không có quyền truy cập lớp này');
+}
+
+// Truy vấn thông tin lớp
+$class_sql = "SELECT 
+                l.LOP_MA,
+                l.LOP_TEN,
+                l.KH_NAM,
+                k.DV_TENDV,
+                CONCAT(gv.GV_HOGV, ' ', gv.GV_TENGV) as CVHT_HOTEN
+              FROM advisor_class ac
+              JOIN lop l ON ac.LOP_MA = l.LOP_MA
+              JOIN khoa k ON l.DV_MADV = k.DV_MADV
+              JOIN giang_vien gv ON ac.GV_MAGV = gv.GV_MAGV
+              WHERE ac.GV_MAGV = ? AND ac.LOP_MA = ? AND ac.AC_COHIEULUC = 1";
+
+$class_stmt = $connection->prepare($class_sql);
+$class_stmt->bind_param("ss", $teacher_id, $lop_ma);
+$class_stmt->execute();
+$class_result = $class_stmt->get_result();
+$class_info = $class_result->fetch_assoc();
+
+if (!$class_info) {
+    die('Không tìm thấy thông tin lớp');
+}
+
+// Truy vấn danh sách sinh viên
+$sql = "SELECT 
+            sv.SV_MASV,
+            sv.SV_HOSV,
+            sv.SV_TENSV,
+            sv.SV_EMAIL,
+            sv.SV_SDT,
+            -- Thông tin đề tài
+            dt.DT_MADT,
+            dt.DT_TENDT,
+            dt.DT_TRANGTHAI,
+            dt.DT_NGAYTAO,
+            -- Thông tin tham gia
+            cttg.CTTG_VAITRO,
+            cttg.CTTG_NGAYTHAMGIA,
+            -- Thông tin giảng viên hướng dẫn
+            CONCAT(gv.GV_HOGV, ' ', gv.GV_TENGV) as GV_HOTEN,
+            gv.GV_EMAIL,
+            -- Phân loại trạng thái
+            CASE 
+                WHEN dt.DT_MADT IS NULL THEN 'Chưa tham gia'
+                WHEN dt.DT_TRANGTHAI LIKE '%hoan%' THEN 'Đã hoàn thành'
+                WHEN dt.DT_TRANGTHAI LIKE '%huy%' OR dt.DT_TRANGTHAI LIKE '%tam%' THEN 'Bị từ chối/Tạm dừng'
+                WHEN dt.DT_TRANGTHAI LIKE '%thuc%' THEN 'Đang tham gia'
+                ELSE 'Đang tham gia'
+            END as TRANGTHAI_PHANLOAI,
+            -- Tiến độ (giả định dựa trên trạng thái)
+            CASE 
+                WHEN dt.DT_MADT IS NULL THEN 0
+                WHEN dt.DT_TRANGTHAI LIKE '%hoan%' THEN 100
+                WHEN dt.DT_TRANGTHAI LIKE '%huy%' OR dt.DT_TRANGTHAI LIKE '%tam%' THEN 0
+                WHEN dt.DT_TRANGTHAI LIKE '%thuc%' THEN 50
+                ELSE 25
+            END as TIENDO_PHANTRAM
+        FROM advisor_class ac
+        JOIN lop l ON ac.LOP_MA = l.LOP_MA
+        LEFT JOIN sinh_vien sv ON l.LOP_MA = sv.LOP_MA
+        LEFT JOIN chi_tiet_tham_gia cttg ON sv.SV_MASV = cttg.SV_MASV
+        LEFT JOIN de_tai_nghien_cuu dt ON cttg.DT_MADT = dt.DT_MADT
+        LEFT JOIN giang_vien gv ON dt.GV_MAGV = gv.GV_MAGV
+        WHERE ac.GV_MAGV = ? AND ac.LOP_MA = ? AND ac.AC_COHIEULUC = 1
+        ORDER BY CONCAT(sv.SV_HOSV, ' ', sv.SV_TENSV)";
+
+$stmt = $connection->prepare($sql);
+$stmt->bind_param("ss", $teacher_id, $lop_ma);
+$stmt->execute();
+$result = $stmt->get_result();
+$students = $result->fetch_all(MYSQLI_ASSOC);
+
+if ($export_type === 'excel') {
+    // Xuất Excel
+    header('Content-Type: application/vnd.ms-excel');
+    header('Content-Disposition: attachment; filename="Danh_sach_sinh_vien_lop_' . $class_info['LOP_MA'] . '.xls"');
+    header('Cache-Control: max-age=0');
+    
+    echo '<!DOCTYPE html>';
+    echo '<html>';
+    echo '<head>';
+    echo '<meta charset="UTF-8">';
+    echo '<style>';
+    echo 'table { border-collapse: collapse; width: 100%; }';
+    echo 'th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }';
+    echo 'th { background-color: #f2f2f2; font-weight: bold; }';
+    echo '.header { background-color: #4CAF50; color: white; text-align: center; }';
+    echo '</style>';
+    echo '</head>';
+    echo '<body>';
+    
+    echo '<table>';
+    echo '<tr class="header">';
+    echo '<th colspan="8">DANH SÁCH SINH VIÊN LỚP ' . strtoupper($class_info['LOP_MA']) . '</th>';
+    echo '</tr>';
+    echo '<tr class="header">';
+    echo '<th colspan="8">Tên lớp: ' . $class_info['LOP_TEN'] . ' | Khoa: ' . $class_info['DV_TENDV'] . ' | Niên khóa: ' . $class_info['KH_NAM'] . '</th>';
+    echo '</tr>';
+    echo '<tr class="header">';
+    echo '<th colspan="8">Cố vấn học tập: ' . $class_info['CVHT_HOTEN'] . ' | Ngày xuất: ' . date('d/m/Y H:i:s') . '</th>';
+    echo '</tr>';
+    echo '<tr>';
+    echo '<th>STT</th>';
+    echo '<th>MSSV</th>';
+    echo '<th>Họ và tên</th>';
+    echo '<th>Email</th>';
+    echo '<th>Số điện thoại</th>';
+    echo '<th>Trạng thái</th>';
+    echo '<th>Tên đề tài</th>';
+    echo '<th>GV hướng dẫn</th>';
+    echo '</tr>';
+    
+    $stt = 1;
+    foreach ($students as $student) {
+        echo '<tr>';
+        echo '<td>' . $stt++ . '</td>';
+        echo '<td>' . $student['SV_MASV'] . '</td>';
+        echo '<td>' . $student['SV_HOSV'] . ' ' . $student['SV_TENSV'] . '</td>';
+        echo '<td>' . ($student['SV_EMAIL'] ?: '-') . '</td>';
+        echo '<td>' . ($student['SV_SDT'] ?: '-') . '</td>';
+        echo '<td>' . $student['TRANGTHAI_PHANLOAI'] . '</td>';
+        echo '<td>' . ($student['DT_TENDT'] ?: 'Chưa có đề tài') . '</td>';
+        echo '<td>' . ($student['GV_HOTEN'] ?: '-') . '</td>';
+        echo '</tr>';
     }
-
-    // Lấy thông tin lớp
-    $class_info_sql = "SELECT * FROM v_class_overview WHERE LOP_MA = ? AND CVHT_MAGV = ?";
-    $stmt = $conn->prepare($class_info_sql);
-    $stmt->bind_param("ss", $lop_ma, $teacher_id);
-    $stmt->execute();
-    $class_info = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-
-    if (!$class_info) {
-        header("Location: class_management.php?error=not_found");
-        exit;
+    
+    echo '</table>';
+    echo '</body>';
+    echo '</html>';
+    
+} elseif ($export_type === 'students') {
+    // Xuất danh sách sinh viên đơn giản
+    header('Content-Type: application/vnd.ms-excel');
+    header('Content-Disposition: attachment; filename="Danh_sach_SV_' . $class_info['LOP_MA'] . '.xls"');
+    header('Cache-Control: max-age=0');
+    
+    echo '<!DOCTYPE html>';
+    echo '<html>';
+    echo '<head>';
+    echo '<meta charset="UTF-8">';
+    echo '<style>';
+    echo 'table { border-collapse: collapse; width: 100%; }';
+    echo 'th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }';
+    echo 'th { background-color: #f2f2f2; font-weight: bold; }';
+    echo '.header { background-color: #2196F3; color: white; text-align: center; }';
+    echo '</style>';
+    echo '</head>';
+    echo '<body>';
+    
+    echo '<table>';
+    echo '<tr class="header">';
+    echo '<th colspan="3">DANH SÁCH SINH VIÊN LỚP ' . strtoupper($class_info['LOP_MA']) . '</th>';
+    echo '</tr>';
+    echo '<tr class="header">';
+    echo '<th colspan="3">Tên lớp: ' . $class_info['LOP_TEN'] . ' | Ngày xuất: ' . date('d/m/Y H:i:s') . '</th>';
+    echo '</tr>';
+    echo '<tr>';
+    echo '<th>STT</th>';
+    echo '<th>MSSV</th>';
+    echo '<th>Họ và tên</th>';
+    echo '</tr>';
+    
+    $stt = 1;
+    foreach ($students as $student) {
+        echo '<tr>';
+        echo '<td>' . $stt++ . '</td>';
+        echo '<td>' . $student['SV_MASV'] . '</td>';
+        echo '<td>' . $student['SV_HOSV'] . ' ' . $student['SV_TENSV'] . '</td>';
+        echo '</tr>';
     }
-
-    // Lấy danh sách sinh viên
-    $sql = "SELECT 
-                sps.SV_MASV,
-                sps.SV_HOSV,
-                sps.SV_TENSV,
-                sps.LOP_MA,
-                sps.LOP_TEN,
-                sps.DT_MADT,
-                sps.DT_TENDT,
-                sps.DT_TRANGTHAI,
-                sps.TRANGTHAI_PHANLOAI,
-                sps.TIENDO_PHANTRAM,
-                sps.GV_HOTEN,
-                sps.CTTG_VAITRO,
-                sps.CTTG_NGAYTHAMGIA,
-                sps.DT_NGAYTAO
-            FROM v_student_project_summary sps
-            JOIN advisor_class ac ON sps.LOP_MA = ac.LOP_MA
-            WHERE sps.LOP_MA = ? AND ac.GV_MAGV = ? AND ac.AC_COHIEULUC = 1
-            ORDER BY CONCAT(sps.SV_HOSV, ' ', sps.SV_TENSV)";
-
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ss", $lop_ma, $teacher_id);
-    $stmt->execute();
-    $students = $stmt->get_result();
-    $stmt->close();
-
-    // Chuẩn bị dữ liệu xuất
-    $data = [];
-    $headers = [
+    
+    echo '</table>';
+    echo '</body>';
+    echo '</html>';
+    
+} else {
+    // Xuất CSV
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="Danh_sach_sinh_vien_lop_' . $class_info['LOP_MA'] . '.csv"');
+    
+    // BOM cho UTF-8
+    echo "\xEF\xBB\xBF";
+    
+    $output = fopen('php://output', 'w');
+    
+    // Header
+    fputcsv($output, array(
         'MSSV',
         'Họ và tên',
-        'Lớp',
-        'Trạng thái đề tài',
+        'Email',
+        'Số điện thoại',
+        'Trạng thái',
         'Tên đề tài',
-        'Giảng viên hướng dẫn',
-        'Vai trò trong đề tài',
-        'Tiến độ (%)',
-        'Ngày đăng ký đề tài',
-        'Ngày tham gia'
-    ];
-
-    $stats = ['chua_tham_gia' => 0, 'dang_tham_gia' => 0, 'da_hoan_thanh' => 0, 'bi_tu_choi' => 0];
-
-    while ($student = $students->fetch_assoc()) {
-        $data[] = [
+        'GV hướng dẫn',
+        'Tiến độ (%)'
+    ));
+    
+    // Data
+    foreach ($students as $student) {
+        fputcsv($output, array(
             $student['SV_MASV'],
             $student['SV_HOSV'] . ' ' . $student['SV_TENSV'],
-            $student['LOP_TEN'],
+            $student['SV_EMAIL'] ?: '',
+            $student['SV_SDT'] ?: '',
             $student['TRANGTHAI_PHANLOAI'],
             $student['DT_TENDT'] ?: 'Chưa có đề tài',
-            $student['GV_HOTEN'] ?: '-',
-            $student['CTTG_VAITRO'] ?: '-',
-            $student['TIENDO_PHANTRAM'] ?: '-',
-            $student['DT_NGAYTAO'] ? date('d/m/Y', strtotime($student['DT_NGAYTAO'])) : '-',
-            $student['CTTG_NGAYTHAMGIA'] ? date('d/m/Y', strtotime($student['CTTG_NGAYTHAMGIA'])) : '-'
-        ];
-
-        // Tính thống kê
-        switch ($student['TRANGTHAI_PHANLOAI']) {
-            case 'Chưa tham gia': $stats['chua_tham_gia']++; break;
-            case 'Đang tham gia': $stats['dang_tham_gia']++; break;
-            case 'Đã hoàn thành': $stats['da_hoan_thanh']++; break;
-            case 'Bị từ chối/Tạm dừng': $stats['bi_tu_choi']++; break;
-        }
-    }
-
-    // Thêm hàng thống kê
-    $data[] = ['', '', '', '', '', '', '', '', '', ''];
-    $data[] = ['THỐNG KÊ', '', '', '', '', '', '', '', '', ''];
-    $data[] = ['Chưa tham gia:', $stats['chua_tham_gia'], '', '', '', '', '', '', '', ''];
-    $data[] = ['Đang tham gia:', $stats['dang_tham_gia'], '', '', '', '', '', '', '', ''];
-    $data[] = ['Đã hoàn thành:', $stats['da_hoan_thanh'], '', '', '', '', '', '', '', ''];
-    $data[] = ['Bị từ chối/Tạm dừng:', $stats['bi_tu_choi'], '', '', '', '', '', '', '', ''];
-
-    $filename = "Chi_tiet_lop_" . $class_info['LOP_TEN'] . "_" . date('Y-m-d') . ".csv";
-    
-    exportToFile($data, $headers, $filename, $export_type);
-}
-
-function exportClassOverview($conn, $teacher_id, $export_type) {
-    // Lấy danh sách lớp của giảng viên
-    $sql = "SELECT 
-                co.LOP_MA,
-                co.LOP_TEN,
-                co.KH_NAM,
-                co.DV_TENDV,
-                co.TONG_SV,
-                co.SV_CO_DETAI,
-                co.SV_CHUA_CO_DETAI,
-                co.TY_LE_THAM_GIA_PHANTRAM,
-                co.CVHT_HOTEN,
-                co.DETAI_CHO_DUYET,
-                co.DETAI_DANG_THUCHIEN,
-                co.DETAI_HOAN_THANH,
-                co.DETAI_TAM_DUNG
-            FROM v_class_overview co
-            WHERE co.CVHT_MAGV = ?
-            ORDER BY co.LOP_TEN";
-
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $teacher_id);
-    $stmt->execute();
-    $classes = $stmt->get_result();
-    $stmt->close();
-
-    // Chuẩn bị dữ liệu xuất
-    $data = [];
-    $headers = [
-        'Mã lớp',
-        'Tên lớp',
-        'Niên khóa',
-        'Khoa',
-        'Tổng sinh viên',
-        'Sinh viên có đề tài',
-        'Sinh viên chưa có đề tài',
-        'Tỷ lệ tham gia (%)',
-        'Đề tài chờ duyệt',
-        'Đề tài đang thực hiện',
-        'Đề tài đã hoàn thành',
-        'Đề tài tạm dừng'
-    ];
-
-    $total_stats = [
-        'tong_sv' => 0,
-        'sv_co_detai' => 0,
-        'sv_chua_co_detai' => 0,
-        'detai_cho_duyet' => 0,
-        'detai_dang_thuchien' => 0,
-        'detai_hoan_thanh' => 0,
-        'detai_tam_dung' => 0
-    ];
-
-    while ($class = $classes->fetch_assoc()) {
-        $data[] = [
-            $class['LOP_MA'],
-            $class['LOP_TEN'],
-            $class['KH_NAM'],
-            $class['DV_TENDV'],
-            $class['TONG_SV'],
-            $class['SV_CO_DETAI'],
-            $class['SV_CHUA_CO_DETAI'],
-            $class['TY_LE_THAM_GIA_PHANTRAM'],
-            $class['DETAI_CHO_DUYET'],
-            $class['DETAI_DANG_THUCHIEN'],
-            $class['DETAI_HOAN_THANH'],
-            $class['DETAI_TAM_DUNG']
-        ];
-
-        // Cộng dồn thống kê
-        $total_stats['tong_sv'] += $class['TONG_SV'];
-        $total_stats['sv_co_detai'] += $class['SV_CO_DETAI'];
-        $total_stats['sv_chua_co_detai'] += $class['SV_CHUA_CO_DETAI'];
-        $total_stats['detai_cho_duyet'] += $class['DETAI_CHO_DUYET'];
-        $total_stats['detai_dang_thuchien'] += $class['DETAI_DANG_THUCHIEN'];
-        $total_stats['detai_hoan_thanh'] += $class['DETAI_HOAN_THANH'];
-        $total_stats['detai_tam_dung'] += $class['DETAI_TAM_DUNG'];
-    }
-
-    // Thêm hàng tổng cộng
-    if (!empty($data)) {
-        $data[] = ['', '', '', '', '', '', '', '', '', '', '', ''];
-        $data[] = ['TỔNG CỘNG', '', '', '', $total_stats['tong_sv'], $total_stats['sv_co_detai'], 
-                   $total_stats['sv_chua_co_detai'], '-', $total_stats['detai_cho_duyet'], 
-                   $total_stats['detai_dang_thuchien'], $total_stats['detai_hoan_thanh'], 
-                   $total_stats['detai_tam_dung']];
-    }
-
-    $filename = "Tong_quan_lop_cua_GV_" . date('Y-m-d') . ".csv";
-    
-    exportToFile($data, $headers, $filename, $export_type);
-}
-
-function exportToFile($data, $headers, $filename, $export_type) {
-    // Thiết lập header cho download
-    if ($export_type === 'excel') {
-        header('Content-Type: application/vnd.ms-excel');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Cache-Control: max-age=0');
-        
-        // Xuất Excel format cơ bản
-        echo "\xEF\xBB\xBF"; // BOM cho UTF-8
-        
-        // Header
-        echo implode("\t", $headers) . "\r\n";
-        
-        // Data
-        foreach ($data as $row) {
-            echo implode("\t", $row) . "\r\n";
-        }
-    } else {
-        // Xuất CSV
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        
-        // Tạo file output
-        $output = fopen('php://output', 'w');
-        
-        // BOM cho UTF-8
-        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-        
-        // Header
-        fputcsv($output, $headers, ',');
-        
-        // Data
-        foreach ($data as $row) {
-            fputcsv($output, $row, ',');
-        }
-        
-        fclose($output);
+            $student['GV_HOTEN'] ?: '',
+            $student['TIENDO_PHANTRAM']
+        ));
     }
     
-    exit;
+    fclose($output);
 }
 ?>
