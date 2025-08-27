@@ -104,25 +104,59 @@ if ($academic_years) {
     }
 }
 
-// Tính tổng thống kê
-$total_students = 0;
-$total_projects_ongoing = 0;
-$total_projects_completed = 0;
-$total_projects_pending = 0;
-$total_participation_rate = 0;
-$class_count = 0;
+// Tính tổng thống kê từ view v_class_overview cho CVHT hiện tại
+$stats_sql = "SELECT 
+    SUM(TONG_SV) as total_students,
+    SUM(SV_CO_DETAI) as total_students_with_projects,
+    SUM(SV_CHUA_CO_DETAI) as total_students_without_projects,
+    SUM(DETAI_CHO_DUYET) as total_projects_pending,
+    SUM(DETAI_DANG_THUCHIEN) as total_projects_ongoing,
+    SUM(DETAI_HOAN_THANH) as total_projects_completed,
+    SUM(DETAI_TAM_DUNG) as total_projects_suspended,
+    COUNT(*) as total_classes,
+    AVG(TY_LE_THAM_GIA_PHANTRAM) as avg_participation_rate
+FROM v_class_overview 
+WHERE CVHT_MAGV = ? AND AC_COHIEULUC = 1";
+
+$params = [$teacher_id];
+if ($search) {
+    $stats_sql .= " AND LOP_TEN LIKE ?";
+    $params[] = "%$search%";
+}
+if ($khoa) {
+    $stats_sql .= " AND DV_TENDV LIKE ?";
+    $params[] = "%$khoa%";
+}
+if ($nien_khoa) {
+    $stats_sql .= " AND KH_NAM = ?";
+    $params[] = $nien_khoa;
+}
+
+$stmt = $conn->prepare($stats_sql);
+$stmt->bind_param(str_repeat('s', count($params)), ...$params);
+$stmt->execute();
+$stats_result = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+// Lấy dữ liệu thống kê
+$total_students = $stats_result['total_students'] ?? 0;
+$total_students_with_projects = $stats_result['total_students_with_projects'] ?? 0;
+$total_students_without_projects = $stats_result['total_students_without_projects'] ?? 0;
+$total_projects_pending = $stats_result['total_projects_pending'] ?? 0;
+$total_projects_ongoing = $stats_result['total_projects_ongoing'] ?? 0;
+$total_projects_completed = $stats_result['total_projects_completed'] ?? 0;
+$total_projects_suspended = $stats_result['total_projects_suspended'] ?? 0;
+$total_classes = $stats_result['total_classes'] ?? 0;
+$avg_participation_rate = $stats_result['avg_participation_rate'] ?? 0;
+
+// Tính tổng số đề tài
+$total_projects = $total_projects_ongoing + $total_projects_completed + $total_projects_pending + $total_projects_suspended;
+
+// Lấy danh sách lớp cho hiển thị
 $classes_list = [];
 while ($class = $classes->fetch_assoc()) {
     $classes_list[] = $class;
-    $total_students += $class['TONG_SV'];
-    $total_projects_ongoing += $class['DETAI_DANG_THUCHIEN'];
-    $total_projects_completed += $class['DETAI_HOAN_THANH'];
-    $total_projects_pending += $class['DETAI_CHO_DUYET'];
-    $total_participation_rate += $class['TY_LE_THAM_GIA_PHANTRAM'];
-    $class_count++;
 }
-$avg_participation_rate = $class_count > 0 ? round($total_participation_rate / $class_count, 2) : 0;
-$total_projects = $total_projects_ongoing + $total_projects_completed + $total_projects_pending;
 ?>
 
 <!DOCTYPE html>
@@ -267,7 +301,7 @@ $total_projects = $total_projects_ongoing + $total_projects_completed + $total_p
                 </div>
             </div>
             
-            <!-- Thống kê tổng quan -->
+            <!-- Thống kê sinh viên -->
             <div class="row">
                 <div class="col-md-3">
                     <div class="card stats-card bg-primary">
@@ -281,49 +315,98 @@ $total_projects = $total_projects_ongoing + $total_projects_completed + $total_p
                 <div class="col-md-3">
                     <div class="card stats-card bg-success">
                         <div class="card-body text-center">
-                            <i class="fas fa-tasks fa-2x mb-2"></i>
-                            <h4 class="card-title"><?= number_format($total_projects_ongoing) ?></h4>
-                            <p class="card-text">Đề tài đang thực hiện</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card stats-card bg-info">
-                        <div class="card-body text-center">
-                            <i class="fas fa-check-circle fa-2x mb-2"></i>
-                            <h4 class="card-title"><?= number_format($total_projects_completed) ?></h4>
-                            <p class="card-text">Đề tài hoàn thành</p>
+                            <i class="fas fa-user-check fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($total_students_with_projects) ?></h4>
+                            <p class="card-text">SV có đề tài</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card stats-card bg-warning">
                         <div class="card-body text-center">
-                            <i class="fas fa-graduation-cap fa-2x mb-2"></i>
-                            <h4 class="card-title"><?= $class_count ?></h4>
-                            <p class="card-text">Lớp đang cố vấn</p>
+                            <i class="fas fa-user-times fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($total_students_without_projects) ?></h4>
+                            <p class="card-text">SV chưa có đề tài</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stats-card bg-info">
+                        <div class="card-body text-center">
+                            <i class="fas fa-percentage fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($avg_participation_rate, 1) ?>%</h4>
+                            <p class="card-text">Tỷ lệ tham gia TB</p>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Thống kê chi tiết -->
+            <!-- Thống kê lớp và đề tài -->
             <div class="row mt-3">
                 <div class="col-md-4">
                     <div class="card stats-card bg-secondary">
                         <div class="card-body text-center">
-                            <i class="fas fa-clock fa-2x mb-2"></i>
-                            <h4 class="card-title"><?= number_format($total_projects_pending) ?></h4>
-                            <p class="card-text">Đề tài chờ duyệt</p>
+                            <i class="fas fa-graduation-cap fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= $total_classes ?></h4>
+                            <p class="card-text">Lớp đang cố vấn</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
+                    <div class="card stats-card bg-dark">
+                        <div class="card-body text-center">
+                            <i class="fas fa-project-diagram fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($total_projects) ?></h4>
+                            <p class="card-text">Tổng đề tài</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card stats-card bg-primary">
+                        <div class="card-body text-center">
+                            <i class="fas fa-chart-line fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= $total_students > 0 ? number_format(($total_students_with_projects / $total_students) * 100, 1) : 0 ?>%</h4>
+                            <p class="card-text">Tỷ lệ SV có đề tài</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Thống kê đề tài -->
+            <div class="row mt-3">
+                <div class="col-md-2">
+                    <div class="card stats-card bg-success">
+                        <div class="card-body text-center">
+                            <i class="fas fa-tasks fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($total_projects_ongoing) ?></h4>
+                            <p class="card-text">Đang thực hiện</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card stats-card bg-info">
+                        <div class="card-body text-center">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($total_projects_completed) ?></h4>
+                            <p class="card-text">Hoàn thành</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card stats-card bg-secondary">
+                        <div class="card-body text-center">
+                            <i class="fas fa-clock fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($total_projects_pending) ?></h4>
+                            <p class="card-text">Chờ duyệt</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
                     <div class="card stats-card bg-danger">
                         <div class="card-body text-center">
-                            <i class="fas fa-percentage fa-2x mb-2"></i>
-                            <h4 class="card-title"><?= $avg_participation_rate ?>%</h4>
-                            <p class="card-text">Tỷ lệ tham gia TB</p>
+                            <i class="fas fa-pause fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($total_projects_suspended) ?></h4>
+                            <p class="card-text">Tạm dừng</p>
                         </div>
                     </div>
                 </div>
