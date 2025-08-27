@@ -284,13 +284,218 @@ include '../../include/research_header.php';
         </div>
     </div>
 
+    <!-- Modal Chi tiết CVHT -->
+    <div class="modal fade" id="detailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-info-circle"></i>
+                        Chi tiết Cố vấn học tập
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-user"></i> Thông tin Giảng viên
+                            </h6>
+                            <div class="mb-3">
+                                <strong>Mã giảng viên:</strong>
+                                <span id="detail_gv_magv"></span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Họ và tên:</strong>
+                                <span id="detail_gv_hoten"></span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Khoa:</strong>
+                                <span id="detail_gv_khoa"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-graduation-cap"></i> Thông tin Lớp
+                            </h6>
+                            <div class="mb-3">
+                                <strong>Mã lớp:</strong>
+                                <span id="detail_lop_ma"></span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Tên lớp:</strong>
+                                <span id="detail_lop_ten"></span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Khóa:</strong>
+                                <span id="detail_lop_khoa"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-calendar"></i> Thông tin Gán CVHT
+                            </h6>
+                            <div class="mb-3">
+                                <strong>Ngày bắt đầu:</strong>
+                                <span id="detail_ngay_batdau"></span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Ngày kết thúc:</strong>
+                                <span id="detail_ngay_ketthuc"></span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Trạng thái:</strong>
+                                <span id="detail_trang_thai"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-clock"></i> Thông tin Cập nhật
+                            </h6>
+                            <div class="mb-3">
+                                <strong>Người cập nhật:</strong>
+                                <span id="detail_nguoi_capnhat"></span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Ghi chú:</strong>
+                                <span id="detail_ghi_chu"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Thống kê nhanh -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-chart-bar"></i> Thống kê nhanh
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="card bg-primary text-white text-center">
+                                        <div class="card-body">
+                                            <h5 id="detail_tong_sv">0</h5>
+                                            <small>Tổng sinh viên</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-success text-white text-center">
+                                        <div class="card-body">
+                                            <h5 id="detail_sv_co_dt">0</h5>
+                                            <small>Sinh viên có đề tài</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-info text-white text-center">
+                                        <div class="card-body">
+                                            <h5 id="detail_dt_da_hoanthanh">0</h5>
+                                            <small>Đề tài hoàn thành</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-warning text-white text-center">
+                                        <div class="card-body">
+                                            <h5 id="detail_dt_dang_thuchien">0</h5>
+                                            <small>Đang thực hiện</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="#" id="detail_view_class_btn" class="btn btn-primary">
+                        <i class="fas fa-eye"></i> Xem chi tiết lớp
+                    </a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function showAdvisorDetail(advisorData) {
-            alert('Chi tiết CVHT:\n' +
-                  'Giảng viên: ' + advisorData.GV_HOGV + ' ' + advisorData.GV_TENGV + '\n' +
-                  'Lớp: ' + advisorData.LOP_TEN + '\n' +
-                  'Trạng thái: ' + (advisorData.AC_COHIEULUC ? 'Đang hiệu lực' : 'Đã hết hiệu lực'));
+            // Hiển thị thông tin cơ bản
+            document.getElementById('detail_gv_magv').textContent = advisorData.GV_MAGV;
+            document.getElementById('detail_gv_hoten').textContent = advisorData.GV_HOGV + ' ' + advisorData.GV_TENGV;
+            document.getElementById('detail_gv_khoa').textContent = advisorData.DV_TENDV || 'N/A';
+            
+            document.getElementById('detail_lop_ma').textContent = advisorData.LOP_MA;
+            document.getElementById('detail_lop_ten').textContent = advisorData.LOP_TEN;
+            document.getElementById('detail_lop_khoa').textContent = advisorData.KH_NAM || 'N/A';
+            
+            document.getElementById('detail_ngay_batdau').textContent = advisorData.AC_NGAYBATDAU || 'N/A';
+            document.getElementById('detail_ngay_ketthuc').textContent = advisorData.AC_NGAYKETTHUC || 'Chưa kết thúc';
+            
+            const statusText = advisorData.AC_COHIEULUC ? 
+                '<span class="badge bg-success">Đang hiệu lực</span>' : 
+                '<span class="badge bg-secondary">Đã hết hiệu lực</span>';
+            document.getElementById('detail_trang_thai').innerHTML = statusText;
+            
+            document.getElementById('detail_nguoi_capnhat').textContent = advisorData.AC_NGUOICAPNHAT || 'N/A';
+            document.getElementById('detail_ghi_chu').textContent = advisorData.AC_GHICHU || 'Không có ghi chú';
+            
+            // Cập nhật link xem chi tiết lớp
+            document.getElementById('detail_view_class_btn').href = `../teacher/class_detail.php?lop_ma=${encodeURIComponent(advisorData.LOP_MA)}`;
+            
+            // Reset thống kê
+            document.getElementById('detail_tong_sv').textContent = '0';
+            document.getElementById('detail_sv_co_dt').textContent = '0';
+            document.getElementById('detail_dt_da_hoanthanh').textContent = '0';
+            document.getElementById('detail_dt_dang_thuchien').textContent = '0';
+            
+            // Lấy thống kê từ server
+            fetchAdvisorStatistics(advisorData.LOP_MA);
+            
+            // Hiển thị modal
+            const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+            modal.show();
+        }
+        
+        function fetchAdvisorStatistics(lopMa) {
+            console.log('Đang lấy thống kê cho lớp:', lopMa);
+            
+            fetch(`../admin/get_advisor_statistics_simple_v2.php?lop_ma=${encodeURIComponent(lopMa)}`)
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Thống kê nhận được:', data);
+                    if (data.success) {
+                        document.getElementById('detail_tong_sv').textContent = data.statistics.total_students;
+                        document.getElementById('detail_sv_co_dt').textContent = data.statistics.students_with_projects;
+                        document.getElementById('detail_dt_da_hoanthanh').textContent = data.statistics.completed_projects;
+                        document.getElementById('detail_dt_dang_thuchien').textContent = data.statistics.ongoing_projects;
+                    } else {
+                        console.error('Lỗi khi lấy thống kê:', data.message);
+                        // Hiển thị thông báo lỗi trong modal
+                        document.getElementById('detail_tong_sv').textContent = 'Lỗi';
+                        document.getElementById('detail_sv_co_dt').textContent = 'Lỗi';
+                        document.getElementById('detail_dt_da_hoanthanh').textContent = 'Lỗi';
+                        document.getElementById('detail_dt_dang_thuchien').textContent = 'Lỗi';
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi kết nối:', error);
+                    // Hiển thị thông báo lỗi trong modal
+                    document.getElementById('detail_tong_sv').textContent = 'Lỗi';
+                    document.getElementById('detail_sv_co_dt').textContent = 'Lỗi';
+                    document.getElementById('detail_dt_da_hoanthanh').textContent = 'Lỗi';
+                    document.getElementById('detail_dt_dang_thuchien').textContent = 'Lỗi';
+                });
         }
     </script>
 </body>
