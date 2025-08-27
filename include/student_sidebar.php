@@ -105,6 +105,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 </a>
             </li>
             <li>
+                <a href="/NLNganh/view/student/manage_extensions.php" class="<?php echo (in_array($current_page, ['manage_extensions.php', 'process_extension_request.php', 'get_extension_detail.php'])) ? 'active' : ''; ?>">
+                    <i class="fas fa-clock"></i>
+                    <span>Gia hạn đề tài</span>
+                </a>
+            </li>
+            <li>
                 <a href="/NLNganh/view/student/student_reports.php" class="<?php echo (in_array($current_page, ['student_reports.php', 'view_report.php', 'submit_report.php'])) ? 'active' : ''; ?>">
                     <i class="fas fa-file-alt"></i>
                     <span>Báo cáo</span>

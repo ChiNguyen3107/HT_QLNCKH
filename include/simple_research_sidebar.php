@@ -389,6 +389,29 @@ body {
                         <span class="nav-text">Quản lý CVHT</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="/NLNganh/view/research/manage_extensions.php" 
+                       class="nav-link <?php echo ($current_page == 'manage_extensions.php') ? 'active' : ''; ?>">
+                        <i class="nav-icon fas fa-clock"></i>
+                        <span class="nav-text">Quản lý gia hạn</span>
+                        <?php
+                        // Đếm số yêu cầu gia hạn chờ duyệt
+                        if (isset($conn)) {
+                            $extension_count = 0;
+                            $stmt = $conn->prepare("SELECT COUNT(*) as count FROM de_tai_gia_han WHERE GH_TRANGTHAI = 'Chờ duyệt'");
+                            if ($stmt) {
+                                $stmt->execute();
+                                $result = $stmt->get_result();
+                                $extension_count = $result->fetch_assoc()['count'];
+                                $stmt->close();
+                                if ($extension_count > 0) {
+                                    echo '<span class="nav-badge">' . $extension_count . '</span>';
+                                }
+                            }
+                        }
+                        ?>
+                    </a>
+                </li>
                 
         </div>
 
