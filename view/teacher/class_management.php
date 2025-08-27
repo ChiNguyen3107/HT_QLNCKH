@@ -17,17 +17,19 @@ $page = max(1, intval($_GET['page'] ?? 1));
 $limit = min(20, max(1, intval($_GET['limit'] ?? 20)));
 
 // Truy vấn tổng số lớp
-$count_sql = "SELECT COUNT(*) as total 
-              FROM v_class_overview co 
-              WHERE co.CVHT_MAGV = ?";
+$count_sql = "SELECT COUNT(DISTINCT l.LOP_MA) as total 
+              FROM advisor_class ac
+              JOIN lop l ON ac.LOP_MA = l.LOP_MA
+              WHERE ac.GV_MAGV = ? AND ac.AC_COHIEULUC = 1";
 if ($search) {
-    $count_sql .= " AND co.LOP_TEN LIKE ?";
+    $count_sql .= " AND l.LOP_TEN LIKE ?";
 }
 if ($khoa) {
-    $count_sql .= " AND co.DV_TENDV LIKE ?";
+    $count_sql .= " AND k.DV_TENDV LIKE ?";
+    $count_sql = str_replace("FROM advisor_class ac", "FROM advisor_class ac JOIN khoa k ON l.DV_MADV = k.DV_MADV", $count_sql);
 }
 if ($nien_khoa) {
-    $count_sql .= " AND co.KH_NAM = ?";
+    $count_sql .= " AND l.KH_NAM = ?";
 }
 
 $stmt = $conn->prepare($count_sql);
@@ -44,39 +46,54 @@ $stmt->close();
 $total_pages = ceil($total_classes / $limit);
 $offset = ($page - 1) * $limit;
 
-// Truy vấn danh sách lớp
+// Truy vấn danh sách lớp với thống kê chi tiết
 $sql = "SELECT 
-            co.LOP_MA,
-            co.LOP_TEN,
-            co.KH_NAM,
-            co.DV_TENDV,
-            co.TONG_SV,
-            co.SV_CO_DETAI,
-            co.SV_CHUA_CO_DETAI,
-            co.TY_LE_THAM_GIA_PHANTRAM,
-            co.CVHT_HOTEN,
-            co.DETAI_CHO_DUYET,
-            co.DETAI_DANG_THUCHIEN,
-            co.DETAI_HOAN_THANH,
-            co.DETAI_TAM_DUNG
-        FROM v_class_overview co
-        WHERE co.CVHT_MAGV = ?";
+            l.LOP_MA,
+            l.LOP_TEN,
+            l.KH_NAM,
+            k.DV_TENDV,
+            -- Thống kê sinh viên
+            COUNT(DISTINCT sv.SV_MASV) as TONG_SV,
+            COUNT(DISTINCT CASE WHEN dt.DT_MADT IS NOT NULL THEN sv.SV_MASV END) as SV_CO_DETAI,
+            COUNT(DISTINCT CASE WHEN dt.DT_MADT IS NULL THEN sv.SV_MASV END) as SV_CHUA_CO_DETAI,
+            -- Tỷ lệ tham gia
+            CASE 
+                WHEN COUNT(DISTINCT sv.SV_MASV) > 0 
+                THEN ROUND(COUNT(DISTINCT CASE WHEN dt.DT_MADT IS NOT NULL THEN sv.SV_MASV END) * 100.0 / COUNT(DISTINCT sv.SV_MASV), 2)
+                ELSE 0 
+            END as TY_LE_THAM_GIA_PHANTRAM,
+            -- Thông tin CVHT
+            CONCAT(gv.GV_HOGV, ' ', gv.GV_TENGV) as CVHT_HOTEN,
+            -- Thống kê đề tài theo trạng thái (xử lý encoding và tránh duplicate)
+            COUNT(DISTINCT CASE WHEN dt.DT_TRANGTHAI LIKE '%duyet%' OR dt.DT_TRANGTHAI LIKE '%cho%' THEN dt.DT_MADT END) as DETAI_CHO_DUYET,
+            COUNT(DISTINCT CASE WHEN dt.DT_TRANGTHAI LIKE '%thuc%' THEN dt.DT_MADT END) as DETAI_DANG_THUCHIEN,
+            COUNT(DISTINCT CASE WHEN dt.DT_TRANGTHAI LIKE '%hoan%' THEN dt.DT_MADT END) as DETAI_HOAN_THANH,
+            COUNT(DISTINCT CASE WHEN dt.DT_TRANGTHAI LIKE '%huy%' OR dt.DT_TRANGTHAI LIKE '%tam%' THEN dt.DT_MADT END) as DETAI_TAM_DUNG
+        FROM advisor_class ac
+        JOIN lop l ON ac.LOP_MA = l.LOP_MA
+        JOIN khoa k ON l.DV_MADV = k.DV_MADV
+        LEFT JOIN sinh_vien sv ON l.LOP_MA = sv.LOP_MA
+        LEFT JOIN chi_tiet_tham_gia cttg ON sv.SV_MASV = cttg.SV_MASV
+        LEFT JOIN de_tai_nghien_cuu dt ON cttg.DT_MADT = dt.DT_MADT
+        LEFT JOIN giang_vien gv ON ac.GV_MAGV = gv.GV_MAGV
+        WHERE ac.GV_MAGV = ? AND ac.AC_COHIEULUC = 1";
 
 $params = [$teacher_id];
 if ($search) {
-    $sql .= " AND co.LOP_TEN LIKE ?";
+    $sql .= " AND l.LOP_TEN LIKE ?";
     $params[] = "%$search%";
 }
 if ($khoa) {
-    $sql .= " AND co.DV_TENDV LIKE ?";
+    $sql .= " AND k.DV_TENDV LIKE ?";
     $params[] = "%$khoa%";
 }
 if ($nien_khoa) {
-    $sql .= " AND co.KH_NAM = ?";
+    $sql .= " AND l.KH_NAM = ?";
     $params[] = $nien_khoa;
 }
 
-$sql .= " ORDER BY co.LOP_TEN LIMIT ? OFFSET ?";
+$sql .= " GROUP BY l.LOP_MA, l.LOP_TEN, l.KH_NAM, k.DV_TENDV, gv.GV_HOGV, gv.GV_TENGV";
+$sql .= " ORDER BY l.LOP_TEN LIMIT ? OFFSET ?";
 $params[] = $limit;
 $params[] = $offset;
 
@@ -104,31 +121,48 @@ if ($academic_years) {
     }
 }
 
-// Tính tổng thống kê từ view v_class_overview cho CVHT hiện tại
+// Tính tổng thống kê từ các bảng gốc cho CVHT hiện tại
 $stats_sql = "SELECT 
-    SUM(TONG_SV) as total_students,
-    SUM(SV_CO_DETAI) as total_students_with_projects,
-    SUM(SV_CHUA_CO_DETAI) as total_students_without_projects,
-    SUM(DETAI_CHO_DUYET) as total_projects_pending,
-    SUM(DETAI_DANG_THUCHIEN) as total_projects_ongoing,
-    SUM(DETAI_HOAN_THANH) as total_projects_completed,
-    SUM(DETAI_TAM_DUNG) as total_projects_suspended,
-    COUNT(*) as total_classes,
-    AVG(TY_LE_THAM_GIA_PHANTRAM) as avg_participation_rate
-FROM v_class_overview 
-WHERE CVHT_MAGV = ? AND AC_COHIEULUC = 1";
+    -- Thống kê sinh viên
+    COUNT(DISTINCT sv.SV_MASV) as total_students,
+    COUNT(DISTINCT CASE WHEN dt.DT_MADT IS NOT NULL THEN sv.SV_MASV END) as total_students_with_projects,
+    COUNT(DISTINCT CASE WHEN dt.DT_MADT IS NULL THEN sv.SV_MASV END) as total_students_without_projects,
+    
+    -- Thống kê đề tài theo trạng thái (xử lý encoding và tránh duplicate)
+    COUNT(DISTINCT CASE WHEN dt.DT_TRANGTHAI LIKE '%duyet%' OR dt.DT_TRANGTHAI LIKE '%cho%' THEN dt.DT_MADT END) as total_projects_pending,
+    COUNT(DISTINCT CASE WHEN dt.DT_TRANGTHAI LIKE '%thuc%' THEN dt.DT_MADT END) as total_projects_ongoing,
+    COUNT(DISTINCT CASE WHEN dt.DT_TRANGTHAI LIKE '%hoan%' THEN dt.DT_MADT END) as total_projects_completed,
+    COUNT(DISTINCT CASE WHEN dt.DT_TRANGTHAI LIKE '%huy%' OR dt.DT_TRANGTHAI LIKE '%tam%' THEN dt.DT_MADT END) as total_projects_suspended,
+    
+    -- Thống kê lớp
+    COUNT(DISTINCT l.LOP_MA) as total_classes,
+    
+    -- Tỷ lệ tham gia
+    CASE 
+        WHEN COUNT(DISTINCT sv.SV_MASV) > 0 
+        THEN ROUND(COUNT(DISTINCT CASE WHEN dt.DT_MADT IS NOT NULL THEN sv.SV_MASV END) * 100.0 / COUNT(DISTINCT sv.SV_MASV), 2)
+        ELSE 0 
+    END as avg_participation_rate
+    
+FROM advisor_class ac
+JOIN lop l ON ac.LOP_MA = l.LOP_MA
+LEFT JOIN sinh_vien sv ON l.LOP_MA = sv.LOP_MA
+LEFT JOIN chi_tiet_tham_gia cttg ON sv.SV_MASV = cttg.SV_MASV
+LEFT JOIN de_tai_nghien_cuu dt ON cttg.DT_MADT = dt.DT_MADT
+WHERE ac.GV_MAGV = ? AND ac.AC_COHIEULUC = 1";
 
 $params = [$teacher_id];
 if ($search) {
-    $stats_sql .= " AND LOP_TEN LIKE ?";
+    $stats_sql .= " AND l.LOP_TEN LIKE ?";
     $params[] = "%$search%";
 }
 if ($khoa) {
-    $stats_sql .= " AND DV_TENDV LIKE ?";
+    $stats_sql .= " AND k.DV_TENDV LIKE ?";
     $params[] = "%$khoa%";
+    $stats_sql = str_replace("FROM advisor_class ac", "FROM advisor_class ac JOIN khoa k ON l.DV_MADV = k.DV_MADV", $stats_sql);
 }
 if ($nien_khoa) {
-    $stats_sql .= " AND KH_NAM = ?";
+    $stats_sql .= " AND l.KH_NAM = ?";
     $params[] = $nien_khoa;
 }
 
@@ -301,14 +335,14 @@ while ($class = $classes->fetch_assoc()) {
                 </div>
             </div>
             
-            <!-- Thống kê sinh viên -->
+            <!-- Thống kê tổng quan -->
             <div class="row">
                 <div class="col-md-3">
                     <div class="card stats-card bg-primary">
                         <div class="card-body text-center">
                             <i class="fas fa-users fa-2x mb-2"></i>
                             <h4 class="card-title"><?= number_format($total_students) ?></h4>
-                            <p class="card-text">Tổng sinh viên</p>
+                            <p class="card-text">Tổng sinh viên các lớp</p>
                         </div>
                     </div>
                 </div>
@@ -317,69 +351,38 @@ while ($class = $classes->fetch_assoc()) {
                         <div class="card-body text-center">
                             <i class="fas fa-user-check fa-2x mb-2"></i>
                             <h4 class="card-title"><?= number_format($total_students_with_projects) ?></h4>
-                            <p class="card-text">SV có đề tài</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card stats-card bg-warning">
-                        <div class="card-body text-center">
-                            <i class="fas fa-user-times fa-2x mb-2"></i>
-                            <h4 class="card-title"><?= number_format($total_students_without_projects) ?></h4>
-                            <p class="card-text">SV chưa có đề tài</p>
+                            <p class="card-text">Sinh viên có đề tài NCKH</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card stats-card bg-info">
                         <div class="card-body text-center">
-                            <i class="fas fa-percentage fa-2x mb-2"></i>
-                            <h4 class="card-title"><?= number_format($avg_participation_rate, 1) ?>%</h4>
-                            <p class="card-text">Tỷ lệ tham gia TB</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Thống kê lớp và đề tài -->
-            <div class="row mt-3">
-                <div class="col-md-4">
-                    <div class="card stats-card bg-secondary">
-                        <div class="card-body text-center">
                             <i class="fas fa-graduation-cap fa-2x mb-2"></i>
                             <h4 class="card-title"><?= $total_classes ?></h4>
-                            <p class="card-text">Lớp đang cố vấn</p>
+                            <p class="card-text">Lớp đang cố vấn học tập</p>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card stats-card bg-dark">
+                <div class="col-md-3">
+                    <div class="card stats-card bg-warning">
                         <div class="card-body text-center">
-                            <i class="fas fa-project-diagram fa-2x mb-2"></i>
-                            <h4 class="card-title"><?= number_format($total_projects) ?></h4>
-                            <p class="card-text">Tổng đề tài</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card stats-card bg-primary">
-                        <div class="card-body text-center">
-                            <i class="fas fa-chart-line fa-2x mb-2"></i>
-                            <h4 class="card-title"><?= $total_students > 0 ? number_format(($total_students_with_projects / $total_students) * 100, 1) : 0 ?>%</h4>
-                            <p class="card-text">Tỷ lệ SV có đề tài</p>
+                            <i class="fas fa-percentage fa-2x mb-2"></i>
+                            <h4 class="card-title"><?= number_format($avg_participation_rate, 1) ?>%</h4>
+                            <p class="card-text">Tỷ lệ tham gia NCKH TB</p>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Thống kê đề tài -->
+            <!-- Thống kê trạng thái đề tài -->
             <div class="row mt-3">
                 <div class="col-md-2">
                     <div class="card stats-card bg-success">
                         <div class="card-body text-center">
                             <i class="fas fa-tasks fa-2x mb-2"></i>
                             <h4 class="card-title"><?= number_format($total_projects_ongoing) ?></h4>
-                            <p class="card-text">Đang thực hiện</p>
+                            <p class="card-text">Đề tài đang thực hiện</p>
                         </div>
                     </div>
                 </div>
@@ -388,7 +391,7 @@ while ($class = $classes->fetch_assoc()) {
                         <div class="card-body text-center">
                             <i class="fas fa-check-circle fa-2x mb-2"></i>
                             <h4 class="card-title"><?= number_format($total_projects_completed) ?></h4>
-                            <p class="card-text">Hoàn thành</p>
+                            <p class="card-text">Đề tài đã hoàn thành</p>
                         </div>
                     </div>
                 </div>
@@ -397,7 +400,7 @@ while ($class = $classes->fetch_assoc()) {
                         <div class="card-body text-center">
                             <i class="fas fa-clock fa-2x mb-2"></i>
                             <h4 class="card-title"><?= number_format($total_projects_pending) ?></h4>
-                            <p class="card-text">Chờ duyệt</p>
+                            <p class="card-text">Đề tài chờ phê duyệt</p>
                         </div>
                     </div>
                 </div>
@@ -406,7 +409,7 @@ while ($class = $classes->fetch_assoc()) {
                         <div class="card-body text-center">
                             <i class="fas fa-pause fa-2x mb-2"></i>
                             <h4 class="card-title"><?= number_format($total_projects_suspended) ?></h4>
-                            <p class="card-text">Tạm dừng</p>
+                            <p class="card-text">Đề tài tạm dừng/hủy</p>
                         </div>
                     </div>
                 </div>
@@ -415,11 +418,13 @@ while ($class = $classes->fetch_assoc()) {
                         <div class="card-body text-center">
                             <i class="fas fa-project-diagram fa-2x mb-2"></i>
                             <h4 class="card-title"><?= number_format($total_projects) ?></h4>
-                            <p class="card-text">Tổng đề tài</p>
+                            <p class="card-text">Tổng số đề tài NCKH</p>
                         </div>
                     </div>
                 </div>
             </div>
+            
+          
             
             <!-- Bộ lọc -->
             <div class="filter-section">
