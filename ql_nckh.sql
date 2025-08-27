@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: 127.0.0.1
--- Thời gian đã tạo: Th8 15, 2025 lúc 02:37 PM
+-- Thời gian đã tạo: Th8 27, 2025 lúc 07:44 AM
 -- Phiên bản máy phục vụ: 10.4.32-MariaDB
 -- Phiên bản PHP: 8.0.30
 
@@ -20,6 +20,74 @@ SET time_zone = "+00:00";
 --
 -- Cơ sở dữ liệu: `ql_nckh`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `advisor_class`
+--
+
+CREATE TABLE `advisor_class` (
+  `AC_ID` int(11) NOT NULL,
+  `GV_MAGV` char(8) NOT NULL COMMENT 'M?? gi???ng vi??n c??? v???n',
+  `LOP_MA` char(8) NOT NULL COMMENT 'M?? l???p ???????c c??? v???n',
+  `AC_NGAYBATDAU` date NOT NULL COMMENT 'Ng??y b???t ?????u c??? v???n',
+  `AC_NGAYKETTHUC` date DEFAULT NULL COMMENT 'Ng??y k???t th??c c??? v???n (NULL = ??ang hi???u l???c)',
+  `AC_COHIEULUC` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'C?? hi???u l???c (1=yes, 0=no)',
+  `AC_GHICHU` text DEFAULT NULL COMMENT 'Ghi ch?? b??? sung',
+  `AC_NGAYTAO` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'Ng??y t???o b???n ghi',
+  `AC_NGUOICAPNHAT` varchar(20) DEFAULT NULL COMMENT 'Ng?????i c???p nh???t cu???i'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='B???ng li??n k???t C??? v???n h???c t???p - L???p';
+
+--
+-- Bẫy `advisor_class`
+--
+DELIMITER $$
+CREATE TRIGGER `tr_advisor_class_after_insert` AFTER INSERT ON `advisor_class` FOR EACH ROW BEGIN
+    INSERT INTO advisor_class_audit_log (AC_ID, GV_MAGV, LOP_MA, ACAL_HANHDONG, ACAL_NOIDUNG, ACAL_NGUOITHUCHIEN)
+    VALUES (NEW.AC_ID, NEW.GV_MAGV, NEW.LOP_MA, 'T???o', 
+            CONCAT('G??n CVHT ', NEW.GV_MAGV, ' cho l???p ', NEW.LOP_MA, ' t??? ', NEW.AC_NGAYBATDAU),
+            COALESCE(NEW.AC_NGUOICAPNHAT, 'SYSTEM'));
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `tr_advisor_class_after_update` AFTER UPDATE ON `advisor_class` FOR EACH ROW BEGIN
+    DECLARE audit_message TEXT;
+    
+    IF NEW.AC_COHIEULUC != OLD.AC_COHIEULUC THEN
+        IF NEW.AC_COHIEULUC = 0 THEN
+            SET audit_message = CONCAT('Hu??? g??n CVHT ', NEW.GV_MAGV, ' kh???i l???p ', NEW.LOP_MA);
+        ELSE
+            SET audit_message = CONCAT('K??ch ho???t l???i CVHT ', NEW.GV_MAGV, ' cho l???p ', NEW.LOP_MA);
+        END IF;
+    ELSE
+        SET audit_message = CONCAT('C???p nh???t th??ng tin CVHT ', NEW.GV_MAGV, ' cho l???p ', NEW.LOP_MA);
+    END IF;
+    
+    INSERT INTO advisor_class_audit_log (AC_ID, GV_MAGV, LOP_MA, ACAL_HANHDONG, ACAL_NOIDUNG, ACAL_NGUOITHUCHIEN)
+    VALUES (NEW.AC_ID, NEW.GV_MAGV, NEW.LOP_MA, 'C???p nh???t', audit_message,
+            COALESCE(NEW.AC_NGUOICAPNHAT, 'SYSTEM'));
+END
+$$
+DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `advisor_class_audit_log`
+--
+
+CREATE TABLE `advisor_class_audit_log` (
+  `ACAL_ID` int(11) NOT NULL,
+  `AC_ID` int(11) DEFAULT NULL COMMENT 'ID b???n ghi advisor_class',
+  `GV_MAGV` char(8) NOT NULL COMMENT 'M?? gi???ng vi??n',
+  `LOP_MA` char(8) NOT NULL COMMENT 'M?? l???p',
+  `ACAL_HANHDONG` enum('T???o','C???p nh???t','X??a','G??n','Hu??? g??n') NOT NULL COMMENT 'H??nh ?????ng th???c hi???n',
+  `ACAL_NOIDUNG` text DEFAULT NULL COMMENT 'N???i dung thay ?????i',
+  `ACAL_NGUOITHUCHIEN` varchar(20) NOT NULL COMMENT 'Ng?????i th???c hi???n',
+  `ACAL_NGAYTHUCHIEN` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Log audit cho thao t??c c??? v???n h???c t???p';
 
 -- --------------------------------------------------------
 
@@ -69,6 +137,25 @@ CREATE TABLE `chi_tiet_tham_gia` (
   `HK_MA` char(8) NOT NULL,
   `CTTG_VAITRO` varchar(20) NOT NULL,
   `CTTG_NGAYTHAMGIA` date NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `co_van_hoc_tap`
+--
+
+CREATE TABLE `co_van_hoc_tap` (
+  `CVHT_MA` int(11) NOT NULL,
+  `GV_MAGV` char(8) NOT NULL,
+  `LOP_MA` char(8) NOT NULL,
+  `CVHT_NGAYBATDAU` date NOT NULL,
+  `CVHT_NGAYKETTHUC` date DEFAULT NULL,
+  `CVHT_TRANGTHAI` enum('Đang hoạt động','Đã kết thúc') DEFAULT 'Đang hoạt động',
+  `CVHT_GHICHU` text DEFAULT NULL,
+  `CVHT_NGAYTAO` datetime DEFAULT current_timestamp(),
+  `CVHT_NGUOICAPNHAT` varchar(20) DEFAULT NULL,
+  `CVHT_NGAYCAPNHAT` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -139,7 +226,7 @@ CREATE TABLE `file_dinh_kem` (
 CREATE TABLE `giang_vien` (
   `GV_MAGV` char(8) NOT NULL,
   `DV_MADV` char(5) NOT NULL,
-  `GV_HOGV` varchar(8) NOT NULL,
+  `GV_HOGV` varchar(50) NOT NULL,
   `GV_TENGV` varchar(50) NOT NULL,
   `GV_EMAIL` varchar(35) NOT NULL,
   `GV_CHUYENMON` text DEFAULT NULL,
@@ -347,7 +434,7 @@ CREATE TABLE `quyet_dinh_nghiem_thu` (
 CREATE TABLE `sinh_vien` (
   `SV_MASV` char(8) NOT NULL,
   `LOP_MA` char(8) NOT NULL,
-  `SV_HOSV` varchar(8) NOT NULL,
+  `SV_HOSV` varchar(50) NOT NULL,
   `SV_TENSV` varchar(50) NOT NULL,
   `SV_GIOITINH` tinyint(4) NOT NULL,
   `SV_SDT` varchar(15) NOT NULL,
@@ -499,6 +586,31 @@ CREATE TABLE `view_chi_tiet_danh_gia` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc đóng vai cho view `v_class_overview`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_class_overview` (
+`LOP_MA` char(8)
+,`LOP_TEN` varchar(50)
+,`KH_NAM` varchar(9)
+,`DV_TENDV` varchar(50)
+,`TONG_SV` bigint(21)
+,`SV_CO_DETAI` bigint(21)
+,`SV_CHUA_CO_DETAI` bigint(21)
+,`DETAI_CHO_DUYET` bigint(21)
+,`DETAI_DANG_THUCHIEN` bigint(21)
+,`DETAI_HOAN_THANH` bigint(21)
+,`DETAI_TAM_DUNG` bigint(21)
+,`TY_LE_THAM_GIA_PHANTRAM` decimal(26,2)
+,`CVHT_MAGV` char(8)
+,`CVHT_HOTEN` varchar(101)
+,`AC_NGAYBATDAU` date
+,`AC_COHIEULUC` tinyint(1)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc đóng vai cho view `v_score_summary`
 -- (See below for the actual view)
 --
@@ -515,11 +627,46 @@ CREATE TABLE `v_score_summary` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc đóng vai cho view `v_student_project_summary`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_student_project_summary` (
+`SV_MASV` char(8)
+,`SV_HOSV` varchar(50)
+,`SV_TENSV` varchar(50)
+,`LOP_MA` char(8)
+,`LOP_TEN` varchar(50)
+,`KH_NAM` varchar(9)
+,`DV_TENDV` varchar(50)
+,`DT_MADT` char(10)
+,`DT_TENDT` varchar(200)
+,`DT_TRANGTHAI` enum('Chờ duyệt','Đang thực hiện','Đã hoàn thành','Tạm dừng','Đã hủy','Đang xử lý')
+,`DT_NGAYTAO` datetime
+,`GV_MAGV` char(8)
+,`GV_HOTEN` varchar(101)
+,`CTTG_VAITRO` varchar(20)
+,`CTTG_NGAYTHAMGIA` date
+,`TRANGTHAI_PHANLOAI` varchar(29)
+,`TIENDO_PHANTRAM` int(3)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc cho view `view_chi_tiet_danh_gia`
 --
 DROP TABLE IF EXISTS `view_chi_tiet_danh_gia`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `view_chi_tiet_danh_gia`  AS SELECT `ctddg`.`CTDDG_MA` AS `CTDDG_MA`, `ctddg`.`QD_SO` AS `QD_SO`, `qd`.`QD_NGAY` AS `QD_NGAY`, `bb`.`BB_SOBB` AS `BB_SOBB`, `bb`.`BB_NGAYNGHIEMTHU` AS `BB_NGAYNGHIEMTHU`, `tv`.`GV_MAGV` AS `GV_MAGV`, concat(`gv`.`GV_HOGV`,' ',`gv`.`GV_TENGV`) AS `GV_HOTEN`, `tv`.`TV_VAITRO` AS `TV_VAITRO`, `tv`.`TV_HOTEN` AS `TV_HOTEN_HIENTHI`, `ctddg`.`TC_MATC` AS `TC_MATC`, `tc`.`TC_NDDANHGIA` AS `TC_NDDANHGIA`, `tc`.`TC_DIEMTOIDA` AS `TC_DIEMTOIDA`, `ctddg`.`CTDDG_DIEM` AS `CTDDG_DIEM`, `ctddg`.`CTDDG_GHICHU` AS `CTDDG_GHICHU`, `ctddg`.`CTDDG_NGAYCAPNHAT` AS `CTDDG_NGAYCAPNHAT`, `tv`.`TV_FILEDANHGIA` AS `TV_FILEDANHGIA`, `tv`.`TV_TRANGTHAI` AS `TV_TRANGTHAI`, `tv`.`TV_NGAYDANHGIA` AS `TV_NGAYDANHGIA` FROM (((((`chi_tiet_diem_danh_gia` `ctddg` join `quyet_dinh_nghiem_thu` `qd` on(`ctddg`.`QD_SO` = `qd`.`QD_SO`)) left join `bien_ban` `bb` on(`qd`.`QD_SO` = `bb`.`QD_SO`)) join `thanh_vien_hoi_dong` `tv` on(`ctddg`.`QD_SO` = `tv`.`QD_SO` and `ctddg`.`GV_MAGV` = `tv`.`GV_MAGV`)) join `giang_vien` `gv` on(`ctddg`.`GV_MAGV` = `gv`.`GV_MAGV`)) join `tieu_chi` `tc` on(`ctddg`.`TC_MATC` = `tc`.`TC_MATC`)) ;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc cho view `v_class_overview`
+--
+DROP TABLE IF EXISTS `v_class_overview`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_class_overview`  AS SELECT `lop`.`LOP_MA` AS `LOP_MA`, `lop`.`LOP_TEN` AS `LOP_TEN`, `lop`.`KH_NAM` AS `KH_NAM`, `dv`.`DV_TENDV` AS `DV_TENDV`, count(`sv`.`SV_MASV`) AS `TONG_SV`, count(`dt`.`DT_MADT`) AS `SV_CO_DETAI`, count(case when `dt`.`DT_MADT` is null then 1 end) AS `SV_CHUA_CO_DETAI`, count(case when `dt`.`DT_TRANGTHAI` = 'Ch??? duy???t' then 1 end) AS `DETAI_CHO_DUYET`, count(case when `dt`.`DT_TRANGTHAI` = '??ang th???c hi???n' then 1 end) AS `DETAI_DANG_THUCHIEN`, count(case when `dt`.`DT_TRANGTHAI` = '???? ho??n th??nh' then 1 end) AS `DETAI_HOAN_THANH`, count(case when `dt`.`DT_TRANGTHAI` in ('T???m d???ng','???? h???y') then 1 end) AS `DETAI_TAM_DUNG`, round(count(`dt`.`DT_MADT`) * 100.0 / count(`sv`.`SV_MASV`),2) AS `TY_LE_THAM_GIA_PHANTRAM`, `ac`.`GV_MAGV` AS `CVHT_MAGV`, concat(`gv`.`GV_HOGV`,' ',`gv`.`GV_TENGV`) AS `CVHT_HOTEN`, `ac`.`AC_NGAYBATDAU` AS `AC_NGAYBATDAU`, `ac`.`AC_COHIEULUC` AS `AC_COHIEULUC` FROM ((((((`lop` left join `khoa` `dv` on(`lop`.`DV_MADV` = `dv`.`DV_MADV`)) left join `sinh_vien` `sv` on(`lop`.`LOP_MA` = `sv`.`LOP_MA`)) left join `chi_tiet_tham_gia` `cttg` on(`sv`.`SV_MASV` = `cttg`.`SV_MASV`)) left join `de_tai_nghien_cuu` `dt` on(`cttg`.`DT_MADT` = `dt`.`DT_MADT`)) left join `advisor_class` `ac` on(`lop`.`LOP_MA` = `ac`.`LOP_MA` and `ac`.`AC_COHIEULUC` = 1)) left join `giang_vien` `gv` on(`ac`.`GV_MAGV` = `gv`.`GV_MAGV`)) GROUP BY `lop`.`LOP_MA`, `lop`.`LOP_TEN`, `lop`.`KH_NAM`, `dv`.`DV_TENDV`, `ac`.`GV_MAGV`, `gv`.`GV_HOGV`, `gv`.`GV_TENGV`, `ac`.`AC_NGAYBATDAU`, `ac`.`AC_COHIEULUC` ;
 
 -- --------------------------------------------------------
 
@@ -530,9 +677,38 @@ DROP TABLE IF EXISTS `v_score_summary`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_score_summary`  AS SELECT 'thanh_vien_hoi_dong' AS `table_name`, count(0) AS `total_records`, count(`thanh_vien_hoi_dong`.`TV_DIEM`) AS `scored_records`, min(`thanh_vien_hoi_dong`.`TV_DIEM`) AS `min_score`, max(`thanh_vien_hoi_dong`.`TV_DIEM`) AS `max_score`, avg(`thanh_vien_hoi_dong`.`TV_DIEM`) AS `avg_score`, count(case when `thanh_vien_hoi_dong`.`TV_DIEM` < 0 or `thanh_vien_hoi_dong`.`TV_DIEM` > 100 then 1 end) AS `invalid_scores` FROM `thanh_vien_hoi_dong`union all select 'bien_ban' AS `table_name`,count(0) AS `total_records`,count(`bien_ban`.`BB_TONGDIEM`) AS `scored_records`,min(`bien_ban`.`BB_TONGDIEM`) AS `min_score`,max(`bien_ban`.`BB_TONGDIEM`) AS `max_score`,avg(`bien_ban`.`BB_TONGDIEM`) AS `avg_score`,count(case when `bien_ban`.`BB_TONGDIEM` < 0 or `bien_ban`.`BB_TONGDIEM` > 100 then 1 end) AS `invalid_scores` from `bien_ban`  ;
 
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc cho view `v_student_project_summary`
+--
+DROP TABLE IF EXISTS `v_student_project_summary`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_student_project_summary`  AS SELECT `sv`.`SV_MASV` AS `SV_MASV`, `sv`.`SV_HOSV` AS `SV_HOSV`, `sv`.`SV_TENSV` AS `SV_TENSV`, `sv`.`LOP_MA` AS `LOP_MA`, `lop`.`LOP_TEN` AS `LOP_TEN`, `lop`.`KH_NAM` AS `KH_NAM`, `dv`.`DV_TENDV` AS `DV_TENDV`, `dt`.`DT_MADT` AS `DT_MADT`, `dt`.`DT_TENDT` AS `DT_TENDT`, `dt`.`DT_TRANGTHAI` AS `DT_TRANGTHAI`, `dt`.`DT_NGAYTAO` AS `DT_NGAYTAO`, `gv`.`GV_MAGV` AS `GV_MAGV`, concat(`gv`.`GV_HOGV`,' ',`gv`.`GV_TENGV`) AS `GV_HOTEN`, `cttg`.`CTTG_VAITRO` AS `CTTG_VAITRO`, `cttg`.`CTTG_NGAYTHAMGIA` AS `CTTG_NGAYTHAMGIA`, CASE WHEN `dt`.`DT_MADT` is null THEN 'Ch??a tham gia' WHEN `dt`.`DT_TRANGTHAI` = '??ang th???c hi???n' THEN '??ang tham gia' WHEN `dt`.`DT_TRANGTHAI` = '???? ho??n th??nh' THEN '???? ho??n th??nh' WHEN `dt`.`DT_TRANGTHAI` in ('T???m d???ng','???? h???y') THEN 'B??? t??? ch???i/T???m d???ng' ELSE `dt`.`DT_TRANGTHAI` END AS `TRANGTHAI_PHANLOAI`, CASE WHEN `dt`.`DT_MADT` is null THEN 0 WHEN `dt`.`DT_TRANGTHAI` = 'Ch??? duy???t' THEN 10 WHEN `dt`.`DT_TRANGTHAI` = '??ang th???c hi???n' THEN 50 WHEN `dt`.`DT_TRANGTHAI` = '???? ho??n th??nh' THEN 100 ELSE 25 END AS `TIENDO_PHANTRAM` FROM (((((`sinh_vien` `sv` left join `lop` on(`sv`.`LOP_MA` = `lop`.`LOP_MA`)) left join `khoa` `dv` on(`lop`.`DV_MADV` = `dv`.`DV_MADV`)) left join `chi_tiet_tham_gia` `cttg` on(`sv`.`SV_MASV` = `cttg`.`SV_MASV`)) left join `de_tai_nghien_cuu` `dt` on(`cttg`.`DT_MADT` = `dt`.`DT_MADT`)) left join `giang_vien` `gv` on(`dt`.`GV_MAGV` = `gv`.`GV_MAGV`)) ;
+
 --
 -- Chỉ mục cho các bảng đã đổ
 --
+
+--
+-- Chỉ mục cho bảng `advisor_class`
+--
+ALTER TABLE `advisor_class`
+  ADD PRIMARY KEY (`AC_ID`),
+  ADD UNIQUE KEY `uk_advisor_class_active` (`LOP_MA`,`AC_COHIEULUC`) COMMENT 'M???t l???p ch??? c?? 1 CVHT hi???u l???c',
+  ADD KEY `idx_advisor_class_gv` (`GV_MAGV`),
+  ADD KEY `idx_advisor_class_lop` (`LOP_MA`),
+  ADD KEY `idx_advisor_class_active` (`AC_COHIEULUC`),
+  ADD KEY `idx_advisor_class_date` (`AC_NGAYBATDAU`,`AC_NGAYKETTHUC`);
+
+--
+-- Chỉ mục cho bảng `advisor_class_audit_log`
+--
+ALTER TABLE `advisor_class_audit_log`
+  ADD PRIMARY KEY (`ACAL_ID`),
+  ADD KEY `idx_advisor_class_audit_lop` (`LOP_MA`),
+  ADD KEY `idx_advisor_class_audit_gv` (`GV_MAGV`),
+  ADD KEY `idx_advisor_class_audit_date` (`ACAL_NGAYTHUCHIEN`);
 
 --
 -- Chỉ mục cho bảng `bien_ban`
@@ -550,6 +726,14 @@ ALTER TABLE `chi_tiet_tham_gia`
   ADD PRIMARY KEY (`SV_MASV`,`DT_MADT`,`HK_MA`),
   ADD KEY `FK_CHI_TIET_RELATIONS_HOC_KI` (`HK_MA`),
   ADD KEY `FK_CHI_TIET_RELATIONS_DE_TAI_N` (`DT_MADT`);
+
+--
+-- Chỉ mục cho bảng `co_van_hoc_tap`
+--
+ALTER TABLE `co_van_hoc_tap`
+  ADD PRIMARY KEY (`CVHT_MA`),
+  ADD UNIQUE KEY `unique_advisor_class` (`GV_MAGV`,`LOP_MA`),
+  ADD KEY `LOP_MA` (`LOP_MA`);
 
 --
 -- Chỉ mục cho bảng `de_tai_nghien_cuu`
@@ -727,6 +911,24 @@ ALTER TABLE `user`
 --
 
 --
+-- AUTO_INCREMENT cho bảng `advisor_class`
+--
+ALTER TABLE `advisor_class`
+  MODIFY `AC_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `advisor_class_audit_log`
+--
+ALTER TABLE `advisor_class_audit_log`
+  MODIFY `ACAL_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `co_van_hoc_tap`
+--
+ALTER TABLE `co_van_hoc_tap`
+  MODIFY `CVHT_MA` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT cho bảng `lich_su_thuyet_minh`
 --
 ALTER TABLE `lich_su_thuyet_minh`
@@ -749,6 +951,13 @@ ALTER TABLE `user`
 --
 
 --
+-- Các ràng buộc cho bảng `advisor_class`
+--
+ALTER TABLE `advisor_class`
+  ADD CONSTRAINT `fk_advisor_class_giang_vien` FOREIGN KEY (`GV_MAGV`) REFERENCES `giang_vien` (`GV_MAGV`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_advisor_class_lop` FOREIGN KEY (`LOP_MA`) REFERENCES `lop` (`LOP_MA`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Các ràng buộc cho bảng `bien_ban`
 --
 ALTER TABLE `bien_ban`
@@ -761,6 +970,13 @@ ALTER TABLE `chi_tiet_tham_gia`
   ADD CONSTRAINT `FK_CHI_TIET_RELATIONS_DE_TAI_N` FOREIGN KEY (`DT_MADT`) REFERENCES `de_tai_nghien_cuu` (`DT_MADT`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `FK_CHI_TIET_RELATIONS_HOC_KI` FOREIGN KEY (`HK_MA`) REFERENCES `hoc_ki` (`HK_MA`),
   ADD CONSTRAINT `FK_CHI_TIET_RELATIONS_SINH_VIE` FOREIGN KEY (`SV_MASV`) REFERENCES `sinh_vien` (`SV_MASV`);
+
+--
+-- Các ràng buộc cho bảng `co_van_hoc_tap`
+--
+ALTER TABLE `co_van_hoc_tap`
+  ADD CONSTRAINT `co_van_hoc_tap_ibfk_1` FOREIGN KEY (`GV_MAGV`) REFERENCES `giang_vien` (`GV_MAGV`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `co_van_hoc_tap_ibfk_2` FOREIGN KEY (`LOP_MA`) REFERENCES `lop` (`LOP_MA`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Các ràng buộc cho bảng `de_tai_nghien_cuu`
@@ -808,7 +1024,7 @@ ALTER TABLE `quan_ly_nghien_cuu`
 -- Các ràng buộc cho bảng `sinh_vien`
 --
 ALTER TABLE `sinh_vien`
-  ADD CONSTRAINT `FK_SINH_VIEN_THUOC_VE_LOP` FOREIGN KEY (`LOP_MA`) REFERENCES `lop` (`LOP_MA`);
+  ADD CONSTRAINT `FK_SINH_VIEN_THUOC_VE_LOP` FOREIGN KEY (`LOP_MA`) REFERENCES `lop` (`LOP_MA`) ON UPDATE CASCADE;
 
 --
 -- Các ràng buộc cho bảng `thanh_vien_hoi_dong`

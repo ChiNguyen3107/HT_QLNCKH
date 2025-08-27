@@ -1,6 +1,6 @@
 <?php
-// API thống kê đơn giản và ổn định
-header('Content-Type: application/json');
+// API thống kê đơn giản và ổn định - Version 2
+header('Content-Type: application/json; charset=utf-8');
 
 // Kết nối database
 include '../../include/connect.php';
@@ -11,6 +11,9 @@ $lop_ma = $_GET['lop_ma'] ?? 'DI2195A2';
 try {
     // 1. Tổng số sinh viên trong lớp
     $total_result = $conn->query("SELECT COUNT(*) as total FROM sinh_vien WHERE LOP_MA = '$lop_ma'");
+    if (!$total_result) {
+        throw new Exception("Lỗi query tổng sinh viên: " . $conn->error);
+    }
     $total_students = $total_result->fetch_assoc()['total'];
     
     // 2. Sinh viên có đề tài
@@ -20,6 +23,9 @@ try {
         JOIN chi_tiet_tham_gia cttg ON sv.SV_MASV = cttg.SV_MASV 
         WHERE sv.LOP_MA = '$lop_ma'
     ");
+    if (!$with_projects_result) {
+        throw new Exception("Lỗi query sinh viên có đề tài: " . $conn->error);
+    }
     $students_with_projects = $with_projects_result->fetch_assoc()['total'];
     
     // 3. Đề tài hoàn thành
@@ -30,6 +36,9 @@ try {
         JOIN sinh_vien sv ON cttg.SV_MASV = sv.SV_MASV 
         WHERE sv.LOP_MA = '$lop_ma' AND dt.DT_TRANGTHAI = 'Đã hoàn thành'
     ");
+    if (!$completed_result) {
+        throw new Exception("Lỗi query đề tài hoàn thành: " . $conn->error);
+    }
     $completed_projects = $completed_result->fetch_assoc()['total'];
     
     // 4. Đề tài đang thực hiện
@@ -40,10 +49,13 @@ try {
         JOIN sinh_vien sv ON cttg.SV_MASV = sv.SV_MASV 
         WHERE sv.LOP_MA = '$lop_ma' AND dt.DT_TRANGTHAI IN ('Đang thực hiện', 'Chờ duyệt', 'Đang xử lý')
     ");
+    if (!$ongoing_result) {
+        throw new Exception("Lỗi query đề tài đang thực hiện: " . $conn->error);
+    }
     $ongoing_projects = $ongoing_result->fetch_assoc()['total'];
     
     // Trả về kết quả
-    echo json_encode([
+    $response = [
         'success' => true,
         'statistics' => [
             'total_students' => (int)$total_students,
@@ -58,16 +70,20 @@ try {
             'completed_projects_raw' => $completed_projects,
             'ongoing_projects_raw' => $ongoing_projects
         ]
-    ]);
+    ];
+    
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
     
 } catch (Exception $e) {
-    echo json_encode([
+    $error_response = [
         'success' => false,
         'message' => 'Lỗi: ' . $e->getMessage(),
         'debug' => [
             'lop_ma' => $lop_ma,
             'error' => $e->getMessage()
         ]
-    ]);
+    ];
+    
+    echo json_encode($error_response, JSON_UNESCAPED_UNICODE);
 }
 ?>

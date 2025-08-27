@@ -834,7 +834,7 @@ if ($academic_years) {
         function fetchAdvisorStatistics(lopMa) {
             console.log('Đang lấy thống kê cho lớp:', lopMa);
             
-            fetch(`get_advisor_statistics_fixed.php?lop_ma=${encodeURIComponent(lopMa)}`)
+            fetch(`get_advisor_statistics_simple_v2.php?lop_ma=${encodeURIComponent(lopMa)}`)
                 .then(response => {
                     console.log('Response status:', response.status);
                     if (!response.ok) {
