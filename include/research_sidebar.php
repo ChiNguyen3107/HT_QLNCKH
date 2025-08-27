@@ -171,6 +171,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 </a>
             </li>
             <li>
+                <a href="/NLNganh/view/research/manage_advisor.php" class="<?php echo ($current_page === 'manage_advisor.php') ? 'active' : ''; ?>" data-title="Quản lý CVHT">
+                    <i class="fas fa-user-tie"></i>
+                    <span>Quản lý CVHT</span>
+                </a>
+            </li>
+            <li>
                 <a href="/NLNganh/view/research/publications.php" class="<?php echo ($current_page === 'publications.php') ? 'active' : ''; ?>" data-title="Ấn phẩm">
                     <i class="fas fa-book"></i>
                     <span>Ấn phẩm</span>
