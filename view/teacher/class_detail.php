@@ -113,18 +113,72 @@ while ($student = $students->fetch_assoc()) {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        .main-content { margin-left: 250px; padding: 20px; }
-        .class-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px; padding: 30px; margin-bottom: 30px; }
-        .stats-card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
-        .filter-section { background-color: #f8f9fa; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
-        .status-badge { font-size: 0.8em; padding: 4px 8px; border-radius: 12px; }
+        /* Responsive design cho sidebar */
+        @media (max-width: 992px) {
+            .container-fluid {
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .container-fluid {
+                padding: 10px;
+            }
+        }
+        
+        .class-header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            border-radius: 15px; 
+            padding: 30px; 
+            margin-bottom: 30px; 
+        }
+        
+        .stats-card { 
+            border: 1px solid #e0e0e0; 
+            border-radius: 10px; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .filter-section { 
+            background-color: #f8f9fa; 
+            border-radius: 10px; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+        }
+        
+        .status-badge { 
+            font-size: 0.8em; 
+            padding: 4px 8px; 
+            border-radius: 12px; 
+        }
+        
+        .student-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .student-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
     <?php include '../../include/teacher_sidebar.php'; ?>
     
-    <div class="main-content">
-        <div class="container-fluid">
+    <!-- Begin Page Content -->
+    <div class="container-fluid">
             <!-- Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
