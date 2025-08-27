@@ -1,10 +1,7 @@
 <?php
 // Kiểm tra session và vai trò research manager
 include '../../include/session.php';
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] != ROLE_RESEARCH_MANAGER) {
-    header("Location: /NLNganh/login.php");
-    exit;
-}
+checkResearchManagerRole();
 
 // Kết nối database
 include '../../include/connect.php';
