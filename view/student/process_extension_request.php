@@ -1,10 +1,18 @@
 <?php
 // filepath: d:\xampp\htdocs\NLNganh\view\student\process_extension_request.php
+
+// Disable output buffering and set error reporting
+ob_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // Don't display errors in JSON response
+
+// Set JSON header first
+header('Content-Type: application/json');
+
+// Include required files
 include '../../include/session.php';
 checkStudentRole();
 include '../../include/connect.php';
-
-header('Content-Type: application/json');
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -108,7 +116,7 @@ try {
                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         
         $stmt = $conn->prepare($insert_sql);
-        $stmt->bind_param("sssssisr", 
+        $stmt->bind_param("ssssisss", 
             $project_id, $student_id, $extension_reason, $current_deadline,
             $new_deadline, $extension_months, $attachment_file, $student_id
         );
@@ -122,15 +130,13 @@ try {
         
         // Tạo thông báo cho quản lý NCKH
         $notification_sql = "INSERT INTO thong_bao (
-                               TB_NOIDUNG, TB_LOAI, DT_MADT, SV_MASV, 
-                               NGUOI_NHAN, TB_LINK, TB_TRANGTHAI
-                             ) VALUES (?, 'Yêu cầu gia hạn', ?, ?, 'RESEARCH_MANAGER', ?, 'Chưa đọc')";
+                               TB_NOIDUNG, TB_LOAI, DT_MADT, SV_MASV, TB_NGAYTAO
+                             ) VALUES (?, 'Yêu cầu gia hạn', ?, ?, NOW())";
         
         $notification_content = "Sinh viên {$student_id} yêu cầu gia hạn {$extension_months} tháng cho đề tài \"{$project['DT_TENDT']}\"";
-        $notification_link = "/view/research/manage_extensions.php?gh_id={$extension_id}";
         
         $stmt = $conn->prepare($notification_sql);
-        $stmt->bind_param("ssss", $notification_content, $project_id, $student_id, $notification_link);
+        $stmt->bind_param("sss", $notification_content, $project_id, $student_id);
         $stmt->execute();
         $stmt->close();
         
@@ -151,9 +157,27 @@ try {
     }
     
 } catch (Exception $e) {
+    // Clean any output buffer
+    ob_clean();
+    
     echo json_encode([
         'success' => false,
-        'message' => $e->getMessage()
+        'message' => $e->getMessage(),
+        'file' => basename(__FILE__),
+        'line' => $e->getLine()
+    ]);
+} catch (Error $e) {
+    // Handle PHP errors
+    ob_clean();
+    
+    echo json_encode([
+        'success' => false,
+        'message' => 'PHP Error: ' . $e->getMessage(),
+        'file' => basename(__FILE__),
+        'line' => $e->getLine()
     ]);
 }
+
+// Flush output buffer
+ob_end_flush();
 ?>

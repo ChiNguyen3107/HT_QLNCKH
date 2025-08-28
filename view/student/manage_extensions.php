@@ -648,8 +648,11 @@ $stmt->close();
                         alert('Có lỗi xảy ra: ' + response.message);
                     }
                 },
-                error: function() {
-                    alert('Có lỗi xảy ra khi gửi yêu cầu!');
+                error: function(xhr, status, error) {
+                    console.log('AJAX Error:', xhr.responseText);
+                    console.log('Status:', status);
+                    console.log('Error:', error);
+                    alert('Có lỗi xảy ra khi gửi yêu cầu!\nChi tiết: ' + xhr.responseText + '\nStatus: ' + status);
                 }
             });
         });

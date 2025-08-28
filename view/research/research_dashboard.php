@@ -172,7 +172,56 @@ foreach ($statuses as $status) {
 $page_title = "Bảng điều khiển | Quản lý nghiên cứu";
 
 // Define any additional CSS specific to this page
-$additional_css = '<link href="/NLNganh/assets/css/research/dashboard-enhanced.css" rel="stylesheet">';
+$additional_css = '
+<link href="/NLNganh/assets/css/research/dashboard-enhanced.css" rel="stylesheet">
+<style>
+/* Notification widget styles */
+.notification-item {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.notification-item:hover {
+    background-color: #f8f9fc;
+}
+
+.notification-item.unread {
+    background-color: #e3f2fd;
+    border-left: 3px solid #007bff;
+}
+
+.notification-item.unread:hover {
+    background-color: #bbdefb;
+}
+
+.badge-sm {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+#notification-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+#notification-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+#notification-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+#notification-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+#notification-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+</style>';
 
 // Include the research header
 include '../../include/research_header.php';
@@ -480,6 +529,31 @@ include '../../include/research_header.php';
                                 </div>
                             </div>
 
+                            <!-- Thông báo -->
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                    <h6 class="m-0 font-weight-bold text-primary">
+                                        <i class="fas fa-bell mr-2"></i>Thông báo
+                                    </h6>
+                                    <div>
+                                        <span class="badge badge-primary" id="notification-count">0</span>
+                                        <a href="/NLNganh/view/research/notifications.php" class="btn btn-sm btn-outline-primary ml-2">
+                                            <i class="fas fa-eye mr-1"></i>Xem tất cả
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="notification-container">
+                                        <div class="text-center py-3">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="sr-only">Đang tải...</span>
+                                            </div>
+                                            <p class="mt-2 mb-0 text-muted">Đang tải thông báo...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Activity Timeline -->
                             <div class="card shadow mb-4">
                                 <div class="card-header py-3">
@@ -623,8 +697,95 @@ include '../../include/research_header.php';
                 }
             });
             
+            // Load notifications for dashboard widget
+            loadDashboardNotifications();
+            
             console.log('Dashboard scripts initialized successfully');
         });
+        
+        // Function to load notifications for dashboard widget
+        function loadDashboardNotifications() {
+            fetch('/NLNganh/api/get_dashboard_notifications.php?limit=5')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('notification-container');
+                    
+                    if (data.success) {
+                        // Update notification count
+                        const count = data.data.count || 0;
+                        document.getElementById('notification-count').textContent = count;
+                        
+                        // Display notifications
+                        if (data.data.notifications && data.data.notifications.length > 0) {
+                            let html = '';
+                            data.data.notifications.forEach(notification => {
+                                const date = new Date(notification.TB_NGAYTAO);
+                                const timeAgo = getTimeAgo(date);
+                                const isUnread = notification.TB_DANHDOC == 0;
+                                
+                                html += `
+                                    <div class="notification-item ${isUnread ? 'unread' : ''} border-bottom py-2">
+                                        <div class="d-flex justify-content-between">
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1 ${isUnread ? 'font-weight-bold' : ''}">${escapeHtml(notification.TB_TIEUDE)}</h6>
+                                                <p class="mb-1 small text-muted">${escapeHtml(notification.TB_NOIDUNG)}</p>
+                                                <small class="text-muted">${timeAgo}</small>
+                                            </div>
+                                            ${isUnread ? '<div class="ml-2"><span class="badge badge-primary badge-sm">Mới</span></div>' : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            container.innerHTML = html;
+                        } else {
+                            container.innerHTML = `
+                                <div class="text-center py-3">
+                                    <i class="fas fa-bell-slash fa-2x text-muted mb-2"></i>
+                                    <p class="mb-0 text-muted">Không có thông báo mới</p>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        // Handle error case
+                        container.innerHTML = `
+                            <div class="text-center py-3">
+                                <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                                <p class="mb-0 text-muted">Không thể tải thông báo</p>
+                                <small class="text-muted">${escapeHtml(data.message || 'Lỗi không xác định')}</small>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading notifications:', error);
+                    document.getElementById('notification-container').innerHTML = `
+                        <div class="text-center py-3">
+                            <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                            <p class="mb-0 text-muted">Không thể kết nối đến server</p>
+                        </div>
+                    `;
+                });
+        }
+        
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Helper function to calculate time ago
+        function getTimeAgo(date) {
+            const now = new Date();
+            const diffInSeconds = Math.floor((now - date) / 1000);
+            
+            if (diffInSeconds < 60) return 'Vừa xong';
+            if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + ' phút trước';
+            if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + ' giờ trước';
+            if (diffInSeconds < 2592000) return Math.floor(diffInSeconds / 86400) + ' ngày trước';
+            if (diffInSeconds < 31536000) return Math.floor(diffInSeconds / 2592000) + ' tháng trước';
+            return Math.floor(diffInSeconds / 31536000) + ' năm trước';
+        }
     </script>
 
 <?php 

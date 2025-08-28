@@ -11,12 +11,6 @@ include '../../include/connect.php';
 $manager_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'];
 
-// Kiểm tra bảng thông báo tồn tại
-$table_check = $conn->query("SHOW TABLES LIKE 'thong_bao'");
-if (!$table_check || $table_check->num_rows == 0) {
-    $error_message = "Bảng thông báo chưa được tạo. Vui lòng chạy setup trước.";
-}
-
 // Xử lý các actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['mark_read']) && is_numeric($_POST['mark_read'])) {
@@ -59,90 +53,62 @@ $status = $_GET['status'] ?? 'all'; // all, unread, read
 $limit = 10;
 $offset = ($page - 1) * $limit;
 
-// Khởi tạo mặc định
-$notifications = [];
-$stats = ['total' => 0, 'unread' => 0, 'read' => 0];
-$total_records = 0;
-$total_pages = 1;
+// Xây dựng điều kiện WHERE
+$where_conditions = ["(TB_MUCTIEU = 'all' OR TB_MUCTIEU = ?)"];
+$params = [$user_role];
+$param_types = 's';
 
-if (!isset($error_message)) {
-    try {
-        // Xây dựng điều kiện WHERE
-        $where_conditions = ["(TB_MUCTIEU = 'all' OR TB_MUCTIEU = ?)"];
-        $params = [$user_role];
-        $param_types = 's';
-
-        if ($status === 'unread') {
-            $where_conditions[] = "TB_DANHDOC = 0";
-        } elseif ($status === 'read') {
-            $where_conditions[] = "TB_DANHDOC = 1";
-        }
-
-        $where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
-
-        // Đếm tổng số thông báo
-        $count_sql = "SELECT COUNT(*) as total FROM thong_bao $where_clause";
-        $count_stmt = $conn->prepare($count_sql);
-        if (!$count_stmt) {
-            throw new Exception("Lỗi prepare count query: " . $conn->error);
-        }
-        $count_stmt->bind_param($param_types, ...$params);
-        $count_stmt->execute();
-        $total_records = $count_stmt->get_result()->fetch_assoc()['total'];
-        $count_stmt->close();
-
-        $total_pages = ceil($total_records / $limit);
-
-        // Lấy danh sách thông báo
-        $notifications_sql = "SELECT * FROM thong_bao 
-                             $where_clause
-                             ORDER BY TB_DANHDOC ASC, TB_NGAYTAO DESC 
-                             LIMIT ? OFFSET ?";
-
-        $params[] = $limit;
-        $params[] = $offset;
-        $param_types .= 'ii';
-
-        $stmt = $conn->prepare($notifications_sql);
-        if (!$stmt) {
-            throw new Exception("Lỗi prepare notifications query: " . $conn->error);
-        }
-        $stmt->bind_param($param_types, ...$params);
-        $stmt->execute();
-        $notifications_result = $stmt->get_result();
-
-        while ($row = $notifications_result->fetch_assoc()) {
-            $notifications[] = $row;
-        }
-        $stmt->close();
-
-        // Thống kê
-        $stats_sql = "SELECT 
-                        COUNT(*) as total,
-                        COUNT(CASE WHEN TB_DANHDOC = 0 THEN 1 END) as unread,
-                        COUNT(CASE WHEN TB_DANHDOC = 1 THEN 1 END) as read_count
-                      FROM thong_bao 
-                      WHERE TB_MUCTIEU = 'all' OR TB_MUCTIEU = ?";
-        $stats_stmt = $conn->prepare($stats_sql);
-        if (!$stats_stmt) {
-            throw new Exception("Lỗi prepare stats query: " . $conn->error);
-        }
-        $stats_stmt->bind_param('s', $user_role);
-        $stats_stmt->execute();
-        $stats_result = $stats_stmt->get_result()->fetch_assoc();
-        $stats_stmt->close();
-        
-        // Đổi tên key để tương thích với code hiện tại
-        $stats = [
-            'total' => $stats_result['total'],
-            'unread' => $stats_result['unread'],
-            'read' => $stats_result['read_count']
-        ];
-        
-    } catch (Exception $e) {
-        $error_message = "Lỗi truy vấn database: " . $e->getMessage();
-    }
+if ($status === 'unread') {
+    $where_conditions[] = "TB_DANHDOC = 0";
+} elseif ($status === 'read') {
+    $where_conditions[] = "TB_DANHDOC = 1";
 }
+
+$where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
+
+// Đếm tổng số thông báo
+$count_sql = "SELECT COUNT(*) as total FROM thong_bao $where_clause";
+$count_stmt = $conn->prepare($count_sql);
+$count_stmt->bind_param($param_types, ...$params);
+$count_stmt->execute();
+$total_records = $count_stmt->get_result()->fetch_assoc()['total'];
+$count_stmt->close();
+
+$total_pages = ceil($total_records / $limit);
+
+// Lấy danh sách thông báo
+$notifications_sql = "SELECT * FROM thong_bao 
+                     $where_clause
+                     ORDER BY TB_DANHDOC ASC, TB_NGAYTAO DESC 
+                     LIMIT ? OFFSET ?";
+
+$params[] = $limit;
+$params[] = $offset;
+$param_types .= 'ii';
+
+$stmt = $conn->prepare($notifications_sql);
+$stmt->bind_param($param_types, ...$params);
+$stmt->execute();
+$notifications_result = $stmt->get_result();
+
+$notifications = [];
+while ($row = $notifications_result->fetch_assoc()) {
+    $notifications[] = $row;
+}
+$stmt->close();
+
+// Thống kê
+$stats_sql = "SELECT 
+                COUNT(*) as total,
+                COUNT(CASE WHEN TB_DANHDOC = 0 THEN 1 END) as unread,
+                COUNT(CASE WHEN TB_DANHDOC = 1 THEN 1 END) as read
+              FROM thong_bao 
+              WHERE TB_MUCTIEU = 'all' OR TB_MUCTIEU = ?";
+$stats_stmt = $conn->prepare($stats_sql);
+$stats_stmt->bind_param('s', $user_role);
+$stats_stmt->execute();
+$stats = $stats_stmt->get_result()->fetch_assoc();
+$stats_stmt->close();
 ?>
 
 <!DOCTYPE html>
@@ -261,19 +227,10 @@ if (!isset($error_message)) {
         <?php if (isset($error_message)): ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="fas fa-exclamation-circle me-2"></i><?= $error_message ?>
-            <div class="mt-2">
-                <a href="/NLNganh/fix_table_structure.php" class="btn btn-sm btn-light">
-                    <i class="fas fa-tools me-1"></i>Sửa lỗi cấu trúc bảng
-                </a>
-                <a href="/NLNganh/simple_notification_test.php" class="btn btn-sm btn-light">
-                    <i class="fas fa-flask me-1"></i>Test thông báo
-                </a>
-            </div>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php endif; ?>
 
-        <?php if (!isset($error_message)): ?>
         <!-- Statistics -->
         <div class="row mb-4">
             <div class="col-md-4">
@@ -469,9 +426,9 @@ if (!isset($error_message)) {
                 <?php endif; ?>
             </div>
         </div>
-        <?php endif; ?>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+

@@ -329,6 +329,50 @@ body {
                         <span class="nav-text">Bảng điều khiển</span>
                     </a>
                 </li>
+                <!-- Nav Item - Notifications -->
+                <li class="nav-item">
+                    <a href="/NLNganh/view/research/notifications.php" 
+                       class="nav-link <?php echo ($current_page == 'notifications.php') ? 'active' : ''; ?>">
+                        <i class="nav-icon fas fa-bell"></i>
+                        <span class="nav-text">Thông báo</span>
+                        <?php
+                        // Đếm số thông báo chưa đọc
+                        if (isset($conn)) {
+                            $notification_count = 0;
+                            // Kiểm tra bảng thông báo có tồn tại không
+                            $check_table = $conn->query("SHOW TABLES LIKE 'thong_bao'");
+                            if ($check_table && $check_table->num_rows > 0) {
+                                // Kiểm tra cột TB_MUCTIEU có tồn tại không
+                                $check_column = $conn->query("SHOW COLUMNS FROM thong_bao LIKE 'TB_MUCTIEU'");
+                                if ($check_column && $check_column->num_rows > 0) {
+                                    // Có cột TB_MUCTIEU, lọc theo role
+                                    $user_role = $_SESSION['role'] ?? 'research_manager';
+                                    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM thong_bao WHERE TB_DANHDOC = 0 AND (TB_MUCTIEU = 'all' OR TB_MUCTIEU = ?)");
+                                    if ($stmt) {
+                                        $stmt->bind_param('s', $user_role);
+                                        $stmt->execute();
+                                        $result = $stmt->get_result();
+                                        $notification_count = $result->fetch_assoc()['count'];
+                                        $stmt->close();
+                                    }
+                                } else {
+                                    // Không có cột TB_MUCTIEU, lấy tất cả thông báo chưa đọc
+                                    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM thong_bao WHERE TB_DANHDOC = 0");
+                                    if ($stmt) {
+                                        $stmt->execute();
+                                        $result = $stmt->get_result();
+                                        $notification_count = $result->fetch_assoc()['count'];
+                                        $stmt->close();
+                                    }
+                                }
+                            }
+                            if ($notification_count > 0) {
+                                echo '<span class="nav-badge">' . $notification_count . '</span>';
+                            }
+                        }
+                        ?>
+                    </a>
+                </li>
             </ul>
         </div>
 
@@ -448,13 +492,6 @@ body {
                         <span class="nav-text">Cài đặt hệ thống</span>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a href="/NLNganh/view/research/notifications.php" 
-                       class="nav-link <?php echo ($current_page == 'notifications.php') ? 'active' : ''; ?>">
-                        <i class="nav-icon fas fa-bell"></i>
-                        <span class="nav-text">Thông báo</span>
-                    </a>
-                </li>
             </ul>
         </div>
     </nav>
@@ -467,6 +504,114 @@ body {
         </a>
     </div>
 </div>
+
+<!-- Include Notification Client -->
+<script src="/NLNganh/assets/js/notification-client.js"></script>
+<script>
+// Khởi tạo notification client cho Research Manager
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof NotificationClient !== 'undefined') {
+        window.researchNotificationClient = new NotificationClient({
+            updateInterval: 30000, // 30 giây
+            onCountUpdated: function(count) {
+                console.log('Research Manager - Notification count updated:', count);
+                
+                // Cập nhật title trang nếu có thông báo mới
+                const originalTitle = document.title.replace(/^\(\d+\)\s*/, '');
+                if (count > 0) {
+                    document.title = `(${count}) ${originalTitle}`;
+                } else {
+                    document.title = originalTitle;
+                }
+                
+                // Cập nhật badge trong sidebar
+                const notificationLink = document.querySelector('a[href*="notifications.php"]');
+                if (notificationLink) {
+                    let badge = notificationLink.querySelector('.nav-badge');
+                    if (count > 0) {
+                        if (!badge) {
+                            badge = document.createElement('span');
+                            badge.className = 'nav-badge';
+                            notificationLink.appendChild(badge);
+                        }
+                        badge.textContent = count;
+                    } else if (badge) {
+                        badge.remove();
+                    }
+                }
+                
+                // Cập nhật badge trong dashboard nếu có
+                const dashboardBadge = document.getElementById('notification-count');
+                if (dashboardBadge) {
+                    dashboardBadge.textContent = count;
+                }
+                
+                // Hiển thị toast nếu có thông báo mới
+                if (count > 0 && !sessionStorage.getItem('notification_shown_' + count)) {
+                    showNewNotificationToast(count);
+                    sessionStorage.setItem('notification_shown_' + count, 'true');
+                }
+            },
+            onError: function(error) {
+                console.warn('Research notification system error:', error.message);
+            }
+        });
+    }
+});
+
+// Hiển thị toast khi có thông báo mới
+function showNewNotificationToast(count) {
+    // Tạo toast container nếu chưa có
+    let toastContainer = document.getElementById('notification-toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'notification-toast-container';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Tạo toast
+    const toastId = 'notification-toast-' + Date.now();
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.className = 'toast align-items-center text-white bg-primary border-0';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-bell me-2"></i>
+                Bạn có ${count} thông báo mới!
+                <br>
+                <small><a href="/NLNganh/view/research/notifications.php" class="text-white">Xem chi tiết</a></small>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Show toast
+    if (typeof bootstrap !== 'undefined') {
+        const bsToast = new bootstrap.Toast(toast, {
+            autohide: true,
+            delay: 8000
+        });
+        bsToast.show();
+        
+        // Auto remove after hide
+        toast.addEventListener('hidden.bs.toast', () => {
+            toast.remove();
+        });
+    } else {
+        // Fallback nếu không có Bootstrap
+        toast.style.display = 'block';
+        setTimeout(() => {
+            toast.remove();
+        }, 8000);
+    }
+}
+</script>
 
 <script>
 // Simple sidebar toggle for mobile
