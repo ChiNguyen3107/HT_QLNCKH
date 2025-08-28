@@ -528,7 +528,14 @@ while ($student = $students->fetch_assoc()) {
                                             </td>
                                             <td>
                                                 <div class="btn-group" role="group">
-                                                    <?php if ($student['DT_MADT']): ?>
+                                                    <?php if ($student['TONG_SO_DETAI_THAM_GIA'] > 1): ?>
+                                                        <!-- Sinh viên có nhiều đề tài - xem tất cả -->
+                                                        <a href="student_projects_detail.php?lop_ma=<?= urlencode($lop_ma) ?>&sv_masv=<?= urlencode($student['SV_MASV']) ?>" 
+                                                           class="btn btn-sm btn-outline-success" title="Xem tất cả đề tài (<?= $student['TONG_SO_DETAI_THAM_GIA'] ?>)">
+                                                            <i class="fas fa-list"></i>
+                                                        </a>
+                                                    <?php elseif ($student['DT_MADT']): ?>
+                                                        <!-- Sinh viên có 1 đề tài - xem trực tiếp -->
                                                         <a href="../project/view_project.php?dt_madt=<?= urlencode($student['DT_MADT']) ?>" 
                                                            class="btn btn-sm btn-outline-primary" title="Xem đề tài">
                                                             <i class="fas fa-eye"></i>
@@ -608,7 +615,14 @@ while ($student = $students->fetch_assoc()) {
                                         </div>
                                         <div class="card-footer bg-transparent">
                                             <div class="btn-group w-100" role="group">
-                                                <?php if ($student['DT_MADT']): ?>
+                                                <?php if ($student['TONG_SO_DETAI_THAM_GIA'] > 1): ?>
+                                                    <!-- Sinh viên có nhiều đề tài -->
+                                                    <a href="student_projects_detail.php?lop_ma=<?= urlencode($lop_ma) ?>&sv_masv=<?= urlencode($student['SV_MASV']) ?>" 
+                                                       class="btn btn-sm btn-outline-success">
+                                                        <i class="fas fa-list me-1"></i>Tất cả đề tài (<?= $student['TONG_SO_DETAI_THAM_GIA'] ?>)
+                                                    </a>
+                                                <?php elseif ($student['DT_MADT']): ?>
+                                                    <!-- Sinh viên có 1 đề tài -->
                                                     <a href="../project/view_project.php?dt_madt=<?= urlencode($student['DT_MADT']) ?>" 
                                                        class="btn btn-sm btn-outline-primary">
                                                         <i class="fas fa-eye me-1"></i>Xem đề tài

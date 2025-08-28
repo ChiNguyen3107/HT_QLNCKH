@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../../include/config.php';
+require_once '../../include/database.php';
 
 // Lấy tham số tìm kiếm
 $search = $_GET['search'] ?? '';

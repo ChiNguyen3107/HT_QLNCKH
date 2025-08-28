@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../../include/config.php';
+require_once '../../include/database.php';
 
 // Kiểm tra xem có tham số dt_madt không
 if (!isset($_GET['dt_madt']) || empty($_GET['dt_madt'])) {
