@@ -370,6 +370,528 @@ $(document).ready(function () {
         });
     });
 
+    // ============= COURSE MANAGEMENT =============
+    
+    // Xử lý nút quản lý khóa học
+    $('#manageCourseModal').on('show.bs.modal', function() {
+        loadCoursesForManagement();
+    });
+    
+    // Load danh sách khóa học để quản lý
+    function loadCoursesForManagement() {
+        $.ajax({
+            url: 'get_courses.php',
+            type: 'GET',
+            dataType: 'json',
+            success: function(courses) {
+                // Hủy bỏ DataTables nếu đã khởi tạo
+                if ($.fn.DataTable.isDataTable('#coursesTable')) {
+                    $('#coursesTable').DataTable().destroy();
+                }
+                
+                let tbody = '';
+                if (courses.length === 0) {
+                    tbody = '<tr><td colspan="2" class="text-center">Chưa có khóa học nào</td></tr>';
+                } else {
+                    $.each(courses, function(index, course) {
+                        tbody += '<tr>' +
+                                '<td>' + course.KH_NAM + '</td>' +
+                                '<td>' +
+                                    '<button class="btn btn-danger btn-sm deleteCourseBtn" data-course="' + course.KH_NAM + '">' +
+                                        '<i class="fas fa-trash-alt mr-1"></i> Xóa' +
+                                    '</button>' +
+                                '</td>' +
+                            '</tr>';
+                    });
+                }
+                $('#coursesTable tbody').html(tbody);
+                
+                // Khởi tạo DataTables cho bảng khóa học
+                $('#coursesTable').DataTable({
+                    "paging": true,
+                    "ordering": true,
+                    "info": true,
+                    "searching": true,
+                    "pageLength": 10,
+                    "language": {
+                        "search": "Tìm kiếm:",
+                        "lengthMenu": "Hiển thị _MENU_ dòng",
+                        "info": "Hiển thị _START_ đến _END_ của _TOTAL_ khóa học",
+                        "infoEmpty": "Hiển thị 0 đến 0 của 0 khóa học",
+                        "infoFiltered": "(được lọc từ _MAX_ khóa học)",
+                        "paginate": {
+                            "first": "Đầu",
+                            "last": "Cuối",
+                            "next": "<i class='fas fa-chevron-right'></i>",
+                            "previous": "<i class='fas fa-chevron-left'></i>"
+                        },
+                        "emptyTable": "Không có dữ liệu",
+                        "zeroRecords": "Không tìm thấy khóa học phù hợp"
+                    }
+                });
+            },
+            error: function(xhr) {
+                console.error("Lỗi AJAX:", xhr.responseText);
+                toastr.error('Đã xảy ra lỗi khi tải danh sách khóa học.', 'Lỗi!');
+            }
+        });
+    }
+    
+    // Xử lý nút thêm khóa học
+    $('#addCourseBtn').click(function() {
+        $('#manageCourseModal').modal('hide');
+        $('#addCourseModal').modal('show');
+    });
+    
+    // Xử lý form thêm khóa học
+    $('#addCourseForm').submit(function(e) {
+        e.preventDefault();
+        
+        let submitBtn = $(this).find('button[type="submit"]');
+        submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Đang lưu').prop('disabled', true);
+        
+        $.ajax({
+            url: 'add_course.php',
+            type: 'POST',
+            data: $(this).serialize(),
+            dataType: 'json',
+            success: function(response) {
+                submitBtn.html('<i class="fas fa-save mr-1"></i> Lưu').prop('disabled', false);
+                
+                if (response.success) {
+                    toastr.success(response.success, 'Thành công!');
+                    $('#addCourseModal').modal('hide');
+                    $('#manageCourseModal').modal('show');
+                    loadCoursesForManagement();
+                } else {
+                    toastr.error(response.error, 'Lỗi!');
+                }
+            },
+            error: function(xhr) {
+                submitBtn.html('<i class="fas fa-save mr-1"></i> Lưu').prop('disabled', false);
+                console.error("Lỗi AJAX:", xhr.responseText);
+                toastr.error('Đã xảy ra lỗi khi thêm khóa học.', 'Lỗi!');
+            }
+        });
+    });
+    
+    // Xử lý xóa khóa học
+    $(document).on('click', '.deleteCourseBtn', function() {
+        let courseYear = $(this).data('course');
+        
+        if (confirm('Bạn có chắc chắn muốn xóa khóa học "' + courseYear + '" không?\n\nLưu ý: Hành động này không thể hoàn tác!')) {
+            $.ajax({
+                url: 'delete_course.php',
+                type: 'POST',
+                data: { courseYear: courseYear },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        toastr.success(response.success, 'Thành công!');
+                        loadCoursesForManagement();
+                    } else {
+                        toastr.error(response.error, 'Lỗi!');
+                    }
+                },
+                error: function(xhr) {
+                    console.error("Lỗi AJAX:", xhr.responseText);
+                    toastr.error('Đã xảy ra lỗi khi xóa khóa học.', 'Lỗi!');
+                }
+            });
+        }
+    });
+    
+    // ============= CLASS MANAGEMENT =============
+    
+    // Xử lý nút quản lý lớp học
+    $(document).on('click', '.manageClassesBtn', function() {
+        let departmentId = $(this).data('id');
+        let departmentName = $(this).data('name');
+        
+        $('#manageClassesModal').data('departmentId', departmentId);
+        $('#departmentName').text(departmentName);
+        
+        // Load danh sách khóa học cho filter
+        loadCoursesForFilter();
+        
+        // Load danh sách lớp học
+        loadClassesForManagement(departmentId);
+        
+        $('#manageClassesModal').modal('show');
+    });
+    
+    // Load danh sách khóa học cho filter
+    function loadCoursesForFilter() {
+        $.ajax({
+            url: 'get_courses.php',
+            type: 'GET',
+            dataType: 'json',
+            success: function(courses) {
+                $('#filterCourse').empty();
+                $('#filterCourse').append('<option value="">Tất cả khóa học</option>');
+                
+                if (courses.length > 0) {
+                    $.each(courses, function(index, course) {
+                        $('#filterCourse').append('<option value="' + course.KH_NAM + '">' + course.KH_NAM + '</option>');
+                    });
+                }
+            },
+            error: function(xhr) {
+                console.error("Lỗi AJAX:", xhr.responseText);
+            }
+        });
+    }
+    
+    // Load danh sách lớp học cho quản lý
+    function loadClassesForManagement(departmentId, courseId = null) {
+        let url = 'get_manage_classes.php?departmentId=' + departmentId;
+        if (courseId) {
+            url += '&courseId=' + courseId;
+        }
+        
+        $.ajax({
+            url: url,
+            type: 'GET',
+            dataType: 'json',
+            success: function(classes) {
+                // Hủy bỏ DataTables nếu đã khởi tạo
+                if ($.fn.DataTable.isDataTable('#manageClassesTable')) {
+                    $('#manageClassesTable').DataTable().destroy();
+                }
+                
+                let tbody = '';
+                if (classes.length === 0) {
+                    tbody = '<tr><td colspan="6" class="text-center">Không có lớp học nào</td></tr>';
+                } else {
+                    $.each(classes, function(index, classInfo) {
+                        tbody += '<tr>' +
+                                '<td>' + classInfo.LOP_MA + '</td>' +
+                                '<td>' + classInfo.LOP_TEN + '</td>' +
+                                '<td>' + classInfo.KH_NAM + '</td>' +
+                                '<td>' + (classInfo.LOP_LOAICTDT || '-') + '</td>' +
+                                '<td>' + classInfo.student_count + '</td>' +
+                                '<td>' +
+                                    '<div class="btn-group btn-group-sm" role="group">' +
+                                        '<button class="btn btn-success importStudentsBtn" data-id="' + classInfo.LOP_MA + '" data-name="' + classInfo.LOP_TEN + '">' +
+                                            '<i class="fas fa-upload"></i> Import SV' +
+                                        '</button>' +
+                                        '<button class="btn btn-warning editClassBtn" data-id="' + classInfo.LOP_MA + '">' +
+                                            '<i class="fas fa-edit"></i> Sửa' +
+                                        '</button>' +
+                                        '<button class="btn btn-danger deleteClassBtn" data-id="' + classInfo.LOP_MA + '" data-name="' + classInfo.LOP_TEN + '">' +
+                                            '<i class="fas fa-trash-alt"></i> Xóa' +
+                                        '</button>' +
+                                    '</div>' +
+                                '</td>' +
+                            '</tr>';
+                    });
+                }
+                $('#manageClassesTable tbody').html(tbody);
+                
+                // Khởi tạo DataTables cho bảng lớp học
+                $('#manageClassesTable').DataTable({
+                    "paging": true,
+                    "ordering": true,
+                    "info": true,
+                    "searching": true,
+                    "pageLength": 10,
+                    "language": {
+                        "search": "Tìm kiếm:",
+                        "lengthMenu": "Hiển thị _MENU_ dòng",
+                        "info": "Hiển thị _START_ đến _END_ của _TOTAL_ lớp",
+                        "infoEmpty": "Hiển thị 0 đến 0 của 0 lớp",
+                        "infoFiltered": "(được lọc từ _MAX_ lớp)",
+                        "paginate": {
+                            "first": "Đầu",
+                            "last": "Cuối",
+                            "next": "<i class='fas fa-chevron-right'></i>",
+                            "previous": "<i class='fas fa-chevron-left'></i>"
+                        },
+                        "emptyTable": "Không có dữ liệu",
+                        "zeroRecords": "Không tìm thấy lớp học phù hợp"
+                    }
+                });
+            },
+            error: function(xhr) {
+                console.error("Lỗi AJAX:", xhr.responseText);
+                $('#manageClassesTable tbody').html('<tr><td colspan="6" class="text-center text-danger">Đã xảy ra lỗi khi tải dữ liệu</td></tr>');
+                toastr.error('Đã xảy ra lỗi khi tải danh sách lớp học.', 'Lỗi!');
+            }
+        });
+    }
+    
+    // Xử lý filter khóa học
+    $('#filterCourse').change(function() {
+        let departmentId = $('#manageClassesModal').data('departmentId');
+        let courseId = $(this).val();
+        loadClassesForManagement(departmentId, courseId);
+    });
+    
+    // Xử lý nút thêm lớp
+    $('#addClassBtn').click(function() {
+        let departmentId = $('#manageClassesModal').data('departmentId');
+        $('#classDepartmentId').val(departmentId);
+        
+        // Load danh sách khóa học
+        loadCoursesForClassForm('#classCourse');
+        
+        $('#addClassModal').modal('show');
+    });
+    
+    // Load danh sách khóa học cho form lớp
+    function loadCoursesForClassForm(selectId) {
+        $.ajax({
+            url: 'get_courses.php',
+            type: 'GET',
+            dataType: 'json',
+            success: function(courses) {
+                $(selectId).empty();
+                $(selectId).append('<option value="">Chọn khóa học</option>');
+                
+                if (courses.length > 0) {
+                    $.each(courses, function(index, course) {
+                        $(selectId).append('<option value="' + course.KH_NAM + '">' + course.KH_NAM + '</option>');
+                    });
+                }
+            },
+            error: function(xhr) {
+                console.error("Lỗi AJAX:", xhr.responseText);
+            }
+        });
+    }
+    
+    // Xử lý form thêm lớp
+    $('#addClassForm').submit(function(e) {
+        e.preventDefault();
+        
+        let submitBtn = $(this).find('button[type="submit"]');
+        submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Đang lưu').prop('disabled', true);
+        
+        $.ajax({
+            url: 'add_class.php',
+            type: 'POST',
+            data: $(this).serialize(),
+            dataType: 'json',
+            success: function(response) {
+                submitBtn.html('<i class="fas fa-save mr-1"></i> Lưu').prop('disabled', false);
+                
+                if (response.success) {
+                    toastr.success(response.success, 'Thành công!');
+                    $('#addClassModal').modal('hide');
+                    
+                    let departmentId = $('#manageClassesModal').data('departmentId');
+                    loadClassesForManagement(departmentId);
+                } else {
+                    toastr.error(response.error, 'Lỗi!');
+                }
+            },
+            error: function(xhr) {
+                submitBtn.html('<i class="fas fa-save mr-1"></i> Lưu').prop('disabled', false);
+                console.error("Lỗi AJAX:", xhr.responseText);
+                toastr.error('Đã xảy ra lỗi khi thêm lớp học.', 'Lỗi!');
+            }
+        });
+    });
+    
+    // Xử lý nút sửa lớp
+    $(document).on('click', '.editClassBtn', function() {
+        let classId = $(this).data('id');
+        
+        $.ajax({
+            url: 'get_class.php',
+            type: 'GET',
+            data: { classId: classId },
+            dataType: 'json',
+            success: function(classInfo) {
+                if (classInfo.error) {
+                    toastr.error(classInfo.error, 'Lỗi!');
+                } else {
+                    $('#editClassOriginalCode').val(classInfo.LOP_MA);
+                    $('#editClassDepartmentId').val(classInfo.DV_MADV);
+                    $('#editClassCode').val(classInfo.LOP_MA);
+                    $('#editClassName').val(classInfo.LOP_TEN);
+                    $('#editClassType').val(classInfo.LOP_LOAICTDT || '');
+                    
+                    // Load danh sách khóa học và set giá trị hiện tại
+                    loadCoursesForClassForm('#editClassCourse');
+                    setTimeout(function() {
+                        $('#editClassCourse').val(classInfo.KH_NAM);
+                    }, 500);
+                    
+                    $('#editClassModal').modal('show');
+                }
+            },
+            error: function(xhr) {
+                console.error("Lỗi AJAX:", xhr.responseText);
+                toastr.error('Đã xảy ra lỗi khi tải thông tin lớp học.', 'Lỗi!');
+            }
+        });
+    });
+    
+    // Xử lý form sửa lớp
+    $('#editClassForm').submit(function(e) {
+        e.preventDefault();
+        
+        let submitBtn = $(this).find('button[type="submit"]');
+        submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Đang cập nhật').prop('disabled', true);
+        
+        $.ajax({
+            url: 'update_class.php',
+            type: 'POST',
+            data: $(this).serialize(),
+            dataType: 'json',
+            success: function(response) {
+                submitBtn.html('<i class="fas fa-save mr-1"></i> Cập nhật').prop('disabled', false);
+                
+                if (response.success) {
+                    toastr.success(response.success, 'Thành công!');
+                    $('#editClassModal').modal('hide');
+                    
+                    let departmentId = $('#manageClassesModal').data('departmentId');
+                    loadClassesForManagement(departmentId);
+                } else {
+                    toastr.error(response.error, 'Lỗi!');
+                }
+            },
+            error: function(xhr) {
+                submitBtn.html('<i class="fas fa-save mr-1"></i> Cập nhật').prop('disabled', false);
+                console.error("Lỗi AJAX:", xhr.responseText);
+                toastr.error('Đã xảy ra lỗi khi cập nhật lớp học.', 'Lỗi!');
+            }
+        });
+    });
+    
+    // Xử lý nút xóa lớp
+    $(document).on('click', '.deleteClassBtn', function() {
+        let classId = $(this).data('id');
+        let className = $(this).data('name');
+        
+        $('#deleteClassName').text(className);
+        $('#confirmDeleteClass').data('classId', classId);
+        $('#deleteClassModal').modal('show');
+    });
+    
+    // Xác nhận xóa lớp
+    $('#confirmDeleteClass').click(function() {
+        let classId = $(this).data('classId');
+        
+        $.ajax({
+            url: 'delete_class.php',
+            type: 'POST',
+            data: { classCode: classId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    toastr.success(response.success, 'Thành công!');
+                    $('#deleteClassModal').modal('hide');
+                    
+                    let departmentId = $('#manageClassesModal').data('departmentId');
+                    loadClassesForManagement(departmentId);
+                } else {
+                    toastr.error(response.error, 'Lỗi!');
+                }
+            },
+            error: function(xhr) {
+                console.error("Lỗi AJAX:", xhr.responseText);
+                toastr.error('Đã xảy ra lỗi khi xóa lớp học.', 'Lỗi!');
+            }
+        });
+    });
+    
+    // ============= IMPORT STUDENTS =============
+    
+    // Xử lý nút import sinh viên
+    $(document).on('click', '.importStudentsBtn', function() {
+        let classId = $(this).data('id');
+        let className = $(this).data('name');
+        
+        $('#importClassId').val(classId);
+        $('#importClassName').text(className);
+        $('#importStudentsModal').modal('show');
+    });
+    
+    // Xử lý form import sinh viên
+    $('#importStudentsForm').submit(function(e) {
+        e.preventDefault();
+        
+        let submitBtn = $(this).find('button[type="submit"]');
+        let originalText = submitBtn.html();
+        submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Đang import...').prop('disabled', true);
+        
+        let formData = new FormData(this);
+        
+        $.ajax({
+            url: 'import_students.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            success: function(response) {
+                submitBtn.html(originalText).prop('disabled', false);
+                
+                if (response.success) {
+                    $('#importStudentsModal').modal('hide');
+                    showImportResult(response);
+                    
+                    // Refresh danh sách lớp học để cập nhật số lượng sinh viên
+                    let departmentId = $('#manageClassesModal').data('departmentId');
+                    if (departmentId) {
+                        loadClassesForManagement(departmentId);
+                    }
+                } else {
+                    toastr.error(response.error || 'Có lỗi xảy ra khi import', 'Lỗi!');
+                }
+            },
+            error: function(xhr) {
+                submitBtn.html(originalText).prop('disabled', false);
+                console.error("Lỗi AJAX:", xhr.responseText);
+                
+                try {
+                    let errorResponse = JSON.parse(xhr.responseText);
+                    toastr.error(errorResponse.error || 'Đã xảy ra lỗi khi import sinh viên.', 'Lỗi!');
+                } catch (e) {
+                    toastr.error('Đã xảy ra lỗi khi import sinh viên.', 'Lỗi!');
+                }
+            }
+        });
+    });
+    
+    // Hiển thị kết quả import
+    function showImportResult(response) {
+        let details = response.details;
+        let summaryHtml = '';
+        
+        if (details.success_count > 0) {
+            summaryHtml += '<div class="alert alert-success">';
+            summaryHtml += '<h6><i class="fas fa-check-circle mr-1"></i>Thành công</h6>';
+            summaryHtml += '<p class="mb-0">Đã import thành công <strong>' + details.success_count + '</strong> sinh viên.</p>';
+            summaryHtml += '</div>';
+        }
+        
+        if (details.error_count > 0) {
+            summaryHtml += '<div class="alert alert-warning">';
+            summaryHtml += '<h6><i class="fas fa-exclamation-triangle mr-1"></i>Cảnh báo</h6>';
+            summaryHtml += '<p class="mb-0">Có <strong>' + details.error_count + '</strong> lỗi trong quá trình import.</p>';
+            summaryHtml += '</div>';
+        }
+        
+        $('#importSummary').html(summaryHtml);
+        
+        if (details.errors && details.errors.length > 0) {
+            let errorListHtml = '';
+            details.errors.forEach(function(error) {
+                errorListHtml += '<li>' + error + '</li>';
+            });
+            $('#errorList').html(errorListHtml);
+            $('#importErrors').show();
+        } else {
+            $('#importErrors').hide();
+        }
+        
+        $('#importResultModal').modal('show');
+    }
+
     // Reset modal
     $('#addModal').on('hidden.bs.modal', function() {
         $('#addForm')[0].reset();
@@ -381,5 +903,22 @@ $(document).ready(function () {
 
     $('#viewClassesModal').on('hidden.bs.modal', function() {
         $('#selectCourse').val('');
+    });
+    
+    $('#addCourseModal').on('hidden.bs.modal', function() {
+        $('#addCourseForm')[0].reset();
+    });
+    
+    $('#addClassModal').on('hidden.bs.modal', function() {
+        $('#addClassForm')[0].reset();
+    });
+    
+    $('#editClassModal').on('hidden.bs.modal', function() {
+        $('#editClassForm')[0].reset();
+    });
+    
+    $('#importStudentsModal').on('hidden.bs.modal', function() {
+        $('#importStudentsForm')[0].reset();
+        $('#confirmImport').prop('checked', false);
     });
 });

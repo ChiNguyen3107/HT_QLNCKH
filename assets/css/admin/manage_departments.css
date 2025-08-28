@@ -307,6 +307,25 @@
     justify-content: flex-start;
 }
 
+/* Class management buttons */
+.class-management-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.class-management-buttons .btn {
+    width: 100%;
+    justify-content: flex-start;
+}
+
+/* Header buttons */
+.header-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
 /* Badge styling */
 .badge {
     font-size: 85%;

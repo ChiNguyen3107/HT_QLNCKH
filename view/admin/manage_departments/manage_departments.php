@@ -41,9 +41,14 @@ checkAdminRole();
         <!-- Header Section -->
         <div class="header-section">
             <h1 class="page-header"><i class="fas fa-university mr-2"></i>Quản lý các khoa</h1>
-            <button class="btn btn-success" data-toggle="modal" data-target="#addModal">
-                <i class="fas fa-plus mr-1"></i> Thêm khoa mới
-            </button>
+            <div class="header-buttons">
+                <button class="btn btn-info mr-2" data-toggle="modal" data-target="#manageCourseModal">
+                    <i class="fas fa-calendar-alt mr-1"></i> Quản lý khóa học
+                </button>
+                <button class="btn btn-success" data-toggle="modal" data-target="#addModal">
+                    <i class="fas fa-plus mr-1"></i> Thêm khoa mới
+                </button>
+            </div>
         </div>
 
         <!-- Main Content -->
@@ -83,9 +88,14 @@ checkAdminRole();
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <button class='btn btn-info btn-sm viewClassesBtn' data-id='{$row['DV_MADV']}'>
-                                                        <i class='fas fa-users'></i> Xem lớp học
-                                                    </button>
+                                                    <div class='class-management-buttons'>
+                                                        <button class='btn btn-info btn-sm viewClassesBtn' data-id='{$row['DV_MADV']}'>
+                                                            <i class='fas fa-users'></i> Xem lớp học
+                                                        </button>
+                                                        <button class='btn btn-primary btn-sm manageClassesBtn' data-id='{$row['DV_MADV']}' data-name='{$row['DV_TENDV']}'>
+                                                            <i class='fas fa-cogs'></i> Quản lý lớp
+                                                        </button>
+                                                    </div>
                                                 </td>
                                               </tr>";
                                     }
@@ -282,6 +292,364 @@ checkAdminRole();
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">
                         <i class="fas fa-times mr-1"></i> Đóng
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal quản lý khóa học -->
+    <div class="modal fade" id="manageCourseModal" tabindex="-1" role="dialog" aria-labelledby="manageCourseModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="manageCourseModalLabel">
+                        <i class="fas fa-calendar-alt mr-2"></i>Quản lý khóa học
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <button class="btn btn-success" id="addCourseBtn">
+                            <i class="fas fa-plus mr-1"></i> Thêm khóa học mới
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="coursesTable" class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Khóa học</th>
+                                    <th>Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Danh sách khóa học sẽ được tải động -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Đóng
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal thêm khóa học -->
+    <div class="modal fade" id="addCourseModal" tabindex="-1" role="dialog" aria-labelledby="addCourseModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addCourseModalLabel">
+                        <i class="fas fa-plus-circle mr-2"></i>Thêm khóa học mới
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="addCourseForm">
+                        <div class="form-group">
+                            <label for="courseYear">Khóa học</label>
+                            <input type="text" class="form-control" id="courseYear" name="courseYear" required placeholder="Ví dụ: K47, K48, 2020-2024">
+                            <small class="form-text text-muted">Nhập tên khóa học (ví dụ: K47, K48, 2020-2024)</small>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fas fa-times mr-1"></i> Hủy
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save mr-1"></i> Lưu
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal quản lý lớp học -->
+    <div class="modal fade" id="manageClassesModal" tabindex="-1" role="dialog" aria-labelledby="manageClassesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="manageClassesModalLabel">
+                        <i class="fas fa-cogs mr-2"></i>Quản lý lớp học - <span id="departmentName"></span>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <button class="btn btn-success" id="addClassBtn">
+                                <i class="fas fa-plus mr-1"></i> Thêm lớp mới
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="filterCourse">Lọc theo khóa học:</label>
+                                <select class="form-control" id="filterCourse">
+                                    <option value="">Tất cả khóa học</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="manageClassesTable" class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Mã lớp</th>
+                                    <th>Tên lớp</th>
+                                    <th>Khóa học</th>
+                                    <th>Loại CTĐT</th>
+                                    <th>Số sinh viên</th>
+                                    <th>Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Danh sách lớp học sẽ được tải động -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Đóng
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal thêm lớp học -->
+    <div class="modal fade" id="addClassModal" tabindex="-1" role="dialog" aria-labelledby="addClassModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addClassModalLabel">
+                        <i class="fas fa-plus-circle mr-2"></i>Thêm lớp học mới
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="addClassForm">
+                        <input type="hidden" id="classDepartmentId" name="departmentId">
+                        <div class="form-group">
+                            <label for="classCode">Mã lớp</label>
+                            <input type="text" class="form-control" id="classCode" name="classCode" required maxlength="8" placeholder="Ví dụ: CNTT01">
+                            <small class="form-text text-muted">Nhập mã lớp (tối đa 8 ký tự)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="className">Tên lớp</label>
+                            <input type="text" class="form-control" id="className" name="className" required maxlength="50" placeholder="Ví dụ: Công nghệ thông tin 01">
+                        </div>
+                        <div class="form-group">
+                            <label for="classCourse">Khóa học</label>
+                            <select class="form-control" id="classCourse" name="course" required>
+                                <option value="">Chọn khóa học</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="classType">Loại chương trình đào tạo</label>
+                            <select class="form-control" id="classType" name="classType">
+                                <option value="">Chọn loại CTĐT</option>
+                                <option value="Chính quy">Chính quy</option>
+                                <option value="Liên thông">Liên thông</option>
+                                <option value="Vừa làm vừa học">Vừa làm vừa học</option>
+                                <option value="Từ xa">Từ xa</option>
+                            </select>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fas fa-times mr-1"></i> Hủy
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save mr-1"></i> Lưu
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal chỉnh sửa lớp học -->
+    <div class="modal fade" id="editClassModal" tabindex="-1" role="dialog" aria-labelledby="editClassModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editClassModalLabel">
+                        <i class="fas fa-edit mr-2"></i>Chỉnh sửa thông tin lớp học
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="editClassForm">
+                        <input type="hidden" id="editClassOriginalCode" name="originalCode">
+                        <input type="hidden" id="editClassDepartmentId" name="departmentId">
+                        <div class="form-group">
+                            <label for="editClassCode">Mã lớp</label>
+                            <input type="text" class="form-control" id="editClassCode" name="classCode" required maxlength="8">
+                        </div>
+                        <div class="form-group">
+                            <label for="editClassName">Tên lớp</label>
+                            <input type="text" class="form-control" id="editClassName" name="className" required maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="editClassCourse">Khóa học</label>
+                            <select class="form-control" id="editClassCourse" name="course" required>
+                                <option value="">Chọn khóa học</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editClassType">Loại chương trình đào tạo</label>
+                            <select class="form-control" id="editClassType" name="classType">
+                                <option value="">Chọn loại CTĐT</option>
+                                <option value="Chính quy">Chính quy</option>
+                                <option value="Liên thông">Liên thông</option>
+                                <option value="Vừa làm vừa học">Vừa làm vừa học</option>
+                                <option value="Từ xa">Từ xa</option>
+                            </select>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fas fa-times mr-1"></i> Hủy
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save mr-1"></i> Cập nhật
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal xác nhận xóa lớp học -->
+    <div class="modal fade" id="deleteClassModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle mr-2 text-danger"></i>Xác nhận xóa lớp học
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Bạn có chắc chắn muốn xóa lớp học <strong id="deleteClassName"></strong> không?</p>
+                    <p class="mb-0 font-italic text-danger">Lưu ý: Hành động này không thể hoàn tác và sẽ xóa tất cả sinh viên trong lớp!</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Hủy
+                    </button>
+                    <button type="button" id="confirmDeleteClass" class="btn btn-danger">
+                        <i class="fas fa-trash-alt mr-1"></i> Xác nhận xóa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal import sinh viên -->
+    <div class="modal fade" id="importStudentsModal" tabindex="-1" role="dialog" aria-labelledby="importStudentsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importStudentsModalLabel">
+                        <i class="fas fa-upload mr-2"></i>Import sinh viên - <span id="importClassName"></span>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle mr-1"></i>Hướng dẫn:</h6>
+                        <ul class="mb-0">
+                            <li>File Excel phải có 6 cột: <strong>Mã SV, Họ, Tên, Ngày sinh, Email, SĐT</strong></li>
+                            <li><strong>Không cần dòng tiêu đề</strong> - chỉ cần nội dung sinh viên</li>
+                            <li>Ngày sinh: <strong>Hỗ trợ nhiều định dạng</strong> (6/2/2004, 06/02/2004, 2004-02-06)</li>
+                            <li>Email phải hợp lệ và không trùng lặp</li>
+                            <li>Số điện thoại: <strong>Hệ thống tự động thêm số 0 đầu</strong> nếu thiếu</li>
+                            <li>Mật khẩu mặc định sẽ là mã sinh viên</li>
+                        </ul>
+                    </div>
+                    
+                    <form id="importStudentsForm" enctype="multipart/form-data">
+                        <input type="hidden" id="importClassId" name="classId">
+                        
+                        <div class="form-group">
+                            <label for="studentFile">
+                                <i class="fas fa-file-excel mr-1"></i>Chọn file sinh viên
+                            </label>
+                            <input type="file" class="form-control-file" id="studentFile" name="studentFile" 
+                                   accept=".xlsx,.xls,.csv" required>
+                            <small class="form-text text-muted">
+                                Chấp nhận file: .xlsx, .xls, .csv (Tối đa 5MB)
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="confirmImport" required>
+                                <label class="custom-control-label" for="confirmImport">
+                                    Tôi đã kiểm tra định dạng file và xác nhận import
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fas fa-times mr-1"></i> Hủy
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-upload mr-1"></i> Import sinh viên
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal kết quả import -->
+    <div class="modal fade" id="importResultModal" tabindex="-1" role="dialog" aria-labelledby="importResultModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importResultModalLabel">
+                        <i class="fas fa-chart-bar mr-2"></i>Kết quả import sinh viên
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="importSummary" class="mb-3">
+                        <!-- Tóm tắt kết quả sẽ được hiển thị ở đây -->
+                    </div>
+                    
+                    <div id="importErrors" style="display: none;">
+                        <h6 class="text-danger"><i class="fas fa-exclamation-triangle mr-1"></i>Danh sách lỗi:</h6>
+                        <div class="alert alert-danger">
+                            <ul id="errorList" class="mb-0"></ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">
+                        <i class="fas fa-check mr-1"></i> Đóng
                     </button>
                 </div>
             </div>
