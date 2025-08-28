@@ -535,7 +535,7 @@ function getProgressColor($percent) {
                 </div>
 
                 <!-- Tiến độ báo cáo -->
-                <?php if (!empty($progress_list)): ?>
+                <!-- <?php if (!empty($progress_list)): ?>
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">
@@ -581,7 +581,7 @@ function getProgressColor($percent) {
                         <?php endforeach; ?>
                     </div>
                 </div>
-                <?php endif; ?>
+                <?php endif; ?> -->
             </div>
         </div>
     </div>
