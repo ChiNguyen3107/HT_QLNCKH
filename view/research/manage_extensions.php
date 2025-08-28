@@ -168,15 +168,14 @@ while ($row = $khoa_result->fetch_assoc()) {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <style>
-        .main-content {
+        body {
             background-color: #f8f9fa;
-            min-height: 100vh;
         }
         
         .page-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 2rem;
+            padding: 1.5rem 2rem;
             border-radius: 10px;
             margin-bottom: 2rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -210,6 +209,7 @@ while ($row = $khoa_result->fetch_assoc()) {
             margin-bottom: 1rem;
             background: white;
             transition: all 0.3s;
+            padding: 1rem;
         }
         
         .extension-card:hover {
@@ -246,7 +246,21 @@ while ($row = $khoa_result->fetch_assoc()) {
             border-radius: 10px;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            min-height: 100vh;
+            background-color: #f8f9fa;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 1rem;
+            }
         }
         
         .timeline-item {
@@ -281,13 +295,18 @@ while ($row = $khoa_result->fetch_assoc()) {
     </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Include sidebar -->
-            <?php include '../../include/research_header.php'; ?>
-            
-            <!-- Main content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+    <!-- Include header và sidebar -->
+    <?php include '../../include/simple_research_sidebar.php'; ?>
+    
+    <!-- Main content -->
+    <div class="main-content">
+                <!-- Mobile Toggle Button -->
+                <div class="d-md-none mb-3">
+                    <button class="btn btn-primary" onclick="toggleMobileSidebar()">
+                        <i class="fas fa-bars me-1"></i>Menu
+                    </button>
+                </div>
+
                 <!-- Page Header -->
                 <div class="page-header">
                     <div class="d-flex justify-content-between align-items-center">
@@ -414,19 +433,20 @@ while ($row = $khoa_result->fetch_assoc()) {
                 </div>
 
                 <!-- Extensions List -->
-                <div class="card">
-                    <div class="card-header bg-white">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white border-0 py-3">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0">
+                            <h5 class="card-title mb-0 text-primary">
                                 <i class="fas fa-list me-2"></i>Danh sách yêu cầu gia hạn
                             </h5>
-                            <small class="text-muted">
-                                Hiển thị <?php echo count($extensions); ?> / <?php echo $total_records; ?> yêu cầu
-                            </small>
+                            <span class="badge bg-light text-dark fs-6">
+                                <?php echo count($extensions); ?> / <?php echo $total_records; ?> yêu cầu
+                            </span>
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-0">
                         <?php if (count($extensions) > 0): ?>
+                            <div class="p-3">
                             <?php foreach ($extensions as $extension): ?>
                                 <?php
                                 $card_class = 'extension-card';
@@ -450,7 +470,6 @@ while ($row = $khoa_result->fetch_assoc()) {
                                 ?>
                                 
                                 <div class="<?php echo $card_class . ' ' . $priority_class; ?>">
-                                    <div class="card-body">
                                         <div class="row">
                                             <div class="col-md-8">
                                                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -561,7 +580,6 @@ while ($row = $khoa_result->fetch_assoc()) {
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
                                 </div>
                             <?php endforeach; ?>
                             
@@ -595,6 +613,7 @@ while ($row = $khoa_result->fetch_assoc()) {
                                 </ul>
                             </nav>
                             <?php endif; ?>
+                            </div>
                             
                         <?php else: ?>
                             <div class="text-center py-5">
@@ -605,8 +624,6 @@ while ($row = $khoa_result->fetch_assoc()) {
                         <?php endif; ?>
                     </div>
                 </div>
-            </main>
-        </div>
     </div>
 
     <!-- Modal duyệt gia hạn -->
