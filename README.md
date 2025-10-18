@@ -1,112 +1,139 @@
 # Hệ thống Quản lý Nghiên cứu Khoa học
 
-## Mô tả
-Hệ thống quản lý nghiên cứu khoa học cho sinh viên và giảng viên, bao gồm các chức năng:
-- Quản lý đề tài nghiên cứu
-- Quản lý sinh viên tham gia nghiên cứu
-- Báo cáo và thống kê
-- Đánh giá và nghiệm thu đề tài
+Hệ thống quản lý toàn diện cho các hoạt động nghiên cứu khoa học của sinh viên và giảng viên tại Trường Đại học Cần Thơ.
 
-## Tính năng chính
+## 🚀 Tính năng chính
 
-### 1. Quản lý Sinh viên
-- Danh sách sinh viên theo lớp
-- Lọc theo khoa, khóa học, lớp
-- Lọc theo trạng thái nghiên cứu (Chưa tham gia, Đang tham gia, Đã hoàn thành)
-- Xuất danh sách ra Excel
+- **Quản lý đề tài nghiên cứu**: Đăng ký, theo dõi và quản lý các đề tài nghiên cứu
+- **Quản lý nhóm nghiên cứu**: Phân chia nhóm, phân công nhiệm vụ
+- **Quản lý tiến độ**: Theo dõi tiến độ thực hiện đề tài
+- **Quản lý tài liệu**: Lưu trữ và chia sẻ tài liệu nghiên cứu
+- **Thống kê & Báo cáo**: Tạo báo cáo chi tiết về hoạt động nghiên cứu
+- **Thông báo**: Hệ thống thông báo thông minh
 
-### 2. Quản lý Đề tài
-- Đăng ký đề tài nghiên cứu
-- Theo dõi tiến độ
-- Quản lý thành viên tham gia
-
-### 3. Báo cáo và Thống kê
-- Thống kê theo khoa
-- Thống kê theo trạng thái đề tài
-- Biểu đồ trực quan
-
-## Cài đặt
-
-### Yêu cầu hệ thống
-- XAMPP (Apache + MySQL + PHP)
-- PHP 7.4 trở lên
-- MySQL 5.7 trở lên
-
-### Cài đặt
-1. Clone repository này về máy
-2. Copy toàn bộ file vào thư mục `htdocs` của XAMPP
-3. Import file `ql_nckh.sql` vào MySQL
-4. Cấu hình kết nối database trong `include/connect.php`
-5. Truy cập `http://localhost/NLNganh`
-
-## Cấu trúc thư mục
+## 📁 Cấu trúc dự án
 
 ```
 NLNganh/
-├── api/                    # API endpoints
-│   ├── get_student_list.php
-│   ├── get_department_classes.php
-│   ├── get_faculties.php
-│   └── export_student_list.php
-├── view/                   # Giao diện người dùng
-│   ├── research/
-│   └── admin/
-├── include/                # File cấu hình
-│   └── connect.php
-├── uploads/                # File upload
-└── ql_nckh.sql            # Database schema
+├── app/                    # Ứng dụng chính
+│   ├── Controllers/        # Controllers (MVC)
+│   ├── Models/            # Models (MVC)
+│   ├── Views/             # Views (MVC)
+│   ├── Services/          # Business Logic
+│   └── Middleware/        # Middleware
+├── config/                # Cấu hình
+├── core/                  # Core framework
+├── public/                # Web root
+├── storage/               # Storage (logs, cache, sessions)
+├── api/                   # API endpoints
+├── tests/                 # Tests
+└── bootstrap/             # Bootstrap files
 ```
 
-## API Endpoints
+## 🛠️ Cài đặt
 
-### 1. Lấy danh sách sinh viên
-```
-GET /api/get_student_list.php
-Parameters:
-- department: Mã khoa
-- school_year: Khóa học
-- class: Mã lớp
-- research_status: Trạng thái nghiên cứu (none/active/completed)
-- page: Trang hiện tại
-- limit: Số lượng mỗi trang
-```
+### Yêu cầu hệ thống
+- PHP >= 7.4
+- MySQL >= 5.7
+- Apache/Nginx
+- Composer (tùy chọn)
 
-### 2. Lấy danh sách lớp theo khoa
-```
-GET /api/get_department_classes.php
-Parameters:
-- dept_id: Mã khoa
-- year: Khóa học
+### Cài đặt
+
+1. **Clone repository**
+```bash
+git clone <repository-url>
+cd NLNganh
 ```
 
-### 3. Xuất danh sách Excel
+2. **Cấu hình môi trường**
+```bash
+cp env.example .env
+# Chỉnh sửa file .env với thông tin cấu hình của bạn
 ```
-GET /api/export_student_list.php
-Parameters: Tương tự get_student_list.php
+
+3. **Cấu hình database**
+- Tạo database `ql_nckh`
+- Import file `ql_nckh.sql`
+
+4. **Cấu hình web server**
+- Trỏ document root đến thư mục `public/`
+- Đảm bảo mod_rewrite được bật
+
+### Cấu hình XAMPP
+
+1. Copy thư mục dự án vào `htdocs`
+2. Truy cập `http://localhost/NLNganh`
+3. Cấu hình database trong file `.env`
+
+## 🔧 Cấu hình
+
+### Database
+Chỉnh sửa file `config/database.php` hoặc `.env`:
+
+```php
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=ql_nckh
+DB_USERNAME=root
+DB_PASSWORD=
 ```
 
-## Cập nhật gần đây
+### Application
+Chỉnh sửa file `config/app.php`:
 
-### Vấn đề đã sửa:
-1. **Dropdown lớp không populate**: Đã sửa logic lấy khóa học từ bảng `lop` thay vì `khoa_hoc`
-2. **Filter trạng thái nghiên cứu**: Đã sửa logic SQL để lọc chính xác sinh viên chưa tham gia nghiên cứu
-3. **UX cải thiện**: Thêm tự động lọc khi thay đổi bộ lọc
+```php
+'url' => 'http://localhost/NLNganh',
+'debug' => true,
+'timezone' => 'Asia/Ho_Chi_Minh'
+```
 
-### Tính năng mới:
-- API lấy danh sách khoa động
-- API lấy khóa học từ bảng lớp
-- Tự động cập nhật danh sách khi thay đổi bộ lọc
-- Hiển thị trạng thái nghiên cứu với badge màu sắc
+## 📚 Sử dụng
 
-## Đóng góp
-Nếu bạn muốn đóng góp vào dự án, vui lòng:
-1. Fork repository
-2. Tạo branch mới cho tính năng
-3. Commit thay đổi
-4. Tạo Pull Request
+### Truy cập hệ thống
+- **URL**: `http://localhost/NLNganh`
+- **Admin**: Sử dụng tài khoản admin
+- **Sinh viên**: Sử dụng mã sinh viên
+- **Giảng viên**: Sử dụng mã giảng viên
 
-## License
-MIT License
+### API Endpoints
+- `GET /api/v1/projects` - Lấy danh sách dự án
+- `GET /api/v1/students` - Lấy danh sách sinh viên
+- `GET /api/v1/teachers` - Lấy danh sách giảng viên
 
-## Liên hệ
-Nếu có vấn đề hoặc câu hỏi, vui lòng tạo issue trên GitHub.
+## 🧪 Testing
+
+```bash
+# Chạy tests
+composer test
+
+# Hoặc
+phpunit
+```
+
+## 📝 Changelog
+
+### v1.0.0
+- Cấu trúc MVC chuẩn
+- Hệ thống authentication
+- Quản lý đề tài nghiên cứu
+- API endpoints cơ bản
+
+## 🤝 Đóng góp
+
+1. Fork dự án
+2. Tạo feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Tạo Pull Request
+
+## 📄 License
+
+Dự án này được phân phối dưới MIT License. Xem file `LICENSE` để biết thêm chi tiết.
+
+## 📞 Liên hệ
+
+- **Email**: dhct@ctu.edu.vn
+- **Website**: www.ctu.edu.vn
+- **Địa chỉ**: Khu II, Đường 3/2, Phường Xuân Khánh, Quận Ninh Kiều, TP. Cần Thơ
+

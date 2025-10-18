@@ -1,18 +1,10 @@
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteBase /NLNganh/
+RewriteEngine On
 
-    # Xử lý favicon.ico cho toàn bộ dự án
-    RewriteCond %{REQUEST_URI} ^/favicon\.ico$ [NC]
-    RewriteRule (.*) /NLNganh/favicon.ico [L]
+# Redirect to public directory
+RewriteCond %{REQUEST_URI} !^/NLNganh/public/
+RewriteRule ^(.*)$ /NLNganh/public/$1 [L,R=301]
 
-    # Kiểm tra nếu tập tin hoặc thư mục không tồn tại
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    
-    # Chuyển hướng đến trang 404 của chúng ta
-    RewriteRule ^(.*)$ 404.php [L]
-</IfModule>
-
-# Đặt trang lỗi tùy chỉnh cho lỗi 404
-ErrorDocument 404 /NLNganh/404.php
+# Handle routing in public directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
