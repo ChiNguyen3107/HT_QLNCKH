@@ -1,13 +1,14 @@
 <?php
-session_start();
 require 'include/connect.php';
 require_once 'app/Services/AuthService.php';
 require_once 'core/Logger.php';
+require_once 'core/SessionManager.php';
 
 $conn->set_charset('utf8mb4');
 
-// Initialize AuthService
+// Initialize services
 $authService = new AuthService();
+$sessionManager = SessionManager::getInstance();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
@@ -26,28 +27,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($result['success']) {
         $user = $result['user'];
         
-        // Regenerate session ID for security
-        session_regenerate_id(true);
+        // Tạo secure session với SessionManager
+        $userData = [
+            'username' => $user['username'],
+            'role' => $user['role'],
+            'user_name' => $user['name'],
+            'login_time' => time()
+        ];
         
-        // Set session variables
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['role'] = $user['role'];
-        $_SESSION['user_name'] = $user['name'];
-        $_SESSION['login_time'] = time();
-        $_SESSION['ip_address'] = $ipAddress;
-
         // Set manager_id for research_manager
         if ($user['role'] === 'research_manager') {
-            $_SESSION['manager_id'] = $user['id'];
+            $userData['manager_id'] = $user['id'];
         }
+        
+        // Tạo secure session
+        if ($sessionManager->createSecureSession($user['id'], $userData)) {
+            // Update last_login timestamp
+            updateLastLogin($user['id'], $user['role']);
 
-        // Update last_login timestamp
-        updateLastLogin($user['id'], $user['role']);
-
-        // Redirect based on role
-        redirectByRole($user['role']);
-        exit;
+            // Redirect based on role
+            redirectByRole($user['role']);
+            exit;
+        } else {
+            // Session creation failed
+            header("Location: login.php?error=session_error");
+            exit;
+        }
     } else {
         // Handle failed login
         $errorParam = $result['locked'] ? 'account_locked' : 'invalid_credentials';

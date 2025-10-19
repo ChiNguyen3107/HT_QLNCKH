@@ -3,15 +3,19 @@
  * Enhanced Authentication Service with Security Features
  */
 
+require_once 'core/SessionManager.php';
+
 class AuthService
 {
     private $maxLoginAttempts = 5;
     private $lockoutDuration = 900; // 15 phút
     private $passwordPolicy;
+    private $sessionManager;
 
     public function __construct()
     {
         $this->passwordPolicy = new PasswordPolicy();
+        $this->sessionManager = SessionManager::getInstance();
     }
 
     /**
@@ -345,7 +349,7 @@ class AuthService
      */
     public function getCurrentUser()
     {
-        if (!isset($_SESSION['user_id'])) {
+        if (!$this->check()) {
             return null;
         }
         
@@ -353,16 +357,16 @@ class AuthService
             'id' => $_SESSION['user_id'],
             'username' => $_SESSION['username'],
             'role' => $_SESSION['role'],
-            'name' => $_SESSION['name']
+            'name' => $_SESSION['user_name'] ?? $_SESSION['name'] ?? null
         ];
     }
     
     /**
-     * Kiểm tra đăng nhập
+     * Kiểm tra đăng nhập với session validation
      */
     public function check()
     {
-        return isset($_SESSION['user_id']);
+        return $this->sessionManager->validateSession();
     }
     
     /**
@@ -427,6 +431,103 @@ class AuthService
                 'message' => 'Không thể mở khóa tài khoản'
             ];
         }
+    }
+    
+    /**
+     * Logout user và destroy session
+     */
+    public function logout()
+    {
+        try {
+            $this->sessionManager->destroySession('logout');
+            return [
+                'success' => true,
+                'message' => 'Đăng xuất thành công'
+            ];
+        } catch (Exception $e) {
+            Logger::error('Logout error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Có lỗi xảy ra khi đăng xuất'
+            ];
+        }
+    }
+    
+    /**
+     * Lấy thông tin session hiện tại
+     */
+    public function getSessionInfo()
+    {
+        return $this->sessionManager->getSessionInfo();
+    }
+    
+    /**
+     * Kiểm tra session warning
+     */
+    public function shouldShowWarning()
+    {
+        return $this->sessionManager->shouldShowWarning();
+    }
+    
+    /**
+     * Dismiss session warning
+     */
+    public function dismissWarning()
+    {
+        $this->sessionManager->dismissWarning();
+    }
+    
+    /**
+     * Extend session
+     */
+    public function extendSession()
+    {
+        return $this->sessionManager->extendSession();
+    }
+    
+    /**
+     * Lấy lịch sử session của user
+     */
+    public function getSessionHistory($userId, $limit = 20)
+    {
+        return $this->sessionManager->getSessionHistory($userId, $limit);
+    }
+    
+    /**
+     * Force logout all sessions for user (admin only)
+     */
+    public function forceLogoutUser($userId)
+    {
+        try {
+            $count = $this->sessionManager->forceLogoutUser($userId);
+            return [
+                'success' => true,
+                'message' => "Đã đăng xuất {$count} phiên làm việc của người dùng",
+                'count' => $count
+            ];
+        } catch (Exception $e) {
+            Logger::error('Force logout error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Không thể đăng xuất tất cả phiên làm việc'
+            ];
+        }
+    }
+    
+    /**
+     * Lấy thống kê session
+     */
+    public function getSessionStats()
+    {
+        return $this->sessionManager->getSessionStats();
+    }
+    
+    /**
+     * Cleanup expired sessions
+     */
+    public function cleanupExpiredSessions()
+    {
+        return $this->sessionManager->cleanupExpiredSessions();
     }
 }
 
