@@ -3,29 +3,35 @@ session_start();
 require_once 'include/connect.php';
 require_once 'app/Services/PasswordResetService.php';
 require_once 'app/Services/PasswordPolicy.php';
+require_once 'core/Helper.php';
 
 $error = '';
 $success = '';
 $token = $_GET['token'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $newPassword = $_POST['new_password'] ?? '';
-    $confirmPassword = $_POST['confirm_password'] ?? '';
-    
-    if (empty($token)) {
-        $error = 'Token không hợp lệ';
-    } elseif (empty($newPassword)) {
-        $error = 'Vui lòng nhập mật khẩu mới';
-    } elseif ($newPassword !== $confirmPassword) {
-        $error = 'Mật khẩu xác nhận không khớp';
+    // Validate CSRF token
+    if (!CSRF::checkRequest('reset_password')) {
+        $error = 'Yêu cầu không hợp lệ. Vui lòng tải lại trang và thử lại.';
     } else {
-        $passwordResetService = new PasswordResetService();
-        $result = $passwordResetService->resetPassword($token, $newPassword);
+        $newPassword = $_POST['new_password'] ?? '';
+        $confirmPassword = $_POST['confirm_password'] ?? '';
         
-        if ($result['success']) {
-            $success = $result['message'];
+        if (empty($token)) {
+            $error = 'Token không hợp lệ';
+        } elseif (empty($newPassword)) {
+            $error = 'Vui lòng nhập mật khẩu mới';
+        } elseif ($newPassword !== $confirmPassword) {
+            $error = 'Mật khẩu xác nhận không khớp';
         } else {
-            $error = $result['message'];
+            $passwordResetService = new PasswordResetService();
+            $result = $passwordResetService->resetPassword($token, $newPassword);
+            
+            if ($result['success']) {
+                $success = $result['message'];
+            } else {
+                $error = $result['message'];
+            }
         }
     }
 }
@@ -122,6 +128,7 @@ $isValidToken = $passwordResetService->validateToken($token);
                             <?php endif; ?>
                             
                             <form method="POST" id="resetForm">
+                                <?php echo Helper::csrfField('reset_password'); ?>
                                 <div class="mb-3">
                                     <label for="new_password" class="form-label">
                                         <i class="fas fa-lock me-2"></i>

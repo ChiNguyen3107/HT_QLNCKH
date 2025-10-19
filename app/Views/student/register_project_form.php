@@ -3,6 +3,7 @@
 include '../../include/session.php';
 checkStudentRole();
 include '../../include/connect.php';
+require_once '../../core/Helper.php';
 
 // Lấy thông tin sinh viên
 $student_info = [];
@@ -503,6 +504,7 @@ if ($priority_fields_result) {
 
                 <form id="projectRegistrationForm" action="register_project_process.php" method="post"
                     enctype="multipart/form-data">
+                    <?php echo Helper::csrfField('register_project'); ?>
                     <!-- Bước 1: Thông tin đề tài -->
                     <div class="form-section active" id="step1">
                         <div class="section-title">

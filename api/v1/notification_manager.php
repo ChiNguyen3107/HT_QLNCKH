@@ -12,6 +12,7 @@ header('Access-Control-Allow-Headers: Content-Type');
 // Include các file cần thiết
 require_once '../include/config.php';
 require_once '../include/database.php';
+require_once '../../core/CSRF.php';
 
 // Khởi tạo session
 if (session_status() === PHP_SESSION_NONE) {
@@ -46,6 +47,11 @@ try {
             'referer' => $_SERVER['HTTP_REFERER'] ?? 'No referer'
         ];
         throw new Exception('Chưa đăng nhập. Debug: ' . json_encode($debug_info));
+    }
+    
+    // Kiểm tra CSRF token cho các requests không phải GET
+    if ($method !== 'GET' && !CSRF::validateHeaderToken('api')) {
+        throw new Exception('CSRF token không hợp lệ');
     }
     
     $user_id = $_SESSION['user_id'];

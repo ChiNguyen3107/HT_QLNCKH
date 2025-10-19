@@ -1,5 +1,6 @@
 <?php
 // filepath: d:\xampp\htdocs\NLNganh\login.php
+require_once 'core/Helper.php';
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -7,6 +8,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Đăng nhập - Hệ thống Quản lý Nghiên cứu Khoa học</title>
+    <?php echo Helper::csrfMetaTag('login'); ?>
     <!-- Favicon -->
     <link rel="icon" href="/NLNganh/favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="/NLNganh/favicon.ico" type="image/x-icon">
@@ -220,6 +222,7 @@
                 <?php endif; ?>
                 
                 <form action="login_process.php" method="POST">
+                    <?php echo Helper::csrfField('login'); ?>
                     <div class="form-group">
                         <label for="username">Tên đăng nhập</label>
                         <input type="text" class="form-control" id="username" name="username" required 
@@ -281,6 +284,7 @@
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="public/js/csrf-protection.js"></script>
     <script>
         // Hiệu ứng tự động đóng thông báo lỗi sau 5 giây
         $(document).ready(function(){

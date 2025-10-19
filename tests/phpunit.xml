@@ -14,6 +14,8 @@
     <coverage>
         <include>
             <directory suffix=".php">app/Services</directory>
+            <directory suffix=".php">core</directory>
+            <directory suffix=".php">app/Middleware</directory>
         </include>
         <exclude>
             <directory>tests</directory>

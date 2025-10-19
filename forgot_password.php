@@ -2,26 +2,32 @@
 session_start();
 require_once 'include/connect.php';
 require_once 'app/Services/PasswordResetService.php';
+require_once 'core/Helper.php';
 
 $error = '';
 $success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
-    $userType = $_POST['user_type'] ?? 'user';
-    
-    if (empty($email)) {
-        $error = 'Vui lòng nhập email';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = 'Email không hợp lệ';
+    // Validate CSRF token
+    if (!CSRF::checkRequest('forgot_password')) {
+        $error = 'Yêu cầu không hợp lệ. Vui lòng tải lại trang và thử lại.';
     } else {
-        $passwordResetService = new PasswordResetService();
-        $result = $passwordResetService->createResetToken($email, $userType);
+        $email = trim($_POST['email'] ?? '');
+        $userType = $_POST['user_type'] ?? 'user';
         
-        if ($result['success']) {
-            $success = $result['message'];
+        if (empty($email)) {
+            $error = 'Vui lòng nhập email';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = 'Email không hợp lệ';
         } else {
-            $error = $result['message'];
+            $passwordResetService = new PasswordResetService();
+            $result = $passwordResetService->createResetToken($email, $userType);
+            
+            if ($result['success']) {
+                $success = $result['message'];
+            } else {
+                $error = $result['message'];
+            }
         }
     }
 }
@@ -123,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <?php endif; ?>
                             
                             <form method="POST" id="forgotForm">
+                                <?php echo Helper::csrfField('forgot_password'); ?>
                                 <div class="mb-4">
                                     <label class="form-label fw-bold">Loại tài khoản</label>
                                     <div class="row g-3">
