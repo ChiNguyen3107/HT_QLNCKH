@@ -1,0 +1,22 @@
+# Test coverage reports
+storage/coverage/
+
+# Test logs
+storage/logs/test.log
+
+# Test cache
+storage/cache/test/
+
+# Temporary test files
+temp/
+*.tmp
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,56 +1,13 @@
 <?php
+
+namespace Tests\Unit\Security;
+
+use Tests\TestCase;
+
 /**
  * Session Security Unit Tests
  * Kiểm tra các tính năng bảo mật session
  */
-
-// Mock PHPUnit for testing
-if (!class_exists('PHPUnit\Framework\TestCase')) {
-    class TestCase {
-        protected function setUp(): void {}
-        protected function tearDown(): void {}
-        public function assertTrue($condition, $message = '') {
-            if (!$condition) throw new Exception($message ?: 'Assertion failed');
-        }
-        public function assertFalse($condition, $message = '') {
-            if ($condition) throw new Exception($message ?: 'Assertion failed');
-        }
-        public function assertEquals($expected, $actual, $message = '') {
-            if ($expected !== $actual) throw new Exception($message ?: 'Values are not equal');
-        }
-        public function assertNotEquals($expected, $actual, $message = '') {
-            if ($expected === $actual) throw new Exception($message ?: 'Values are equal');
-        }
-        public function assertArrayHasKey($key, $array, $message = '') {
-            if (!array_key_exists($key, $array)) throw new Exception($message ?: 'Array does not have key');
-        }
-        public function assertIsArray($value, $message = '') {
-            if (!is_array($value)) throw new Exception($message ?: 'Value is not an array');
-        }
-        public function assertIsInt($value, $message = '') {
-            if (!is_int($value)) throw new Exception($message ?: 'Value is not an integer');
-        }
-        public function assertIsBool($value, $message = '') {
-            if (!is_bool($value)) throw new Exception($message ?: 'Value is not a boolean');
-        }
-        public function assertNull($value, $message = '') {
-            if ($value !== null) throw new Exception($message ?: 'Value is not null');
-        }
-        public function assertGreaterThan($expected, $actual, $message = '') {
-            if ($actual <= $expected) throw new Exception($message ?: 'Value is not greater than expected');
-        }
-        public function assertLessThanOrEqual($expected, $actual, $message = '') {
-            if ($actual > $expected) throw new Exception($message ?: 'Value is not less than or equal to expected');
-        }
-        public function assertGreaterThanOrEqual($expected, $actual, $message = '') {
-            if ($actual < $expected) throw new Exception($message ?: 'Value is not greater than or equal to expected');
-        }
-        public function markTestSkipped($message = '') {
-            echo "SKIPPED: $message\n";
-        }
-    }
-}
-
 class SessionSecurityTest extends TestCase
 {
     private $sessionManager;

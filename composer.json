@@ -10,10 +10,15 @@
         }
     ],
     "require": {
-        "php": ">=7.4"
+        "php": ">=8.1"
     },
     "require-dev": {
-        "phpunit/phpunit": "^9.0"
+        "phpunit/phpunit": "^10.0",
+        "mockery/mockery": "^1.6",
+        "guzzlehttp/guzzle": "^7.8",
+        "fakerphp/faker": "^1.23",
+        "phpunit/php-code-coverage": "^10.0",
+        "vlucas/phpdotenv": "^5.5"
     },
     "autoload": {
         "psr-4": {
@@ -27,7 +32,18 @@
     },
     "scripts": {
         "test": "phpunit",
-        "serve": "php -S localhost:8000 -t public"
+        "test:unit": "phpunit tests/Unit",
+        "test:feature": "phpunit tests/Feature",
+        "test:coverage": "phpunit --coverage-html storage/coverage --coverage-clover storage/coverage/clover.xml",
+        "test:coverage-text": "phpunit --coverage-text",
+        "test:ci": "phpunit --coverage-clover storage/coverage/clover.xml",
+        "serve": "php -S localhost:8000 -t public",
+        "test:setup": [
+            "mkdir -p storage/coverage",
+            "mkdir -p storage/logs",
+            "mkdir -p storage/cache",
+            "mkdir -p storage/sessions"
+        ]
     },
     "config": {
         "optimize-autoloader": true,
